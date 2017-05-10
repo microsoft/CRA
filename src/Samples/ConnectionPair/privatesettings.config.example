@@ -1,0 +1,3 @@
+﻿<appSettings>
+    <add key="StorageConnectionString" value="your key here" />
+</appSettings>
