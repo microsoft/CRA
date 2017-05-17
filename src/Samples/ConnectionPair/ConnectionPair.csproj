@@ -44,8 +44,7 @@
   <ItemGroup>
     <Compile Include="MyAsyncInput.cs" />
     <Compile Include="MyAsyncOutput.cs" />
-    <Compile Include="MyFirstProcess.cs" />
-    <Compile Include="MySecondProcess.cs" />
+    <Compile Include="ConnectionPairProcess.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
@@ -60,6 +59,6 @@
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
-    <PostBuildEvent>IF EXIST $(ProjectDir)privatesettings.config copy $(ProjectDir)privatesettings.config $(ProjectDir)$(OutDir)</PostBuildEvent>
+    <PostBuildEvent>IF EXIST $(ProjectDir)..\..\privatesettings.config copy $(ProjectDir)..\..\privatesettings.config $(ProjectDir)$(OutDir)</PostBuildEvent>
   </PropertyGroup>
 </Project>

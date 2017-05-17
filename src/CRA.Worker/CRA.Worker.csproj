@@ -62,6 +62,6 @@
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
-    <PostBuildEvent>IF EXIST $(ProjectDir)privatesettings.config copy $(ProjectDir)privatesettings.config $(ProjectDir)$(OutDir)</PostBuildEvent>
+    <PostBuildEvent>IF EXIST $(ProjectDir)..\privatesettings.config copy $(ProjectDir)..\privatesettings.config $(ProjectDir)$(OutDir)</PostBuildEvent>
   </PropertyGroup>
 </Project>

@@ -9,14 +9,13 @@ namespace ConnectionPair
         {
             var client = new CRAClientLibrary();
 
-            client.DefineProcess("myfirstprocess", () => new MyFirstProcess());
-            client.DefineProcess("mysecondprocess", () => new MySecondProcess());
+            client.DefineProcess("connectionpairprocess", () => new ConnectionPairProcess());
 
-            client.InstantiateProcess("instance1", "myprocess1", "myfirstprocess", null);
-            client.InstantiateProcess("instance2", "myprocess2", "mysecondprocess", null);
+            client.InstantiateProcess("instance1", "process1", "connectionpairprocess", null);
+            client.InstantiateProcess("instance2", "process2", "connectionpairprocess", null);
 
-            client.Connect("myprocess1", "firstoutput", "myprocess2", "secondinput");
-            client.Connect("myprocess2", "secondoutput", "myprocess1", "firstinput");
+            client.Connect("process1", "output", "process2", "input");
+            client.Connect("process2", "output", "process1", "input");
 
             Console.ReadLine();
         }
