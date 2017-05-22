@@ -33,7 +33,7 @@ namespace ConnectionPair
 
             for (int i = 0; i < int.MaxValue; i++)
             {
-                int val = s.ReadInteger();
+                int val = s.ReadInt32();
                 Console.WriteLine("Read value: " + val);
                 token.ThrowIfCancellationRequested();
 

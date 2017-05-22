@@ -108,7 +108,7 @@ namespace CRA.ClientLibrary
                 // Get a stream object for reading and writing
                 NetworkStream stream = client.GetStream();
 
-                CRATaskMessageType message = (CRATaskMessageType)stream.ReadInteger();
+                CRATaskMessageType message = (CRATaskMessageType)stream.ReadInt32();
 
                 switch (message)
                 {
@@ -255,7 +255,7 @@ namespace CRA.ClientLibrary
             ns.WriteByteArray(Encoding.UTF8.GetBytes(toProcessName));
             ns.WriteByteArray(Encoding.UTF8.GetBytes(toProcessInput));
             ns.WriteInteger(killRemote ? 1 : 0);
-            CRAErrorCode result = (CRAErrorCode) ns.ReadInteger();
+            CRAErrorCode result = (CRAErrorCode) ns.ReadInt32();
 
             if (result != 0)
             {
@@ -355,7 +355,7 @@ namespace CRA.ClientLibrary
             string fromProcessOutput = Encoding.UTF8.GetString(stream.ReadByteArray());
             string toProcessName = Encoding.UTF8.GetString(stream.ReadByteArray());
             string toProcessInput = Encoding.UTF8.GetString(stream.ReadByteArray());
-            bool killIfExists = stream.ReadInteger() == 1 ? true : false;
+            bool killIfExists = stream.ReadInt32() == 1 ? true : false;
 
             if (!reverse)
             {

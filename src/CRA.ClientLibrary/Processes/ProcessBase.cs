@@ -35,21 +35,20 @@ namespace CRA.ClientLibrary
         }
 
         /// <summary>
-        /// Gets an instance of the CRA client library
+        /// Gets or sets an instance of the CRA client library
         /// </summary>
         /// <returns></returns>
-        public CRAClientLibrary GetClientLibrary()
+        public CRAClientLibrary ClientLibrary
         {
-            return _clientLibrary;
-        }
+            get
+            {
+                return _clientLibrary;
+            }
 
-        /// <summary>
-        /// Set instance of CRA client library
-        /// </summary>
-        /// <param name="lib"></param>
-        public void SetClientLibrary(CRAClientLibrary lib)
-        {
-            _clientLibrary = lib;
+            set
+            {
+                _clientLibrary = value;
+            }
         }
 
         /// <summary>
@@ -193,13 +192,15 @@ namespace CRA.ClientLibrary
         /// <returns></returns>
         public string ProcessName
         {
-            get { return _processName; }
-        }
-        
+            get
+            {
+                return _processName;
+            }
 
-        internal void SetProcessName(string processName)
-        {
-            _processName = processName;
+            set
+            {
+                _processName = value;
+            }
         }
 
         /// <summary>

@@ -2,6 +2,8 @@
 using System.Linq;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Table;
+using System;
+using System.Diagnostics.CodeAnalysis;
 
 namespace CRA.ClientLibrary
 {
@@ -70,7 +72,9 @@ namespace CRA.ClientLibrary
             {
                 table.CreateIfNotExists();
             }
-            catch { }
+            catch (Exception)
+            {
+            }
 
             return table;
         }

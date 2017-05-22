@@ -1,0 +1,592 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<FxCopProject Version="10.0" Name="CRA">
+ <ProjectOptions>
+  <SharedProject>True</SharedProject>
+  <Stylesheet Apply="False">$(FxCopDir)\Xml\FxCopReport.xsl</Stylesheet>
+  <SaveMessages>
+   <Project Status="Active, Excluded" NewOnly="False" />
+   <Report Status="Active" NewOnly="False" />
+  </SaveMessages>
+  <ProjectFile Compress="True" DefaultTargetCheck="True" DefaultRuleCheck="True" SaveByRuleGroup="" Deterministic="True" />
+  <EnableMultithreadedLoad>True</EnableMultithreadedLoad>
+  <EnableMultithreadedAnalysis>True</EnableMultithreadedAnalysis>
+  <SourceLookup>True</SourceLookup>
+  <AnalysisExceptionsThreshold>10</AnalysisExceptionsThreshold>
+  <RuleExceptionsThreshold>1</RuleExceptionsThreshold>
+  <Spelling Locale="en-US" />
+  <OverrideRuleVisibilities>False</OverrideRuleVisibilities>
+  <CustomDictionaries SearchFxCopDir="True" SearchUserProfile="True" SearchProjectDir="True" />
+  <SearchGlobalAssemblyCache>False</SearchGlobalAssemblyCache>
+  <DeadlockDetectionTimeout>120</DeadlockDetectionTimeout>
+  <IgnoreGeneratedCode>False</IgnoreGeneratedCode>
+ </ProjectOptions>
+ <Targets>
+  <Target Name="$(ProjectDir)/CRA.ClientLibrary/bin/Debug/CRA.ClientLibrary.dll" Analyze="True" AnalyzeAllChildren="True" />
+  <Target Name="$(ProjectDir)/CRA.Worker/bin/Debug/CRA.Worker.exe" Analyze="True" AnalyzeAllChildren="True" />
+ </Targets>
+ <Rules>
+  <RuleFiles>
+   <RuleFile Name="$(FxCopDir)\Rules\DesignRules.dll" Enabled="True" AllRulesEnabled="True" />
+   <RuleFile Name="$(FxCopDir)\Rules\GlobalizationRules.dll" Enabled="True" AllRulesEnabled="True" />
+   <RuleFile Name="$(FxCopDir)\Rules\InteroperabilityRules.dll" Enabled="True" AllRulesEnabled="True" />
+   <RuleFile Name="$(FxCopDir)\Rules\MobilityRules.dll" Enabled="True" AllRulesEnabled="True" />
+   <RuleFile Name="$(FxCopDir)\Rules\NamingRules.dll" Enabled="True" AllRulesEnabled="True" />
+   <RuleFile Name="$(FxCopDir)\Rules\PerformanceRules.dll" Enabled="True" AllRulesEnabled="True" />
+   <RuleFile Name="$(FxCopDir)\Rules\PortabilityRules.dll" Enabled="True" AllRulesEnabled="True" />
+   <RuleFile Name="$(FxCopDir)\Rules\SecurityRules.dll" Enabled="True" AllRulesEnabled="True" />
+   <RuleFile Name="$(FxCopDir)\Rules\SecurityTransparencyRules.dll" Enabled="True" AllRulesEnabled="True" />
+   <RuleFile Name="$(FxCopDir)\Rules\UsageRules.dll" Enabled="True" AllRulesEnabled="True" />
+  </RuleFiles>
+  <Groups />
+  <Settings />
+ </Rules>
+ <FxCopReport Version="10.0">
+  <Targets>
+   <Target Name="$(ProjectDir)/CRA.ClientLibrary/bin/Debug/CRA.ClientLibrary.dll">
+    <Modules>
+     <Module Name="cra.clientlibrary.dll">
+      <Messages>
+       <Message TypeName="AssembliesShouldHaveValidStrongNames" Category="Microsoft.Design" CheckId="CA2210" Created="2017-05-22 20:25:41Z">
+        <Issue Name="NoStrongName">
+         <Item>'CRA.ClientLibrary.dll'</Item>
+        </Issue>
+       </Message>
+       <Message TypeName="MarkAssembliesWithClsCompliant" Category="Microsoft.Design" CheckId="CA1014" Created="2017-05-22 20:25:41Z">
+        <Issue>
+         <Item>'CRA.ClientLibrary.dll'</Item>
+        </Issue>
+       </Message>
+      </Messages>
+      <Namespaces>
+       <Namespace Name="CRA.ClientLibrary">
+        <Types>
+         <Type Name="AssemblyResolver">
+          <Members>
+           <Member Name="#ContainsAssembly(System.String)">
+            <Messages>
+             <Message TypeName="AvoidUncalledPrivateCode" Category="Microsoft.Performance" CheckId="CA1811" Created="2017-05-22 20:25:41Z">
+              <Issue>
+               <Item>'AssemblyResolver.ContainsAssembly(string)'</Item>
+              </Issue>
+             </Message>
+            </Messages>
+           </Member>
+           <Member Name="#GetAssemblyBytes(System.String)">
+            <Messages>
+             <Message TypeName="AvoidUncalledPrivateCode" Category="Microsoft.Performance" CheckId="CA1811" Created="2017-05-22 20:25:41Z">
+              <Issue>
+               <Item>'AssemblyResolver.GetAssemblyBytes(string)'</Item>
+              </Issue>
+             </Message>
+            </Messages>
+           </Member>
+           <Member Name="#RegisteredAssemblies">
+            <Accessors>
+             <Accessor Name="#get_RegisteredAssemblies()">
+              <Messages>
+               <Message TypeName="AvoidUncalledPrivateCode" Category="Microsoft.Performance" CheckId="CA1811" Created="2017-05-22 20:25:41Z">
+                <Issue>
+                 <Item>'AssemblyResolver.RegisteredAssemblies.get()'</Item>
+                </Issue>
+               </Message>
+              </Messages>
+             </Accessor>
+            </Accessors>
+           </Member>
+          </Members>
+         </Type>
+         <Type Name="AssemblyResolverClient">
+          <Members>
+           <Member Name="#GetApplicationAssemblies(System.Reflection.AssemblyName,System.Collections.Generic.List`1&lt;CRA.ClientLibrary.AssemblyResolverClient+ApplicationAssembly&gt;,System.Collections.Generic.HashSet`1&lt;System.String&gt;)">
+            <Messages>
+             <Message TypeName="AvoidUncalledPrivateCode" Category="Microsoft.Performance" CheckId="CA1811" Created="2017-05-22 20:25:41Z">
+              <Issue>
+               <Item>'AssemblyResolverClient.GetApplicationAssemblies(AssemblyName, List&lt;AssemblyResolverClient.ApplicationAssembly&gt;, HashSet&lt;string&gt;)'</Item>
+              </Issue>
+             </Message>
+            </Messages>
+           </Member>
+          </Members>
+         </Type>
+         <Type Name="AssemblyUtils">
+          <Members>
+           <Member Name="#AssembliesFromString(System.String,System.String)">
+            <Messages>
+             <Message TypeName="AvoidUncalledPrivateCode" Category="Microsoft.Performance" CheckId="CA1811" Created="2017-05-22 20:25:41Z">
+              <Issue>
+               <Item>'AssemblyUtils.AssembliesFromString(string, string)'</Item>
+              </Issue>
+             </Message>
+            </Messages>
+           </Member>
+           <Member Name="#BuildUserDLLs(System.String)">
+            <Messages>
+             <Message TypeName="AvoidUncalledPrivateCode" Category="Microsoft.Performance" CheckId="CA1811" Created="2017-05-22 20:25:41Z">
+              <Issue>
+               <Item>'AssemblyUtils.BuildUserDLLs(string)'</Item>
+              </Issue>
+             </Message>
+            </Messages>
+           </Member>
+           <Member Name="#GetApplicationAssemblies(System.Reflection.AssemblyName,System.Collections.Generic.List`1&lt;CRA.ClientLibrary.AssemblyUtils+ApplicationAssembly&gt;,System.Collections.Generic.HashSet`1&lt;System.String&gt;)">
+            <Messages>
+             <Message TypeName="DoNotCatchGeneralExceptionTypes" Category="Microsoft.Design" CheckId="CA1031" Created="2017-05-22 20:25:41Z">
+              <Issue>
+               <Item>'AssemblyUtils.GetApplicationAssemblies(AssemblyName, List&lt;AssemblyUtils.ApplicationAssembly&gt;, HashSet&lt;string&gt;)'</Item>
+               <Item>'Exception'</Item>
+              </Issue>
+             </Message>
+            </Messages>
+           </Member>
+           <Member Name="#GetRelatedApplicationAssemblies(System.String,System.String[])">
+            <Messages>
+             <Message Id="System.String.StartsWith(System.String)" TypeName="SpecifyStringComparison" Category="Microsoft.Globalization" CheckId="CA1307" Created="2017-05-22 20:25:41Z">
+              <Issue>
+               <Item>'string.StartsWith(string)'</Item>
+               <Item>'AssemblyUtils.GetRelatedApplicationAssemblies(string, params string[])'</Item>
+               <Item>'string.StartsWith(string, StringComparison)'</Item>
+              </Issue>
+             </Message>
+            </Messages>
+           </Member>
+          </Members>
+         </Type>
+         <Type Name="AssemblyUtils+UserDLLsInfo">
+          <Members>
+           <Member Name="#UserDLLsBuffer">
+            <Accessors>
+             <Accessor Name="#get_UserDLLsBuffer()">
+              <Messages>
+               <Message TypeName="AvoidUncalledPrivateCode" Category="Microsoft.Performance" CheckId="CA1811" Created="2017-05-22 20:25:41Z">
+                <Issue>
+                 <Item>'AssemblyUtils.UserDLLsInfo.UserDLLsBuffer.get()'</Item>
+                </Issue>
+               </Message>
+              </Messages>
+             </Accessor>
+             <Accessor Name="#set_UserDLLsBuffer(System.String)">
+              <Messages>
+               <Message TypeName="AvoidUncalledPrivateCode" Category="Microsoft.Performance" CheckId="CA1811" Created="2017-05-22 20:25:41Z">
+                <Issue>
+                 <Item>'AssemblyUtils.UserDLLsInfo.UserDLLsBuffer.set(string)'</Item>
+                </Issue>
+               </Message>
+              </Messages>
+             </Accessor>
+            </Accessors>
+           </Member>
+           <Member Name="#UserDLLsBufferInfo">
+            <Accessors>
+             <Accessor Name="#get_UserDLLsBufferInfo()">
+              <Messages>
+               <Message TypeName="AvoidUncalledPrivateCode" Category="Microsoft.Performance" CheckId="CA1811" Created="2017-05-22 20:25:41Z">
+                <Issue>
+                 <Item>'AssemblyUtils.UserDLLsInfo.UserDLLsBufferInfo.get()'</Item>
+                </Issue>
+               </Message>
+              </Messages>
+             </Accessor>
+             <Accessor Name="#set_UserDLLsBufferInfo(System.String)">
+              <Messages>
+               <Message TypeName="AvoidUncalledPrivateCode" Category="Microsoft.Performance" CheckId="CA1811" Created="2017-05-22 20:25:41Z">
+                <Issue>
+                 <Item>'AssemblyUtils.UserDLLsInfo.UserDLLsBufferInfo.set(string)'</Item>
+                </Issue>
+               </Message>
+              </Messages>
+             </Accessor>
+            </Accessors>
+           </Member>
+          </Members>
+         </Type>
+         <Type Name="ConnectionTable">
+          <Members>
+           <Member Name="#CountAll(Microsoft.WindowsAzure.Storage.Table.CloudTable)">
+            <Messages>
+             <Message TypeName="AvoidUncalledPrivateCode" Category="Microsoft.Performance" CheckId="CA1811" Created="2017-05-22 20:25:41Z">
+              <Issue>
+               <Item>'ConnectionTable.CountAll(CloudTable)'</Item>
+              </Issue>
+             </Message>
+            </Messages>
+           </Member>
+          </Members>
+         </Type>
+         <Type Name="ConnectionTableManager">
+          <Members>
+           <Member Name="#CreateTableIfNotExists(System.String,Microsoft.WindowsAzure.Storage.Table.CloudTableClient)">
+            <Messages>
+             <Message TypeName="DoNotCatchGeneralExceptionTypes" Category="Microsoft.Design" CheckId="CA1031" Created="2017-05-22 20:25:41Z">
+              <Issue>
+               <Item>'ConnectionTableManager.CreateTableIfNotExists(string, CloudTableClient)'</Item>
+               <Item>'object'</Item>
+              </Issue>
+             </Message>
+             <Message TypeName="MarkMembersAsStatic" Category="Microsoft.Performance" CheckId="CA1822" Created="2017-05-22 20:25:41Z" FixCategory="NonBreaking">
+              <Issue>
+               <Item>'ConnectionTableManager.CreateTableIfNotExists(string, CloudTableClient)'</Item>
+              </Issue>
+             </Message>
+            </Messages>
+           </Member>
+           <Member Name="#DeleteTable()">
+            <Messages>
+             <Message TypeName="AvoidUncalledPrivateCode" Category="Microsoft.Performance" CheckId="CA1811" Created="2017-05-22 20:25:41Z">
+              <Issue>
+               <Item>'ConnectionTableManager.DeleteTable()'</Item>
+              </Issue>
+             </Message>
+            </Messages>
+           </Member>
+          </Members>
+         </Type>
+         <Type Name="CRAClientLibrary">
+          <Members>
+           <Member Name="#.ctor(System.String,CRA.ClientLibrary.CRAWorker)">
+            <Messages>
+             <Message TypeName="TestForEmptyStringsUsingStringLength" Category="Microsoft.Performance" CheckId="CA1820" Created="2017-05-22 20:25:41Z">
+              <Issue Name="IsNullOrEmpty">
+               <Item>'string.operator ==(string, string)'</Item>
+               <Item>'CRAClientLibrary.CRAClientLibrary(string, CRAWorker)'</Item>
+              </Issue>
+             </Message>
+            </Messages>
+           </Member>
+           <Member Name="#aquaType">
+            <Messages>
+             <Message TypeName="AvoidUnusedPrivateFields" Category="Microsoft.Performance" CheckId="CA1823" Created="2017-05-22 20:25:41Z">
+              <Issue>
+               <Item>'CRAClientLibrary.aquaType'</Item>
+              </Issue>
+             </Message>
+            </Messages>
+           </Member>
+           <Member Name="#Connect(System.String,System.String,System.String,System.String,CRA.ClientLibrary.ConnectionInitiator)">
+            <Messages>
+             <Message TypeName="DoNotCatchGeneralExceptionTypes" Category="Microsoft.Design" CheckId="CA1031" Created="2017-05-22 20:25:41Z">
+              <Issue>
+               <Item>'CRAClientLibrary.Connect(string, string, string, string, ConnectionInitiator)'</Item>
+               <Item>'object'</Item>
+              </Issue>
+             </Message>
+            </Messages>
+           </Member>
+           <Member Name="#CreateTableIfNotExists(System.String)">
+            <Messages>
+             <Message TypeName="DoNotCatchGeneralExceptionTypes" Category="Microsoft.Design" CheckId="CA1031" Created="2017-05-22 20:25:41Z">
+              <Issue>
+               <Item>'CRAClientLibrary.CreateTableIfNotExists(string)'</Item>
+               <Item>'object'</Item>
+              </Issue>
+             </Message>
+            </Messages>
+           </Member>
+           <Member Name="#DeployInstance(System.String)">
+            <Messages>
+             <Message TypeName="MarkMembersAsStatic" Category="Microsoft.Performance" CheckId="CA1822" Created="2017-05-22 20:25:41Z" FixCategory="DependsOnFix">
+              <Issue>
+               <Item>'CRAClientLibrary.DeployInstance(string)'</Item>
+              </Issue>
+             </Message>
+             <Message Id="instanceName" TypeName="ReviewUnusedParameters" Category="Microsoft.Usage" CheckId="CA1801" Created="2017-05-22 20:25:41Z" FixCategory="DependsOnFix">
+              <Issue>
+               <Item>'instanceName'</Item>
+               <Item>'CRAClientLibrary.DeployInstance(string)'</Item>
+              </Issue>
+             </Message>
+            </Messages>
+           </Member>
+           <Member Name="#InstantiateProcess(System.String,System.String,System.String,System.Object)">
+            <Messages>
+             <Message TypeName="DoNotCatchGeneralExceptionTypes" Category="Microsoft.Design" CheckId="CA1031" Created="2017-05-22 20:25:41Z">
+              <Issue>
+               <Item>'CRAClientLibrary.InstantiateProcess(string, string, string, object)'</Item>
+               <Item>'object'</Item>
+              </Issue>
+             </Message>
+            </Messages>
+           </Member>
+           <Member Name="#LoadAllProcesses(System.String)">
+            <Messages>
+             <Message TypeName="TestForEmptyStringsUsingStringLength" Category="Microsoft.Performance" CheckId="CA1820" Created="2017-05-22 20:25:41Z">
+              <Issue Name="IsNullOrEmpty">
+               <Item>'string.operator ==(string, string)'</Item>
+               <Item>'CRAClientLibrary.LoadAllProcesses(string)'</Item>
+              </Issue>
+             </Message>
+            </Messages>
+           </Member>
+          </Members>
+         </Type>
+         <Type Name="CRAWorker">
+          <Members>
+           <Member Name="#_blobClient">
+            <Messages>
+             <Message TypeName="AvoidUnusedPrivateFields" Category="Microsoft.Performance" CheckId="CA1823" Created="2017-05-22 20:25:41Z">
+              <Issue>
+               <Item>'CRAWorker._blobClient'</Item>
+              </Issue>
+             </Message>
+            </Messages>
+           </Member>
+           <Member Name="#Connect_InitiatorSide(System.String,System.String,System.String,System.String,System.Boolean,System.Boolean,System.Boolean)">
+            <Messages>
+             <Message TypeName="DoNotCatchGeneralExceptionTypes" Category="Microsoft.Design" CheckId="CA1031" Created="2017-05-22 20:25:41Z">
+              <Issue>
+               <Item>'CRAWorker.Connect_InitiatorSide(string, string, string, string, bool, bool, bool)'</Item>
+               <Item>'object'</Item>
+              </Issue>
+             </Message>
+            </Messages>
+           </Member>
+           <Member Name="#CreateTableIfNotExists(System.String)">
+            <Messages>
+             <Message TypeName="DoNotCatchGeneralExceptionTypes" Category="Microsoft.Design" CheckId="CA1031" Created="2017-05-22 20:25:41Z">
+              <Issue>
+               <Item>'CRAWorker.CreateTableIfNotExists(string)'</Item>
+               <Item>'object'</Item>
+              </Issue>
+             </Message>
+            </Messages>
+           </Member>
+           <Member Name="#RestoreConnections(System.Object)">
+            <Messages>
+             <Message Id="obj" TypeName="ReviewUnusedParameters" Category="Microsoft.Usage" CheckId="CA1801" Created="2017-05-22 20:25:41Z" FixCategory="NonBreaking">
+              <Issue>
+               <Item>'obj'</Item>
+               <Item>'CRAWorker.RestoreConnections(object)'</Item>
+              </Issue>
+             </Message>
+            </Messages>
+           </Member>
+          </Members>
+         </Type>
+         <Type Name="DetachedProcess">
+          <Members>
+           <Member Name="#.ctor(System.String,System.String,CRA.ClientLibrary.CRAClientLibrary)">
+            <Messages>
+             <Message TypeName="TestForEmptyStringsUsingStringLength" Category="Microsoft.Performance" CheckId="CA1820" Created="2017-05-22 20:25:41Z">
+              <Issue Name="IsNullOrEmpty">
+               <Item>'string.operator ==(string, string)'</Item>
+               <Item>'DetachedProcess.DetachedProcess(string, string, CRAClientLibrary)'</Item>
+              </Issue>
+             </Message>
+            </Messages>
+           </Member>
+           <Member Name="#Connect_InitiatorSide(System.String,System.String,System.String,System.String,System.Boolean)">
+            <Messages>
+             <Message TypeName="DoNotCatchGeneralExceptionTypes" Category="Microsoft.Design" CheckId="CA1031" Created="2017-05-22 20:25:41Z">
+              <Issue>
+               <Item>'DetachedProcess.Connect_InitiatorSide(string, string, string, string, bool)'</Item>
+               <Item>'object'</Item>
+              </Issue>
+             </Message>
+            </Messages>
+           </Member>
+          </Members>
+         </Type>
+         <Type Name="EndpointTable">
+          <Members>
+           <Member Name="#GetAll(Microsoft.WindowsAzure.Storage.Table.CloudTable)">
+            <Messages>
+             <Message TypeName="AvoidUncalledPrivateCode" Category="Microsoft.Performance" CheckId="CA1811" Created="2017-05-22 20:25:41Z">
+              <Issue>
+               <Item>'EndpointTable.GetAll(CloudTable)'</Item>
+              </Issue>
+             </Message>
+            </Messages>
+           </Member>
+          </Members>
+         </Type>
+         <Type Name="EndpointTableManager">
+          <Members>
+           <Member Name="#CreateTableIfNotExists(System.String,Microsoft.WindowsAzure.Storage.Table.CloudTableClient)">
+            <Messages>
+             <Message TypeName="DoNotCatchGeneralExceptionTypes" Category="Microsoft.Design" CheckId="CA1031" Created="2017-05-22 20:25:41Z">
+              <Issue>
+               <Item>'EndpointTableManager.CreateTableIfNotExists(string, CloudTableClient)'</Item>
+               <Item>'object'</Item>
+              </Issue>
+             </Message>
+             <Message TypeName="MarkMembersAsStatic" Category="Microsoft.Performance" CheckId="CA1822" Created="2017-05-22 20:25:41Z" FixCategory="NonBreaking">
+              <Issue>
+               <Item>'EndpointTableManager.CreateTableIfNotExists(string, CloudTableClient)'</Item>
+              </Issue>
+             </Message>
+            </Messages>
+           </Member>
+           <Member Name="#ExistsEndpoint(System.String,System.String)">
+            <Messages>
+             <Message TypeName="AvoidUncalledPrivateCode" Category="Microsoft.Performance" CheckId="CA1811" Created="2017-05-22 20:25:41Z">
+              <Issue>
+               <Item>'EndpointTableManager.ExistsEndpoint(string, string)'</Item>
+              </Issue>
+             </Message>
+            </Messages>
+           </Member>
+           <Member Name="#RemoveEndpoint(System.String,System.String)">
+            <Messages>
+             <Message TypeName="AvoidUncalledPrivateCode" Category="Microsoft.Performance" CheckId="CA1811" Created="2017-05-22 20:25:41Z">
+              <Issue>
+               <Item>'EndpointTableManager.RemoveEndpoint(string, string)'</Item>
+              </Issue>
+             </Message>
+            </Messages>
+           </Member>
+          </Members>
+         </Type>
+         <Type Name="ProcessTable">
+          <Members>
+           <Member Name="#ContainsInstance(Microsoft.WindowsAzure.Storage.Table.CloudTable,System.String)">
+            <Messages>
+             <Message TypeName="AvoidUncalledPrivateCode" Category="Microsoft.Performance" CheckId="CA1811" Created="2017-05-22 20:25:41Z">
+              <Issue>
+               <Item>'ProcessTable.ContainsInstance(CloudTable, string)'</Item>
+              </Issue>
+             </Message>
+            </Messages>
+           </Member>
+           <Member Name="#ContainsRow(Microsoft.WindowsAzure.Storage.Table.CloudTable,CRA.ClientLibrary.ProcessTable)">
+            <Messages>
+             <Message TypeName="AvoidUncalledPrivateCode" Category="Microsoft.Performance" CheckId="CA1811" Created="2017-05-22 20:25:41Z">
+              <Issue>
+               <Item>'ProcessTable.ContainsRow(CloudTable, ProcessTable)'</Item>
+              </Issue>
+             </Message>
+            </Messages>
+           </Member>
+           <Member Name="#CountAll(Microsoft.WindowsAzure.Storage.Table.CloudTable)">
+            <Messages>
+             <Message TypeName="AvoidUncalledPrivateCode" Category="Microsoft.Performance" CheckId="CA1811" Created="2017-05-22 20:25:41Z">
+              <Issue>
+               <Item>'ProcessTable.CountAll(CloudTable)'</Item>
+              </Issue>
+             </Message>
+            </Messages>
+           </Member>
+           <Member Name="#GetInstanceFromAddress(Microsoft.WindowsAzure.Storage.Table.CloudTable,System.String,System.Int32)">
+            <Messages>
+             <Message TypeName="AvoidUncalledPrivateCode" Category="Microsoft.Performance" CheckId="CA1811" Created="2017-05-22 20:25:41Z">
+              <Issue>
+               <Item>'ProcessTable.GetInstanceFromAddress(CloudTable, string, int)'</Item>
+              </Issue>
+             </Message>
+            </Messages>
+           </Member>
+           <Member Name="#GetProcesses(Microsoft.WindowsAzure.Storage.Table.CloudTable,System.String)">
+            <Messages>
+             <Message TypeName="AvoidUncalledPrivateCode" Category="Microsoft.Performance" CheckId="CA1811" Created="2017-05-22 20:25:41Z">
+              <Issue>
+               <Item>'ProcessTable.GetProcesses(CloudTable, string)'</Item>
+              </Issue>
+             </Message>
+            </Messages>
+           </Member>
+           <Member Name="#GetProcessParam()">
+            <Messages>
+             <Message TypeName="AvoidUncalledPrivateCode" Category="Microsoft.Performance" CheckId="CA1811" Created="2017-05-22 20:25:41Z">
+              <Issue>
+               <Item>'ProcessTable.GetProcessParam()'</Item>
+              </Issue>
+             </Message>
+            </Messages>
+           </Member>
+          </Members>
+         </Type>
+         <Type Name="ProcessTableManager">
+          <Members>
+           <Member Name="#DeleteTable()">
+            <Messages>
+             <Message TypeName="AvoidUncalledPrivateCode" Category="Microsoft.Performance" CheckId="CA1811" Created="2017-05-22 20:25:41Z">
+              <Issue>
+               <Item>'ProcessTableManager.DeleteTable()'</Item>
+              </Issue>
+             </Message>
+            </Messages>
+           </Member>
+          </Members>
+         </Type>
+        </Types>
+       </Namespace>
+      </Namespaces>
+     </Module>
+    </Modules>
+   </Target>
+   <Target Name="$(ProjectDir)/CRA.Worker/bin/Debug/CRA.Worker.exe">
+    <Modules>
+     <Module Name="cra.worker.exe">
+      <Messages>
+       <Message TypeName="AssembliesShouldHaveValidStrongNames" Category="Microsoft.Design" CheckId="CA2210" Created="2017-05-22 21:17:00Z">
+        <Issue Name="NoStrongName">
+         <Item>'CRA.Worker.exe'</Item>
+        </Issue>
+       </Message>
+      </Messages>
+      <Namespaces>
+       <Namespace Name="CRA.Worker">
+        <Types>
+         <Type Name="Program">
+          <Members>
+           <Member Name="#Main(System.String[])">
+            <Messages>
+             <Message Id="System.Convert.ToInt32(System.String)" TypeName="SpecifyIFormatProvider" Category="Microsoft.Globalization" CheckId="CA1305" Created="2017-05-22 21:17:00Z">
+              <Issue Name="IFormatProviderAlternate">
+               <Item>'Convert.ToInt32(string)'</Item>
+               <Item>'Program.Main(string[])'</Item>
+               <Item>'Convert.ToInt32(string, IFormatProvider)'</Item>
+               <Item>'CultureInfo.CurrentCulture'</Item>
+               <Item>'CultureInfo.InvariantCulture'</Item>
+              </Issue>
+              <Issue Name="IFormatProviderAlternate">
+               <Item>'Convert.ToInt32(string)'</Item>
+               <Item>'Program.Main(string[])'</Item>
+               <Item>'Convert.ToInt32(string, IFormatProvider)'</Item>
+               <Item>'CultureInfo.CurrentCulture'</Item>
+               <Item>'CultureInfo.InvariantCulture'</Item>
+              </Issue>
+             </Message>
+            </Messages>
+           </Member>
+          </Members>
+         </Type>
+        </Types>
+       </Namespace>
+      </Namespaces>
+     </Module>
+    </Modules>
+   </Target>
+  </Targets>
+  <Rules>
+   <Rule TypeName="AssembliesShouldHaveValidStrongNames" Category="Microsoft.Design" CheckId="CA2210">
+    <Resolution Name="NoStrongName">Sign {0} with a strong name key.</Resolution>
+   </Rule>
+   <Rule TypeName="AvoidUncalledPrivateCode" Category="Microsoft.Performance" CheckId="CA1811">
+    <Resolution Name="Default">{0} appears to have no upstream public or protected callers.</Resolution>
+   </Rule>
+   <Rule TypeName="AvoidUnusedPrivateFields" Category="Microsoft.Performance" CheckId="CA1823">
+    <Resolution Name="Default">It appears that field {0} is never used or is only ever assigned to. Use this field or remove it.</Resolution>
+   </Rule>
+   <Rule TypeName="DoNotCatchGeneralExceptionTypes" Category="Microsoft.Design" CheckId="CA1031">
+    <Resolution Name="Default">Modify {0} to catch a more specific exception than {1} or rethrow the exception.</Resolution>
+   </Rule>
+   <Rule TypeName="MarkAssembliesWithClsCompliant" Category="Microsoft.Design" CheckId="CA1014">
+    <Resolution Name="Default">Mark {0} with CLSCompliant(true) because it exposes externally visible types.</Resolution>
+   </Rule>
+   <Rule TypeName="MarkMembersAsStatic" Category="Microsoft.Performance" CheckId="CA1822">
+    <Resolution Name="Default">The 'this' parameter (or 'Me' in Visual Basic) of {0} is never used. Mark the member as static (or Shared in Visual Basic) or use 'this'/'Me' in the method body or at least one property accessor, if appropriate.</Resolution>
+   </Rule>
+   <Rule TypeName="ReviewUnusedParameters" Category="Microsoft.Usage" CheckId="CA1801">
+    <Resolution Name="Default">Parameter {0} of {1} is never used. Remove the parameter or use it in the method body.</Resolution>
+   </Rule>
+   <Rule TypeName="SpecifyIFormatProvider" Category="Microsoft.Globalization" CheckId="CA1305">
+    <Resolution Name="IFormatProviderAlternate">Because the behavior of {0} could vary based on the current user's locale settings, replace this call in {1} with a call to {2}. If the result of {2} will be based on input from the user, specify {3} as the 'IFormatProvider' parameter. Otherwise, if the result will based on input stored and accessed by software, such as when it is loaded from disk or from a database, specify {4}.</Resolution>
+   </Rule>
+   <Rule TypeName="SpecifyStringComparison" Category="Microsoft.Globalization" CheckId="CA1307">
+    <Resolution Name="Default">Because the behavior of {0} could vary based on the current user's locale settings, replace this call in {1} with a call to {2}. If the result of {2} will be displayed to the user, such as when sorting a list of items for display in a list box, specify 'StringComparison.CurrentCulture' or 'StringComparison.CurrentCultureIgnoreCase' as the 'StringComparison' parameter. If comparing case-insensitive identifiers, such as file paths, environment variables, or registry keys and values, specify 'StringComparison.OrdinalIgnoreCase'. Otherwise, if comparing case-sensitive identifiers, specify 'StringComparison.Ordinal'.</Resolution>
+   </Rule>
+   <Rule TypeName="TestForEmptyStringsUsingStringLength" Category="Microsoft.Performance" CheckId="CA1820">
+    <Resolution Name="IsNullOrEmpty">Replace the call to {0} in {1} with a call to 'String.IsNullOrEmpty'.</Resolution>
+   </Rule>
+  </Rules>
+ </FxCopReport>
+</FxCopProject>

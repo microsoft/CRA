@@ -60,6 +60,11 @@
       <Name>CRA.ClientLibrary</Name>
     </ProjectReference>
   </ItemGroup>
+  <ItemGroup>
+    <CodeAnalysisDictionary Include="..\CustomDictionary.xml">
+      <Link>CustomDictionary.xml</Link>
+    </CodeAnalysisDictionary>
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
     <PostBuildEvent>IF EXIST $(ProjectDir)privatesettings.config copy $(ProjectDir)privatesettings.config $(ProjectDir)$(OutDir)</PostBuildEvent>

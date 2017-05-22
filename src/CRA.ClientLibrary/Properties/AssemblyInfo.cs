@@ -1,4 +1,5 @@
-﻿using System.Reflection;
+﻿using System.Diagnostics.CodeAnalysis;
+using System.Reflection;
 using System.Runtime.InteropServices;
 
 // General Information about an assembly is controlled through the following
@@ -33,3 +34,6 @@ using System.Runtime.InteropServices;
 // [assembly: AssemblyVersion("1.0.*")]
 [assembly: AssemblyVersion("1.0.0.0")]
 [assembly: AssemblyFileVersion("1.0.0.0")]
+
+[module: SuppressMessage("Microsoft.Design", "CA1006:DoNotNestGenericTypesInMemberSignatures", Scope = "member", Target = "CRA.ClientLibrary.ProcessTable.#.ctor(System.String,System.String,System.String,System.String,System.Int32,System.Linq.Expressions.Expression`1<System.Func`1<CRA.ClientLibrary.IProcess>>,System.Object)")]
+[module: SuppressMessage("Microsoft.Design", "CA1006:DoNotNestGenericTypesInMemberSignatures", Scope = "member", Target = "CRA.ClientLibrary.CRAClientLibrary.#DefineProcess(System.String,System.Linq.Expressions.Expression`1<System.Func`1<CRA.ClientLibrary.IProcess>>)")]

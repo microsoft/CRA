@@ -26,16 +26,16 @@
         /// <summary>
         /// Constructor
         /// </summary>
-        /// <param name="FromProcess"></param>
-        /// <param name="FromEndpoint"></param>
-        /// <param name="ToProcess"></param>
-        /// <param name="ToEndpoint"></param>
-        public ConnectionInfo(string FromProcess, string FromEndpoint, string ToProcess, string ToEndpoint)
+        /// <param name="fromProcess"></param>
+        /// <param name="fromEndpoint"></param>
+        /// <param name="toProcess"></param>
+        /// <param name="toEndpoint"></param>
+        public ConnectionInfo(string fromProcess, string fromEndpoint, string toProcess, string toEndpoint)
         {
-            this.FromProcess = FromProcess;
-            this.FromEndpoint = FromEndpoint;
-            this.ToProcess = ToProcess;
-            this.ToEndpoint = ToEndpoint;
+            this.FromProcess = fromProcess;
+            this.FromEndpoint = fromEndpoint;
+            this.ToProcess = toProcess;
+            this.ToEndpoint = toEndpoint;
         }
 
         /// <summary>

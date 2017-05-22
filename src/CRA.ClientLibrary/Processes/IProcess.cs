@@ -64,7 +64,7 @@ namespace CRA.ClientLibrary
         /// can use to communicate with the CRA runtime.
         /// </summary>
         /// <returns>Instance of CRA Client Library</returns>
-        CRAClientLibrary GetClientLibrary();
+        CRAClientLibrary ClientLibrary { get; }
 
         /// <summary>
         /// Initialize process with specified params

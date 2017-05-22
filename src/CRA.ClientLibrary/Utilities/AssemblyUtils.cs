@@ -224,7 +224,7 @@ namespace CRA.ClientLibrary
 
         public static void LoadAssembliesFromStream(Stream stream)
         {
-            int numAssemblies = stream.ReadInteger();
+            int numAssemblies = stream.ReadInt32();
 
             for (int i=0; i<numAssemblies; i++)
             {

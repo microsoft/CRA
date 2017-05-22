@@ -323,7 +323,7 @@ namespace CRA.ClientLibrary
             ns.WriteByteArray(Encoding.UTF8.GetBytes(toProcessName));
             ns.WriteByteArray(Encoding.UTF8.GetBytes(toProcessInput));
             ns.WriteInteger(killRemote ? 1 : 0);
-            CRAErrorCode result = (CRAErrorCode)ns.ReadInteger();
+            CRAErrorCode result = (CRAErrorCode)ns.ReadInt32();
 
             if (result != 0)
             {

@@ -13,7 +13,7 @@ namespace CRA.ClientLibrary
         /// </summary>
         /// <param name="stream"></param>
         /// <returns></returns>
-        public static int ReadIntegerFixed(this Stream stream)
+        public static int ReadInt32Fixed(this Stream stream)
         {
             var value = new byte[4];
             stream.ReadAllRequiredBytes(value, 0, value.Length);
@@ -42,7 +42,7 @@ namespace CRA.ClientLibrary
         /// </summary>
         /// <param name="stream"></param>
         /// <returns></returns>
-        public static int ReadInteger(this Stream stream)
+        public static int ReadInt32(this Stream stream)
         {
             var currentByte = (uint)stream.ReadByte();
             byte read = 1;
@@ -104,7 +104,7 @@ namespace CRA.ClientLibrary
         /// <returns></returns>
         public static byte[] ReadByteArray(this Stream stream)
         {
-            int arraySize = stream.ReadInteger();
+            int arraySize = stream.ReadInt32();
             var array = new byte[arraySize];
             if (arraySize > 0)
             {

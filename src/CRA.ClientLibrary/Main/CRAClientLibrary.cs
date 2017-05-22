@@ -163,7 +163,7 @@ namespace CRA.ClientLibrary
                 stream.WriteByteArray(Encoding.UTF8.GetBytes(processName));
                 stream.WriteByteArray(Encoding.UTF8.GetBytes(processDefinition));
                 stream.WriteByteArray(Encoding.UTF8.GetBytes(newRow.ProcessParameter));
-                result = (CRAErrorCode) stream.ReadInteger();
+                result = (CRAErrorCode) stream.ReadInt32();
                 if (result != 0)
                 {
                     Console.WriteLine("Process was logically loaded. However, we received an error code from the hosting CRA instance: " + result);
@@ -322,8 +322,8 @@ namespace CRA.ClientLibrary
             // INITIALIZE
             if ((ProcessBase)process != null)
             {
-                ((ProcessBase)process).SetProcessName(processName);
-                ((ProcessBase)process).SetClientLibrary(this);
+                ((ProcessBase)process).ProcessName = processName;
+                ((ProcessBase)process).ClientLibrary = this;
             }
 
             var par = SerializationHelper.DeserializeObject(processParameter);
@@ -384,9 +384,23 @@ namespace CRA.ClientLibrary
         /// <param name="fromEndpoint">Name of the endpoint on the fromProcess, from which connection is being made</param>
         /// <param name="toProcessName">Name of the process to which connection is being made</param>
         /// <param name="toEndpoint">Name of the endpoint on the toProcess, to which connection is being made</param>
+        /// <returns>Status of the Connect operation</returns>
+        public CRAErrorCode Connect(string fromProcessName, string fromEndpoint, string toProcessName, string toEndpoint)
+        {
+            return Connect(fromProcessName, fromEndpoint, toProcessName, toEndpoint, ConnectionInitiator.FromSide);
+        }
+
+        /// <summary>
+        /// Connect one CRA process to another, via pre-defined endpoints. We contact the "from" process
+        /// to initiate the creation of the link.
+        /// </summary>
+        /// <param name="fromProcessName">Name of the process from which connection is being made</param>
+        /// <param name="fromEndpoint">Name of the endpoint on the fromProcess, from which connection is being made</param>
+        /// <param name="toProcessName">Name of the process to which connection is being made</param>
+        /// <param name="toEndpoint">Name of the endpoint on the toProcess, to which connection is being made</param>
         /// <param name="direction">Which process initiates the connection</param>
         /// <returns>Status of the Connect operation</returns>
-        public CRAErrorCode Connect(string fromProcessName, string fromEndpoint, string toProcessName, string toEndpoint, ConnectionInitiator direction = ConnectionInitiator.FromSide)
+        public CRAErrorCode Connect(string fromProcessName, string fromEndpoint, string toProcessName, string toEndpoint, ConnectionInitiator direction)
         {
             // Tell from process to establish connection
             // Send request to CRA instance
@@ -441,7 +455,7 @@ namespace CRA.ClientLibrary
                 stream.WriteByteArray(Encoding.UTF8.GetBytes(toProcessName));
                 stream.WriteByteArray(Encoding.UTF8.GetBytes(toEndpoint));
 
-                result = (CRAErrorCode) stream.ReadInteger();
+                result = (CRAErrorCode) stream.ReadInt32();
                 if (result != 0)
                 {
                     Console.WriteLine("Connection was logically established. However, the client received an error code from the connection-initiating CRA instance: " + result);
@@ -499,9 +513,12 @@ namespace CRA.ClientLibrary
         /// Gets a list of all processes registered with CRA
         /// </summary>
         /// <returns></returns>
-        public IEnumerable<string> GetProcessNames()
+        public IEnumerable<string> ProcessNames
         {
-            return _processTableManager.GetProcessNames();
+            get
+            {
+                return _processTableManager.GetProcessNames();
+            }
         }
 
         private CloudTable CreateTableIfNotExists(string tableName)
