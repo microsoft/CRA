@@ -1,7 +1,7 @@
 <Dictionary>  
       <Acronyms>  
          <CasingExceptions>  
-            <Acronym>CRA</Acronym>   <!-- Common Runtime for Application -->  
+            <Acronym>CRA</Acronym>   <!-- Common Runtime for Applications -->  
          </CasingExceptions>
       </Acronyms>  
 </Dictionary>
