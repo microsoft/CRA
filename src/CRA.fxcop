@@ -23,6 +23,7 @@
  <Targets>
   <Target Name="$(ProjectDir)/CRA.ClientLibrary/bin/Debug/CRA.ClientLibrary.dll" Analyze="True" AnalyzeAllChildren="True" />
   <Target Name="$(ProjectDir)/CRA.Worker/bin/Debug/CRA.Worker.exe" Analyze="True" AnalyzeAllChildren="True" />
+  <Target Name="$(ProjectDir)/Samples/ConnectionPair/bin/Debug/ConnectionPair.exe" Analyze="True" AnalyzeAllChildren="True" />
  </Targets>
  <Rules>
   <RuleFiles>
@@ -495,6 +496,16 @@
          </Type>
          <Type Name="ProcessTableManager">
           <Members>
+           <Member Name="#CreateTableIfNotExists(System.String,Microsoft.WindowsAzure.Storage.Table.CloudTableClient)">
+            <Messages>
+             <Message TypeName="DoNotCatchGeneralExceptionTypes" Category="Microsoft.Design" CheckId="CA1031" Created="2017-05-23 21:34:19Z">
+              <Issue>
+               <Item>'ProcessTableManager.CreateTableIfNotExists(string, CloudTableClient)'</Item>
+               <Item>'Exception'</Item>
+              </Issue>
+             </Message>
+            </Messages>
+           </Member>
            <Member Name="#DeleteTable()">
             <Messages>
              <Message TypeName="AvoidUncalledPrivateCode" Category="Microsoft.Performance" CheckId="CA1811" Created="2017-05-22 20:25:41Z">
@@ -543,6 +554,70 @@
                <Item>'Convert.ToInt32(string, IFormatProvider)'</Item>
                <Item>'CultureInfo.CurrentCulture'</Item>
                <Item>'CultureInfo.InvariantCulture'</Item>
+              </Issue>
+             </Message>
+            </Messages>
+           </Member>
+          </Members>
+         </Type>
+        </Types>
+       </Namespace>
+      </Namespaces>
+     </Module>
+    </Modules>
+   </Target>
+   <Target Name="$(ProjectDir)/Samples/ConnectionPair/bin/Debug/ConnectionPair.exe">
+    <Modules>
+     <Module Name="connectionpair.exe">
+      <Messages>
+       <Message TypeName="AssembliesShouldHaveValidStrongNames" Category="Microsoft.Design" CheckId="CA2210" Created="2017-05-23 21:27:42Z">
+        <Issue Name="NoStrongName">
+         <Item>'ConnectionPair.exe'</Item>
+        </Issue>
+       </Message>
+       <Message TypeName="MarkAssembliesWithClsCompliant" Category="Microsoft.Design" CheckId="CA1014" Created="2017-05-23 21:27:42Z">
+        <Issue>
+         <Item>'ConnectionPair.exe'</Item>
+        </Issue>
+       </Message>
+      </Messages>
+      <Namespaces>
+       <Namespace Name="ConnectionPair">
+        <Types>
+         <Type Name="MyAsyncInput">
+          <Members>
+           <Member Name="#_process">
+            <Messages>
+             <Message TypeName="AvoidUnusedPrivateFields" Category="Microsoft.Performance" CheckId="CA1823" Created="2017-05-23 21:27:42Z">
+              <Issue>
+               <Item>'MyAsyncInput._process'</Item>
+              </Issue>
+             </Message>
+            </Messages>
+           </Member>
+          </Members>
+         </Type>
+         <Type Name="MyAsyncOutput">
+          <Members>
+           <Member Name="#_process">
+            <Messages>
+             <Message TypeName="AvoidUnusedPrivateFields" Category="Microsoft.Performance" CheckId="CA1823" Created="2017-05-23 21:27:42Z">
+              <Issue>
+               <Item>'MyAsyncOutput._process'</Item>
+              </Issue>
+             </Message>
+            </Messages>
+           </Member>
+          </Members>
+         </Type>
+         <Type Name="Program">
+          <Members>
+           <Member Name="#Main(System.String[])">
+            <Messages>
+             <Message Id="args" TypeName="ReviewUnusedParameters" Category="Microsoft.Usage" CheckId="CA1801" Created="2017-05-23 21:27:42Z" FixCategory="NonBreaking">
+              <Issue>
+               <Item>'args'</Item>
+               <Item>'Program.Main(string[])'</Item>
               </Issue>
              </Message>
             </Messages>
