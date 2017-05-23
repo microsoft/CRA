@@ -18,22 +18,31 @@ namespace ConnectionPair
 
         public void Dispose()
         {
-            Console.WriteLine("Disposing MyInput");
-            _running = false;
+            Dispose(true);
+            GC.SuppressFinalize(this);
         }
 
-        public async Task FromOutputAsync(IProcessOutputEndpoint p, CancellationToken token)
+        protected virtual void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                Console.WriteLine("Disposing MyInput");
+                _running = false;
+            }
+        }
+
+        public async Task FromOutputAsync(IProcessOutputEndpoint endpoint, CancellationToken token)
         {
             throw new NotImplementedException();
         }
 
-        public async Task FromStreamAsync(Stream s, string otherProcess, string otherEndpoint, CancellationToken token)
+        public async Task FromStreamAsync(Stream stream, string otherProcess, string otherEndpoint, CancellationToken token)
         {
             Console.WriteLine("Receiving data from process: " + otherProcess + ", endpoint: " + otherEndpoint);
 
             for (int i = 0; i < int.MaxValue; i++)
             {
-                int val = s.ReadInt32();
+                int val = stream.ReadInt32();
                 Console.WriteLine("Read value: " + val);
                 token.ThrowIfCancellationRequested();
 

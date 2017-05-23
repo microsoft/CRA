@@ -18,11 +18,20 @@ namespace ConnectionPair
 
         public void Dispose()
         {
-            Console.WriteLine("Disposing MyOutput");
-            _running = false;
+            Dispose(true);
+            GC.SuppressFinalize(this);
         }
 
-        public async Task ToInputAsync(IProcessInputEndpoint p, CancellationToken token)
+        protected virtual void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                Console.WriteLine("Disposing MyOutput");
+                _running = false;
+            }
+        }
+
+        public async Task ToInputAsync(IProcessInputEndpoint endpoint, CancellationToken token)
         {
             throw new NotImplementedException();
         }

@@ -8,11 +8,11 @@ namespace ConnectionPair
         {
         }
 
-        public override void Initialize(object param)
+        public override void Initialize(object processParameter)
         {
             AddAsyncInputEndpoint("input", new MyAsyncInput(this));
             AddAsyncOutputEndpoint("output", new MyAsyncOutput(this));
-            base.Initialize(param);
+            base.Initialize(processParameter);
         }
     }
 }
