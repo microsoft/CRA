@@ -14,18 +14,25 @@ namespace CRA.Worker
             //Console.WriteLine("Press ENTER to start");
             //Console.ReadLine();
 
-            if (args.Length != 3)
+            if (args.Length < 2)
             {
-                Console.WriteLine("Worker for Common Runtime for Applications (CRA)\nUsage: CRA.Worker.exe instancename (e.g., instance1) ipaddress (e.g., 127.0.0.1) port (e.g., 11000)");
+                Console.WriteLine("Worker for Common Runtime for Applications (CRA)\nUsage: CRA.Worker.exe instancename (e.g., instance1) port (e.g., 11000) [ipaddress (e.g., 127.0.0.1)]");
                 return;
             }
 
-            if (args[1] == "null")
+            string ipAddress = "";
+
+            if (args.Length < 3 || args[2] == "null")
             {
-                args[1] = GetLocalIPAddress();
+                ipAddress = GetLocalIPAddress();
             }
+            else
+            {
+                ipAddress = args[2];
+            }
+
             Debug.WriteLine("Worker instance name is: " + args[0]);
-            Debug.WriteLine("Using IP address: " + args[1] + " and port " + Convert.ToInt32(args[2]));
+            Debug.WriteLine("Using IP address: " + ipAddress + " and port " + Convert.ToInt32(args[1]));
 
             string storageConnectionString = ConfigurationManager.AppSettings.Get("CRA_STORAGE_CONN_S2TRING");
             if (storageConnectionString == null)
@@ -41,7 +48,7 @@ namespace CRA.Worker
             Debug.WriteLine("Using Azure connection string: " + storageConnectionString);
 
             var worker = new CRAWorker
-                (args[0], args[1], Convert.ToInt32(args[2]),
+                (args[0], ipAddress, Convert.ToInt32(args[1]),
                 storageConnectionString);
 
 

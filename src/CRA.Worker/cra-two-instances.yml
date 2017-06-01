@@ -1,0 +1,26 @@
+#
+# Kubernetes Deployment File for Common Runtime for Applications (CRA) workers
+#
+
+kind : Deployment
+apiVersion : extensions/v1beta1
+metadata :
+    name : crainst01
+    namespace : default
+    labels :
+        app : crainst01
+spec :
+    replicas : 1
+    template :
+        metadata :
+            name : crainst01
+            labels:
+                app: crainst01
+        spec:
+            containers:
+            - name : crainst01
+              image : cra-0.1-debug
+              env: 
+              - name: CRA_STORAGE_CONN_STRING
+                value: "your Azure storage account key for CRA comes here"
+              args : ["crainst01", "1500"] # CRA instance name: crainst01, exposed on port 1500

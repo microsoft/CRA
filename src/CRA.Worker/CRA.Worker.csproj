@@ -53,6 +53,9 @@
     <None Include="App.config">
       <SubType>Designer</SubType>
     </None>
+    <None Include="cra-two-instances.yml" />
+    <None Include="Dockerfile-debug" />
+    <None Include="Dockerfile-release" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\CRA.ClientLibrary\CRA.ClientLibrary.csproj">
