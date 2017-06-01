@@ -5,6 +5,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Configuration;
+using System.Diagnostics;
 using System.IO;
 using System.Linq.Expressions;
 using System.Net.Sockets;
@@ -65,10 +66,22 @@ namespace CRA.ClientLibrary
         {
             _localWorker = localWorker;
 
-            if (storageConnectionString == "")
-                _storageConnectionString = ConfigurationManager.AppSettings.Get("StorageConnectionString");
+            if (storageConnectionString == "" || storageConnectionString == null)
+            {
+                _storageConnectionString = ConfigurationManager.AppSettings.Get("CRA_STORAGE_CONN_STRING");
+                if (_storageConnectionString == null)
+                {
+                    _storageConnectionString = Environment.GetEnvironmentVariable("CRA_STORAGE_CONN_STRING");
+                }
+                if (_storageConnectionString == null)
+                {
+                    throw new InvalidOperationException("CRA storage connection string not found. Use appSettings in your app.config to provide this using the key CRA_STORAGE_CONN_STRING, or use the environment variable CRA_STORAGE_CONN_STRING.");
+                }
+            }
             else
                 _storageConnectionString = storageConnectionString;
+
+            Debug.WriteLine("Using Azure connection string: " + _storageConnectionString);
 
             _storageAccount = CloudStorageAccount.Parse(_storageConnectionString);
 

@@ -26,11 +26,23 @@ namespace CRA.Worker
             }
             Debug.WriteLine("Worker instance name is: " + args[0]);
             Debug.WriteLine("Using IP address: " + args[1] + " and port " + Convert.ToInt32(args[2]));
-            Debug.WriteLine("Using Azure connection string: " + ConfigurationManager.AppSettings.Get("StorageConnectionString"));
+
+            string storageConnectionString = ConfigurationManager.AppSettings.Get("CRA_STORAGE_CONN_S2TRING");
+            if (storageConnectionString == null)
+            {
+                storageConnectionString = Environment.GetEnvironmentVariable("CRA_STORAGE_CONN_STRING");
+            }
+
+            if (storageConnectionString == null)
+            {
+                throw new InvalidOperationException("CRA storage connection string not found. Use appSettings in your app.config to provide this using the key CRA_STORAGE_CONN_STRING, or use the environment variable CRA_STORAGE_CONN_STRING.");
+            }
+
+            Debug.WriteLine("Using Azure connection string: " + storageConnectionString);
 
             var worker = new CRAWorker
                 (args[0], args[1], Convert.ToInt32(args[2]),
-                ConfigurationManager.AppSettings.Get("StorageConnectionString"));
+                storageConnectionString);
 
 
             worker.Start();
