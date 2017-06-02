@@ -29,7 +29,7 @@ namespace CRA.ClientLibrary
         /// </summary>
         /// <param name="stream"></param>
         /// <param name="value"></param>
-        public static void WriteIntegerFixed(this Stream stream, int value)
+        public static void WriteInt32Fixed(this Stream stream, int value)
         {
             stream.WriteByte((byte)(value & 0xFF));
             stream.WriteByte((byte)((value >> 0x8) & 0xFF));
@@ -67,7 +67,7 @@ namespace CRA.ClientLibrary
         /// </summary>
         /// <param name="stream"></param>
         /// <param name="value"></param>
-        public static void WriteInteger(this Stream stream, int value)
+        public static void WriteInt32(this Stream stream, int value)
         {
             var zigZagEncoded = unchecked((uint)((value << 1) ^ (value >> 31)));
             while ((zigZagEncoded & ~0x7F) != 0)
@@ -90,7 +90,7 @@ namespace CRA.ClientLibrary
                 throw new ArgumentNullException("value");
             }
 
-            stream.WriteInteger(value.Length);
+            stream.WriteInt32(value.Length);
             if (value.Length > 0)
             {
                 stream.Write(value, 0, value.Length);

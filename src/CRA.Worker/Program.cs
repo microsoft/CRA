@@ -34,7 +34,7 @@ namespace CRA.Worker
             Debug.WriteLine("Worker instance name is: " + args[0]);
             Debug.WriteLine("Using IP address: " + ipAddress + " and port " + Convert.ToInt32(args[1]));
 
-            string storageConnectionString = ConfigurationManager.AppSettings.Get("CRA_STORAGE_CONN_S2TRING");
+            string storageConnectionString = ConfigurationManager.AppSettings.Get("CRA_STORAGE_CONN_STRING");
             if (storageConnectionString == null)
             {
                 storageConnectionString = Environment.GetEnvironmentVariable("CRA_STORAGE_CONN_STRING");

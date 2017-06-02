@@ -81,8 +81,6 @@ namespace CRA.ClientLibrary
             else
                 _storageConnectionString = storageConnectionString;
 
-            Debug.WriteLine("Using Azure connection string: " + _storageConnectionString);
-
             _storageAccount = CloudStorageAccount.Parse(_storageConnectionString);
 
             _blobClient = _storageAccount.CreateCloudBlobClient();
@@ -172,7 +170,7 @@ namespace CRA.ClientLibrary
                 // Send request to CRA instance
                 TcpClient client = new TcpClient(instanceRow.Address, instanceRow.Port);
                 NetworkStream stream = client.GetStream();
-                stream.WriteInteger((int)CRATaskMessageType.LOAD_PROCESS);
+                stream.WriteInt32((int)CRATaskMessageType.LOAD_PROCESS);
                 stream.WriteByteArray(Encoding.UTF8.GetBytes(processName));
                 stream.WriteByteArray(Encoding.UTF8.GetBytes(processDefinition));
                 stream.WriteByteArray(Encoding.UTF8.GetBytes(newRow.ProcessParameter));
@@ -459,9 +457,9 @@ namespace CRA.ClientLibrary
                 NetworkStream stream = client.GetStream();
 
                 if (direction == ConnectionInitiator.FromSide)
-                    stream.WriteInteger((int)CRATaskMessageType.CONNECT_PROCESS_INITIATOR);
+                    stream.WriteInt32((int)CRATaskMessageType.CONNECT_PROCESS_INITIATOR);
                 else
-                    stream.WriteInteger((int)CRATaskMessageType.CONNECT_PROCESS_INITIATOR_REVERSE);
+                    stream.WriteInt32((int)CRATaskMessageType.CONNECT_PROCESS_INITIATOR_REVERSE);
 
                 stream.WriteByteArray(Encoding.UTF8.GetBytes(fromProcessName));
                 stream.WriteByteArray(Encoding.UTF8.GetBytes(fromEndpoint));

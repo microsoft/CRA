@@ -204,7 +204,7 @@ namespace CRA.ClientLibrary
             var relatedAssemblies = GetRelatedApplicationAssemblies("",
                                                                     GetExcludedAssemblies());
 
-            stream.WriteInteger(relatedAssemblies.Length);
+            stream.WriteInt32(relatedAssemblies.Length);
 
             foreach (var assembly in relatedAssemblies)
             {

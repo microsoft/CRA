@@ -11,8 +11,8 @@ namespace ConnectionPair
 
             client.DefineProcess("connectionpairprocess", () => new ConnectionPairProcess());
 
-            client.InstantiateProcess("instance1", "process1", "connectionpairprocess", null);
-            client.InstantiateProcess("instance2", "process2", "connectionpairprocess", null);
+            client.InstantiateProcess("crainst01", "process1", "connectionpairprocess", null);
+            client.InstantiateProcess("crainst02", "process2", "connectionpairprocess", null);
 
             client.Connect("process1", "output", "process2", "input");
             client.Connect("process2", "output", "process1", "input");

@@ -149,7 +149,7 @@ namespace CRA.ClientLibrary
 
             _craClient.LoadProcess(processName, processDefinition, processParam, _workerinstanceName, _localProcessTable);
 
-            stream.WriteInteger(0);
+            stream.WriteInt32(0);
             stream.Close();
         }
 
@@ -168,7 +168,7 @@ namespace CRA.ClientLibrary
             {
                 if (!_localProcessTable.ContainsKey(fromProcessName))
                 {
-                    stream.WriteInteger((int)CRAErrorCode.ProcessNotFound);
+                    stream.WriteInt32((int)CRAErrorCode.ProcessNotFound);
                     stream.Close();
                     return;
                 }
@@ -177,7 +177,7 @@ namespace CRA.ClientLibrary
                     !_localProcessTable[fromProcessName].AsyncOutputEndpoints.ContainsKey(fromProcessOutput)
                     )
                 {
-                    stream.WriteInteger((int)CRAErrorCode.ProcessInputNotFound);
+                    stream.WriteInt32((int)CRAErrorCode.ProcessInputNotFound);
                     stream.Close();
                     return;
                 }
@@ -186,7 +186,7 @@ namespace CRA.ClientLibrary
             {
                 if (!_localProcessTable.ContainsKey(toProcessName))
                 {
-                    stream.WriteInteger((int)CRAErrorCode.ProcessNotFound);
+                    stream.WriteInt32((int)CRAErrorCode.ProcessNotFound);
                     stream.Close();
                     return;
                 }
@@ -195,7 +195,7 @@ namespace CRA.ClientLibrary
                     !_localProcessTable[toProcessName].AsyncInputEndpoints.ContainsKey(toProcessInput)
                     )
                 {
-                    stream.WriteInteger((int)CRAErrorCode.ProcessInputNotFound);
+                    stream.WriteInt32((int)CRAErrorCode.ProcessInputNotFound);
                     stream.Close();
                     return;
                 }
@@ -204,7 +204,7 @@ namespace CRA.ClientLibrary
 
             var result = Connect_InitiatorSide(fromProcessName, fromProcessOutput, toProcessName, toProcessInput, reverse);
 
-            stream.WriteInteger((int)result);
+            stream.WriteInt32((int)result);
             stream.Close();
         }
 
@@ -246,15 +246,15 @@ namespace CRA.ClientLibrary
             }
             
             if (!reverse)
-                ns.WriteInteger((int)CRATaskMessageType.CONNECT_PROCESS_RECEIVER);
+                ns.WriteInt32((int)CRATaskMessageType.CONNECT_PROCESS_RECEIVER);
             else
-                ns.WriteInteger((int)CRATaskMessageType.CONNECT_PROCESS_RECEIVER_REVERSE);
+                ns.WriteInt32((int)CRATaskMessageType.CONNECT_PROCESS_RECEIVER_REVERSE);
 
             ns.WriteByteArray(Encoding.UTF8.GetBytes(fromProcessName));
             ns.WriteByteArray(Encoding.UTF8.GetBytes(fromProcessOutput));
             ns.WriteByteArray(Encoding.UTF8.GetBytes(toProcessName));
             ns.WriteByteArray(Encoding.UTF8.GetBytes(toProcessInput));
-            ns.WriteInteger(killRemote ? 1 : 0);
+            ns.WriteInt32(killRemote ? 1 : 0);
             CRAErrorCode result = (CRAErrorCode) ns.ReadInt32();
 
             if (result != 0)
@@ -361,7 +361,7 @@ namespace CRA.ClientLibrary
             {
                 if (!_localProcessTable.ContainsKey(toProcessName))
                 {
-                    stream.WriteInteger((int)CRAErrorCode.ProcessNotFound);
+                    stream.WriteInt32((int)CRAErrorCode.ProcessNotFound);
                     stream.Close();
                     return;
                 }
@@ -370,7 +370,7 @@ namespace CRA.ClientLibrary
                     !_localProcessTable[toProcessName].AsyncInputEndpoints.ContainsKey(toProcessInput)
                     )
                 {
-                    stream.WriteInteger((int)CRAErrorCode.ProcessInputNotFound);
+                    stream.WriteInt32((int)CRAErrorCode.ProcessInputNotFound);
                     stream.Close();
                     return;
                 }
@@ -379,7 +379,7 @@ namespace CRA.ClientLibrary
             {
                 if (!_localProcessTable.ContainsKey(fromProcessName))
                 {
-                    stream.WriteInteger((int)CRAErrorCode.ProcessNotFound);
+                    stream.WriteInt32((int)CRAErrorCode.ProcessNotFound);
                     stream.Close();
                     return;
                 }
@@ -388,7 +388,7 @@ namespace CRA.ClientLibrary
                     !_localProcessTable[fromProcessName].AsyncOutputEndpoints.ContainsKey(fromProcessOutput)
                     )
                 {
-                    stream.WriteInteger((int)CRAErrorCode.ProcessInputNotFound);
+                    stream.WriteInt32((int)CRAErrorCode.ProcessInputNotFound);
                     stream.Close();
                     return;
                 }
@@ -421,12 +421,12 @@ namespace CRA.ClientLibrary
                 {
                     Debug.WriteLine("There exists prior connection - not killing");
                 }
-                stream.WriteInteger((int)CRAErrorCode.ServerRecovering);
+                stream.WriteInt32((int)CRAErrorCode.ServerRecovering);
                 return (int)CRAErrorCode.ServerRecovering;
             }
             else
             {
-                stream.WriteInteger(0);
+                stream.WriteInt32(0);
             }
 
             CancellationTokenSource source = new CancellationTokenSource();

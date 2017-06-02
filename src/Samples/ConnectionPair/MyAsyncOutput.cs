@@ -44,7 +44,7 @@ namespace ConnectionPair
             {
                 for (int j = 0; j < 1; j++)
                 {
-                    stream.WriteInteger(i + j);
+                    stream.WriteInt32(i + j);
                     Console.WriteLine("Written value: " + (i + j));
                 }
 

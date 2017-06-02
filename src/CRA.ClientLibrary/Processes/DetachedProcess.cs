@@ -314,15 +314,15 @@ namespace CRA.ClientLibrary
             }
 
             if (!reverse)
-                ns.WriteInteger((int)CRATaskMessageType.CONNECT_PROCESS_RECEIVER);
+                ns.WriteInt32((int)CRATaskMessageType.CONNECT_PROCESS_RECEIVER);
             else
-                ns.WriteInteger((int)CRATaskMessageType.CONNECT_PROCESS_RECEIVER_REVERSE);
+                ns.WriteInt32((int)CRATaskMessageType.CONNECT_PROCESS_RECEIVER_REVERSE);
 
             ns.WriteByteArray(Encoding.UTF8.GetBytes(fromProcessName));
             ns.WriteByteArray(Encoding.UTF8.GetBytes(fromProcessOutput));
             ns.WriteByteArray(Encoding.UTF8.GetBytes(toProcessName));
             ns.WriteByteArray(Encoding.UTF8.GetBytes(toProcessInput));
-            ns.WriteInteger(killRemote ? 1 : 0);
+            ns.WriteInt32(killRemote ? 1 : 0);
             CRAErrorCode result = (CRAErrorCode)ns.ReadInt32();
 
             if (result != 0)
