@@ -1,6 +1,7 @@
 ﻿using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Microsoft.WindowsAzure.Storage.Table;
+using Microsoft.WindowsAzure.Storage.Table.Queryable;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -126,10 +127,67 @@ namespace CRA.ClientLibrary
         /// </summary>
         public void Reset()
         {
-            _connectionTable.DeleteIfExists();
-            _processTable.DeleteIfExists();
-            _endpointTableManager.DeleteTable();
+            DeleteContents(_connectionTable);
+            DeleteContents(_processTable);
+            _endpointTableManager.DeleteContents();
         }
+
+        /// <summary>
+        /// Delete contents of a cloud table
+        /// </summary>
+        /// <param name="_table"></param>
+        private static void DeleteContents(CloudTable table)
+        {
+            Action<IEnumerable<DynamicTableEntity>> processor = entities =>
+            {
+                var batches = new Dictionary<string, TableBatchOperation>();
+
+                foreach (var entity in entities)
+                {
+                    TableBatchOperation batch = null;
+
+                    if (batches.TryGetValue(entity.PartitionKey, out batch) == false)
+                    {
+                        batches[entity.PartitionKey] = batch = new TableBatchOperation();
+                    }
+
+                    batch.Add(TableOperation.Delete(entity));
+
+                    if (batch.Count == 100)
+                    {
+                        table.ExecuteBatch(batch);
+                        batches[entity.PartitionKey] = new TableBatchOperation();
+                    }
+                }
+
+                foreach (var batch in batches.Values)
+                {
+                    if (batch.Count > 0)
+                    {
+                        table.ExecuteBatch(batch);
+                    }
+                }
+            };
+
+            ProcessEntities(table, processor);
+        }
+
+        /// <summary>
+        /// Process all entities in a cloud table using the given processor lambda.
+        /// </summary>
+        /// <param name="table"></param>
+        /// <param name="processor"></param>
+        private static void ProcessEntities(CloudTable table, Action<IEnumerable<DynamicTableEntity>> processor)
+        {
+            TableQuerySegment<DynamicTableEntity> segment = null;
+
+            while (segment == null || segment.ContinuationToken != null)
+            {
+                segment = table.ExecuteQuerySegmented(new TableQuery().Take(100), segment == null ? null : segment.ContinuationToken);
+                processor(segment.Results);
+            }
+        }
+
 
         /// <summary>
         /// Not yet implemented
@@ -220,7 +278,7 @@ namespace CRA.ClientLibrary
         }
 
         /// <summary>
-        /// Delete CRA instance name
+        /// Delete CRA instance with given name
         /// </summary>
         /// <param name="instanceName"></param>
         public void DeleteInstance(string instanceName)
@@ -230,13 +288,47 @@ namespace CRA.ClientLibrary
 
 
         /// <summary>
-        /// 
+        /// Delete process with given name
         /// </summary>
         /// <param name="processName"></param>
         /// <param name="instanceName"></param>
-        public void DeleteProcess(string processName, string instanceName)
+        public void DeleteProcess(string processName)
         {
-            var entity = new DynamicTableEntity(instanceName, processName);
+            foreach (var endpt in GetInputEndpoints(processName))
+            {
+                DeleteEndpoint(processName, endpt);
+            }
+            foreach (var endpt in GetOutputEndpoints(processName))
+            {
+                DeleteEndpoint(processName, endpt);
+            }
+
+            foreach (var conn in GetConnectionsFromProcess(processName))
+            {
+                DeleteConnectionInfo(conn);
+            }
+            foreach (var conn in GetConnectionsToProcess(processName))
+            {
+                DeleteConnectionInfo(conn);
+            }
+            
+            var query = new TableQuery<ProcessTable>()
+                   .Where(TableQuery.GenerateFilterCondition("RowKey", QueryComparisons.Equal, processName));
+
+            foreach (var item in _processTable.ExecuteQuery(query))
+            {
+                var oper = TableOperation.Delete(item);
+                _processTable.Execute(oper);
+            }
+        }
+
+        /// <summary>
+        /// Delete process definition with given name
+        /// </summary>
+        /// <param name="processDefinition"></param>
+        public void DeleteProcessDefinition(string processDefinition)
+        {
+            var entity = new DynamicTableEntity("", processDefinition);
             entity.ETag = "*";
             TableOperation deleteOperation = TableOperation.Delete(entity);
             _processTable.Execute(deleteOperation);
@@ -387,6 +479,16 @@ namespace CRA.ClientLibrary
             _connectionTableManager.DeleteConnection(fromProcessName, fromEndpoint, toProcessName, toEndpoint);
         }
 
+
+        /// <summary>
+        /// Delete connection info from metadata table
+        /// </summary>
+        /// <param name="connInfo">Connection info as a struct</param>
+        public void DeleteConnectionInfo(ConnectionInfo connInfo)
+        {
+            _connectionTableManager.DeleteConnection(connInfo.FromProcess, connInfo.FromEndpoint, connInfo.ToProcess, connInfo.ToEndpoint);
+        }
+
         /// <summary>
         /// Connect one CRA process to another, via pre-defined endpoints. We contact the "from" process
         /// to initiate the creation of the link.
@@ -531,6 +633,31 @@ namespace CRA.ClientLibrary
                 return _processTableManager.GetProcessNames();
             }
         }
+
+        /// <summary>
+        /// Gets a list of all process definitions registered with CRA
+        /// </summary>
+        /// <returns></returns>
+        public IEnumerable<string> ProcessDefinitions
+        {
+            get
+            {
+                return _processTableManager.GetProcessDefinitions();
+            }
+        }
+
+        /// <summary>
+        /// Gets a list of all registered CRA instances
+        /// </summary>
+        /// <returns></returns>
+        public IEnumerable<string> InstanceNames
+        {
+            get
+            {
+                return _processTableManager.GetInstanceNames();
+            }
+        }
+
 
         private CloudTable CreateTableIfNotExists(string tableName)
         {

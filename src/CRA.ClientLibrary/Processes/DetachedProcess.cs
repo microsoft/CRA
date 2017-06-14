@@ -250,7 +250,7 @@ namespace CRA.ClientLibrary
                 {
                     _clientLibrary.DeleteInstance(_instanceName);
                 }
-                _clientLibrary.DeleteProcess(_processName, _instanceName);
+                _clientLibrary.DeleteProcess(_processName);
                 foreach (var endpt in EndpointData.InputEndpoints.Keys)
                 {
                     _clientLibrary.DeleteEndpoint(_processName, endpt);

@@ -101,5 +101,69 @@ namespace CRA.ClientLibrary
 
             return table;
         }
+
+        /// <summary>
+        /// Delete contents of the table.
+        /// </summary>
+        internal void DeleteContents()
+        {
+            DeleteContents(_endpointTable);
+        }
+
+        /// <summary>
+        /// Delete contents of a cloud table
+        /// </summary>
+        /// <param name="_table"></param>
+        private static void DeleteContents(CloudTable table)
+        {
+            Action<IEnumerable<DynamicTableEntity>> processor = entities =>
+            {
+                var batches = new Dictionary<string, TableBatchOperation>();
+
+                foreach (var entity in entities)
+                {
+                    TableBatchOperation batch = null;
+
+                    if (batches.TryGetValue(entity.PartitionKey, out batch) == false)
+                    {
+                        batches[entity.PartitionKey] = batch = new TableBatchOperation();
+                    }
+
+                    batch.Add(TableOperation.Delete(entity));
+
+                    if (batch.Count == 100)
+                    {
+                        table.ExecuteBatch(batch);
+                        batches[entity.PartitionKey] = new TableBatchOperation();
+                    }
+                }
+
+                foreach (var batch in batches.Values)
+                {
+                    if (batch.Count > 0)
+                    {
+                        table.ExecuteBatch(batch);
+                    }
+                }
+            };
+
+            ProcessEntities(table, processor);
+        }
+
+        /// <summary>
+        /// Process all entities in a cloud table using the given processor lambda.
+        /// </summary>
+        /// <param name="table"></param>
+        /// <param name="processor"></param>
+        private static void ProcessEntities(CloudTable table, Action<IEnumerable<DynamicTableEntity>> processor)
+        {
+            TableQuerySegment<DynamicTableEntity> segment = null;
+
+            while (segment == null || segment.ContinuationToken != null)
+            {
+                segment = table.ExecuteQuerySegmented(new TableQuery().Take(100), segment == null ? null : segment.ContinuationToken);
+                processor(segment.Results);
+            }
+        }
     }
 }

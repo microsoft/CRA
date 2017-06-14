@@ -83,7 +83,21 @@ namespace CRA.ClientLibrary
         {
             TableQuery<ProcessTable> query = new TableQuery<ProcessTable>()
                 .Where(TableQuery.GenerateFilterCondition("PartitionKey", QueryComparisons.NotEqual, ""));
+            return _processTable.ExecuteQuery(query).Where(e => e.ProcessName != "").Select(e => e.ProcessName).ToList();
+        }
+
+        internal List<string> GetProcessDefinitions()
+        {
+            TableQuery<ProcessTable> query = new TableQuery<ProcessTable>()
+                .Where(TableQuery.GenerateFilterCondition("PartitionKey", QueryComparisons.Equal, ""));
             return _processTable.ExecuteQuery(query).Select(e => e.ProcessName).ToList();
+        }
+
+        internal List<string> GetInstanceNames()
+        {
+            TableQuery<ProcessTable> query = new TableQuery<ProcessTable>()
+                .Where(TableQuery.GenerateFilterCondition("RowKey", QueryComparisons.Equal, ""));
+            return _processTable.ExecuteQuery(query).Select(e => e.InstanceName).ToList();
         }
     }
 }
