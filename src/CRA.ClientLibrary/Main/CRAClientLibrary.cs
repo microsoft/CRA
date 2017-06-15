@@ -102,14 +102,9 @@ namespace CRA.ClientLibrary
         /// <param name="creator">Lambda that describes how to instantiate the process, taking in an object as parameter</param>
         public CRAErrorCode DefineProcess(string processDefinition, Expression<Func<IProcess>> creator)
         {
-            if (!Regex.IsMatch(processDefinition, @"^(([a-z\d]((-(?=[a-z\d]))|([a-z\d])){2,62})|(\$root))$"))
-            {
-                throw new InvalidOperationException("Invalid name for process definition. Names have to be all lowercase, cannot contain special characters.");
-            }
-
-            CloudBlobContainer container = _blobClient.GetContainerReference(processDefinition);
+            CloudBlobContainer container = _blobClient.GetContainerReference("cra");
             container.CreateIfNotExists();
-            var blockBlob = container.GetBlockBlobReference("binaries");
+            var blockBlob = container.GetBlockBlobReference(processDefinition + "/binaries");
             CloudBlobStream blobStream = blockBlob.OpenWrite();
             AssemblyUtils.WriteAssembliesToStream(blobStream);
             blobStream.Close();
@@ -332,6 +327,10 @@ namespace CRA.ClientLibrary
             entity.ETag = "*";
             TableOperation deleteOperation = TableOperation.Delete(entity);
             _processTable.Execute(deleteOperation);
+            CloudBlobContainer container = _blobClient.GetContainerReference("cra");
+            container.CreateIfNotExists();
+            var blockBlob = container.GetBlockBlobReference(processDefinition + "/binaries");
+            blockBlob.DeleteIfExists();
         }
 
         /// <summary>
@@ -367,9 +366,9 @@ namespace CRA.ClientLibrary
         /// <returns></returns>
         public IProcess LoadProcess(string processName, string processDefinition, string processParameter, string instanceName, ConcurrentDictionary<string, IProcess> table)
         {
-            CloudBlobContainer container = _blobClient.GetContainerReference(processDefinition);
+            CloudBlobContainer container = _blobClient.GetContainerReference("cra");
             container.CreateIfNotExists();
-            var blockBlob = container.GetBlockBlobReference("binaries");
+            var blockBlob = container.GetBlockBlobReference(processDefinition + "/binaries");
             Stream blobStream = blockBlob.OpenRead();
             AssemblyUtils.LoadAssembliesFromStream(blobStream);
             blobStream.Close();
