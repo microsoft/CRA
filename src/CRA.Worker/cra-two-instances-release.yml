@@ -34,8 +34,6 @@ spec :
                     name: cra-config # Name of the ConfigMap containing the storage connection string
                     key: cra_storage_conn_string # Key in the configmap associated with the storage connection string
               args : ["crainst01", "1500"] # CRA instance name: crainst01, exposed on port 1500
-            imagePullSecrets:
-            - name: franklinregsecret
 ---
 kind : Deployment
 apiVersion : extensions/v1beta1
@@ -64,5 +62,3 @@ spec :
                     name: cra-config # Name of the ConfigMap containing the storage connection string
                     key: cra_storage_conn_string # Key in the configmap associated with the storage connection string
               args : ["crainst02", "1501"] # CRA instance name: crainst02, exposed on port 1501
-            imagePullSecrets:
-            - name: franklinregsecret
