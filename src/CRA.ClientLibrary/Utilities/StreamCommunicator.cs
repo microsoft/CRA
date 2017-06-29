@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Threading.Tasks;
 
 namespace CRA.ClientLibrary
 {
@@ -121,7 +122,7 @@ namespace CRA.ClientLibrary
         /// <param name="offset"></param>
         /// <param name="count"></param>
         /// <returns></returns>
-        internal static int ReadAllRequiredBytes(this Stream stream, byte[] buffer, int offset, int count)
+        public static int ReadAllRequiredBytes(this Stream stream, byte[] buffer, int offset, int count)
         {
             int toRead = count;
             int currentOffset = offset;
@@ -129,6 +130,29 @@ namespace CRA.ClientLibrary
             do
             {
                 currentRead = stream.Read(buffer, currentOffset, toRead);
+                currentOffset += currentRead;
+                toRead -= currentRead;
+            }
+            while (toRead > 0 && currentRead != 0);
+            return currentOffset - offset;
+        }
+
+        /// <summary>
+        /// Read all required bytes (async version)
+        /// </summary>
+        /// <param name="stream"></param>
+        /// <param name="buffer"></param>
+        /// <param name="offset"></param>
+        /// <param name="count"></param>
+        /// <returns></returns>
+        public static async Task<int> ReadAllRequiredBytesAsync(this Stream stream, byte[] buffer, int offset, int count)
+        {
+            int toRead = count;
+            int currentOffset = offset;
+            int currentRead;
+            do
+            {
+                currentRead = await stream.ReadAsync(buffer, currentOffset, toRead);
                 currentOffset += currentRead;
                 toRead -= currentRead;
             }

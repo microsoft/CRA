@@ -4,14 +4,13 @@
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{85331F0D-B724-45D7-9BB2-AC703E73DE3B}</ProjectGuid>
+    <ProjectGuid>{3C700A3B-9958-4470-9639-87964D20B11A}</ProjectGuid>
     <OutputType>Exe</OutputType>
-    <RootNamespace>CRA.Worker</RootNamespace>
-    <AssemblyName>CRA.Worker</AssemblyName>
+    <RootNamespace>BandwidthTest</RootNamespace>
+    <AssemblyName>BandwidthTest</AssemblyName>
     <TargetFrameworkVersion>v4.5.2</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
-    <TargetFrameworkProfile />
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <PlatformTarget>AnyCPU</PlatformTarget>
@@ -22,7 +21,6 @@
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
-    <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <PlatformTarget>AnyCPU</PlatformTarget>
@@ -32,11 +30,9 @@
     <DefineConstants>TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
-    <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="System" />
-    <Reference Include="System.Configuration" />
     <Reference Include="System.Core" />
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
@@ -46,6 +42,9 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="BandwidthTestProcess.cs" />
+    <Compile Include="MyAsyncInput.cs" />
+    <Compile Include="MyAsyncOutput.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
@@ -53,25 +52,15 @@
     <None Include="App.config">
       <SubType>Designer</SubType>
     </None>
-    <None Include="cra-two-instances-debug.yml" />
-    <None Include="cra-two-instances-release.yml" />
-    <None Include="Dockerfile-debug" />
-    <None Include="Dockerfile-release" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\CRA.ClientLibrary\CRA.ClientLibrary.csproj">
+    <ProjectReference Include="..\..\CRA.ClientLibrary\CRA.ClientLibrary.csproj">
       <Project>{ef23eb6a-e329-496d-9b7a-8cad66ea4e3a}</Project>
       <Name>CRA.ClientLibrary</Name>
     </ProjectReference>
   </ItemGroup>
-  <ItemGroup>
-    <CodeAnalysisDictionary Include="..\CustomDictionary.xml">
-      <Link>CustomDictionary.xml</Link>
-    </CodeAnalysisDictionary>
-  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
-    <PostBuildEvent>
-    </PostBuildEvent>
+    <PostBuildEvent>IF EXIST $(ProjectDir)..\..\privatesettings.config copy $(ProjectDir)..\..\privatesettings.config $(ProjectDir)$(OutDir)</PostBuildEvent>
   </PropertyGroup>
 </Project>

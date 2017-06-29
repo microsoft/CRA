@@ -306,6 +306,8 @@ namespace CRA.ClientLibrary
             try
             {
                 client = new TcpClient(_row.Address, _row.Port);
+                client.NoDelay = true;
+
                 ns = client.GetStream();
             }
             catch

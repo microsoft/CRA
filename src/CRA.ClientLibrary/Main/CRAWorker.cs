@@ -103,6 +103,8 @@ namespace CRA.ClientLibrary
             {
                 Debug.WriteLine("Waiting for a connection... ");
                 TcpClient client = server.AcceptTcpClient();
+                client.NoDelay = true;
+
                 Debug.WriteLine("Connected!");
 
                 // Get a stream object for reading and writing
@@ -238,6 +240,8 @@ namespace CRA.ClientLibrary
             {
                 var _row = ProcessTable.GetRowForInstanceProcess(_workerInstanceTable, row.InstanceName, "");
                 client = new TcpClient(_row.Address, _row.Port);
+                client.NoDelay = true;
+
                 ns = client.GetStream();
             }
             catch

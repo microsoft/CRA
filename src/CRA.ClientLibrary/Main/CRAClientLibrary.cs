@@ -222,6 +222,8 @@ namespace CRA.ClientLibrary
 
                 // Send request to CRA instance
                 TcpClient client = new TcpClient(instanceRow.Address, instanceRow.Port);
+                client.NoDelay = true;
+
                 NetworkStream stream = client.GetStream();
                 stream.WriteInt32((int)CRATaskMessageType.LOAD_PROCESS);
                 stream.WriteByteArray(Encoding.UTF8.GetBytes(processName));
@@ -550,11 +552,12 @@ namespace CRA.ClientLibrary
             TcpClient client = null;
             try
             {
-
                 // Get address and port for instance, using row with process = ""
                 var row = ProcessTable.GetRowForInstance(_processTable, _row.InstanceName);
 
                 client = new TcpClient(row.Address, row.Port);
+                client.NoDelay = true;
+
                 NetworkStream stream = client.GetStream();
 
                 if (direction == ConnectionInitiator.FromSide)
