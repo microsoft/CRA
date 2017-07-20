@@ -15,6 +15,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Core", "Core", "{AF66150E-5
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BandwidthTest", "Samples\BandwidthTest\BandwidthTest.csproj", "{3C700A3B-9958-4470-9639-87964D20B11A}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FusableConnectionPair", "Samples\FusableConnectionPair\FusableConnectionPair.csproj", "{73DDDFAF-6075-405F-B171-C935EE38B44A}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -37,6 +39,10 @@ Global
 		{3C700A3B-9958-4470-9639-87964D20B11A}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{3C700A3B-9958-4470-9639-87964D20B11A}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{3C700A3B-9958-4470-9639-87964D20B11A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{73DDDFAF-6075-405F-B171-C935EE38B44A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{73DDDFAF-6075-405F-B171-C935EE38B44A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{73DDDFAF-6075-405F-B171-C935EE38B44A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{73DDDFAF-6075-405F-B171-C935EE38B44A}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -46,5 +52,6 @@ Global
 		{85331F0D-B724-45D7-9BB2-AC703E73DE3B} = {AF66150E-52D6-402F-BA4D-D3FDDA71C73F}
 		{00F97B37-965A-4F20-B5B2-E182D20509C2} = {EC027445-85E2-4FD3-83F3-224CA6481849}
 		{3C700A3B-9958-4470-9639-87964D20B11A} = {EC027445-85E2-4FD3-83F3-224CA6481849}
+		{73DDDFAF-6075-405F-B171-C935EE38B44A} = {EC027445-85E2-4FD3-83F3-224CA6481849}
 	EndGlobalSection
 EndGlobal

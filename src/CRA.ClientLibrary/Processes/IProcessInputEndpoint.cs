@@ -17,12 +17,5 @@ namespace CRA.ClientLibrary
         /// <param name="otherEndpoint"></param>
         /// <param name="token"></param>
         void FromStream(Stream stream, string otherProcess, string otherEndpoint, CancellationToken token);
-
-        /// <summary>
-        /// Call to provide an output endpoint for input to read from
-        /// </summary>
-        /// <param name="endpoint"></param>
-        /// <param name="token"></param>
-        void FromOutput(IProcessOutputEndpoint endpoint, CancellationToken token);
     }
 }

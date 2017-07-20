@@ -71,6 +71,7 @@ namespace CRA.ClientLibrary
         /// </summary>
         public void Start()
         {
+            Debug.WriteLine("Registering instance with CRA");
             // Update process table
             _craClient.RegisterInstance(_workerinstanceName, _address, _port);
 
@@ -212,8 +213,17 @@ namespace CRA.ClientLibrary
 
         internal CRAErrorCode Connect_InitiatorSide(string fromProcessName, string fromProcessOutput, string toProcessName, string toProcessInput, bool reverse, bool killIfExists = true, bool killRemote = true)
         {
-            CancellationTokenSource oldSource;
+            // Need to get the latest address & port
+            var row = reverse ? ProcessTable.GetRowForProcess(_workerInstanceTable, fromProcessName) 
+                : ProcessTable.GetRowForProcess(_workerInstanceTable, toProcessName);
 
+            // If from and to processes are on the same (this) instance,
+            // we can convert a "reverse" connection into a normal connection
+            if (reverse && (row.InstanceName == InstanceName))
+                reverse = false;
+
+
+            CancellationTokenSource oldSource;
             var conn = reverse ? inConnections : outConnections;
 
             if (conn.TryGetValue(fromProcessName + ":" + fromProcessOutput + ":" + toProcessName + ":" + toProcessInput,
@@ -227,11 +237,24 @@ namespace CRA.ClientLibrary
                 return CRAErrorCode.Success;
             }
 
-            // Need to get the latest address & port
-            var row = reverse ? ProcessTable.GetRowForProcess(_workerInstanceTable, fromProcessName) : ProcessTable.GetRowForProcess(_workerInstanceTable, toProcessName);
 
-            
+            if (TryFusedConnect(row.InstanceName, fromProcessName, fromProcessOutput, toProcessName, toProcessInput))
+            {
+                return CRAErrorCode.Success;
+            }
 
+            // Re-check the connection table as someone may have successfully
+            // created a fused connection
+            if (conn.TryGetValue(fromProcessName + ":" + fromProcessOutput + ":" + toProcessName + ":" + toProcessInput,
+                out oldSource))
+            {
+                if (killIfExists)
+                {
+                    Debug.WriteLine("Deleting prior connection - it will automatically reconnect");
+                    oldSource.Cancel();
+                }
+                return CRAErrorCode.Success;
+            }
 
             // Send request to CRA instance
             TcpClient client = null;
@@ -303,6 +326,60 @@ namespace CRA.ClientLibrary
             return result;
         }
 
+        private bool TryFusedConnect(string otherInstance, string fromProcessName, string fromProcessOutput, string toProcessName, string toProcessInput)
+        {
+            if (otherInstance != InstanceName)
+                return false;
+
+
+            CancellationTokenSource source = new CancellationTokenSource();
+
+            if (_localProcessTable[fromProcessName].OutputEndpoints.ContainsKey(fromProcessOutput) &&
+                _localProcessTable[toProcessName].InputEndpoints.ContainsKey(toProcessInput))
+            {
+                var fromProcess = _localProcessTable[fromProcessName].OutputEndpoints[fromProcessOutput] as IFusableProcessOutputEndpoint;
+                var toProcess = _localProcessTable[toProcessName].InputEndpoints[toProcessInput] as IProcessInputEndpoint;
+
+                if (fromProcess != null && toProcess != null && fromProcess.CanFuseWith(toProcess, toProcessName, toProcessInput))
+                {
+                    if (outConnections.TryAdd(fromProcessName + ":" + fromProcessOutput + ":" + toProcessName + ":" + toProcessInput, source))
+                    {
+                        Task.Run(() => EgressToProcessInput(fromProcessName, fromProcessOutput, toProcessName, toProcessInput, source));
+                        return true;
+                    }
+                    else
+                        return false;
+                }
+                else
+                    return false;
+            }
+            else if (_localProcessTable[fromProcessName].AsyncOutputEndpoints.ContainsKey(fromProcessOutput) &&
+                _localProcessTable[toProcessName].AsyncInputEndpoints.ContainsKey(toProcessInput))
+            {
+                var fromProcess = _localProcessTable[fromProcessName].AsyncOutputEndpoints[fromProcessOutput] as IAsyncFusableProcessOutputEndpoint;
+                var toProcess = _localProcessTable[toProcessName].AsyncInputEndpoints[toProcessInput] as IAsyncProcessInputEndpoint;
+
+                if (fromProcess != null && toProcess != null && fromProcess.CanFuseWith(toProcess, toProcessName, toProcessInput))
+                {
+                    if (outConnections.TryAdd(fromProcessName + ":" + fromProcessOutput + ":" + toProcessName + ":" + toProcessInput, source))
+                    {
+                        Task.Run(() => EgressToProcessInput(fromProcessName, fromProcessOutput, toProcessName, toProcessInput, source));
+                        return true;
+                    }
+                    else
+                        return false;
+                }
+                else
+                {
+                    return false;
+                }
+            }
+            else
+            {
+                return false;
+            }
+        }
+
         private async Task EgressToStream(string fromProcessName, string fromProcessOutput, string toProcessName, string toProcessInput,
             bool reverse, Stream ns, CancellationTokenSource source)
         {
@@ -330,6 +407,73 @@ namespace CRA.ClientLibrary
                 {
                     oldSource.Dispose();
                     ns.Dispose();
+                    _craClient.Disconnect(fromProcessName, fromProcessOutput, toProcessName, toProcessInput);
+                }
+            }
+            catch (Exception e)
+            {
+                Debug.WriteLine("Exception (" + e.ToString() + ") in outgoing stream - reconnecting");
+                CancellationTokenSource oldSource;
+                if (outConnections.TryRemove(fromProcessName + ":" + fromProcessOutput + ":" + toProcessName + ":" + toProcessInput, out oldSource))
+                {
+                    oldSource.Dispose();
+                }
+                else
+                {
+                    Debug.WriteLine("Unexpected: caught exception in ToStream but entry absent in outConnections");
+                }
+
+                // Retry following while connection not in list
+                RetryRestoreConnection(fromProcessName, fromProcessOutput, toProcessName, toProcessInput, false);
+            }
+        }
+
+        private async Task EgressToProcessInput(string fromProcessName, string fromProcessOutput, string toProcessName, string toProcessInput, 
+            CancellationTokenSource source)
+        {
+            try
+            {
+                if (_localProcessTable[fromProcessName].OutputEndpoints.ContainsKey(fromProcessOutput))
+                {
+                    var fromProcess = _localProcessTable[fromProcessName].OutputEndpoints[fromProcessOutput] as IFusableProcessOutputEndpoint;
+                    var toProcess = _localProcessTable[toProcessName].InputEndpoints[toProcessInput] as IProcessInputEndpoint;
+
+                    if (fromProcess != null && toProcess != null && fromProcess.CanFuseWith(toProcess, toProcessName, toProcessInput))
+                    {
+                        await
+                            Task.Run(() => fromProcess.ToInput(toProcess, toProcessName, toProcessInput, source.Token));
+                    }
+                    else
+                    {
+                        Debug.WriteLine("Unable to create fused connection");
+                        return;
+                    }
+                }
+                else if (_localProcessTable[fromProcessName].AsyncOutputEndpoints.ContainsKey(fromProcessOutput))
+                {
+                    var fromProcess = _localProcessTable[fromProcessName].AsyncOutputEndpoints[fromProcessOutput] as IAsyncFusableProcessOutputEndpoint;
+                    var toProcess = _localProcessTable[toProcessName].AsyncInputEndpoints[toProcessInput] as IAsyncProcessInputEndpoint;
+
+                    if (fromProcess != null && toProcess != null && fromProcess.CanFuseWith(toProcess, toProcessName, toProcessInput))
+                    {
+                        await fromProcess.ToInputAsync(toProcess, fromProcessName, fromProcessOutput, source.Token);
+                    }
+                    else
+                    {
+                        Debug.WriteLine("Unable to create fused connection");
+                        return;
+                    }
+                }
+                else
+                {
+                    Debug.WriteLine("Unable to create fused connection");
+                    return;
+                }
+
+                CancellationTokenSource oldSource;
+                if (outConnections.TryRemove(fromProcessName + ":" + fromProcessOutput + ":" + toProcessName + ":" + toProcessInput, out oldSource))
+                {
+                    oldSource.Dispose();
                     _craClient.Disconnect(fromProcessName, fromProcessOutput, toProcessName, toProcessInput);
                 }
             }
@@ -581,6 +725,7 @@ namespace CRA.ClientLibrary
             CloudTable table = _tableClient.GetTableReference(tableName);
             try
             {
+                Debug.WriteLine("Creating table " + tableName);
                 table.CreateIfNotExists();
             }
             catch { }

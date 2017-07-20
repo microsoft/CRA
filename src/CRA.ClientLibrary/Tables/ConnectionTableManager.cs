@@ -2,6 +2,7 @@
 using System.Linq;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Table;
+using System.Diagnostics;
 
 namespace CRA.ClientLibrary
 {
@@ -66,6 +67,7 @@ namespace CRA.ClientLibrary
             CloudTable table = _tableClient.GetTableReference(tableName);
             try
             {
+                Debug.WriteLine("Creating table " + tableName);
                 table.CreateIfNotExists();
             }
             catch { }

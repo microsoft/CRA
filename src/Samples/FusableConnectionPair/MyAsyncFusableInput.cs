@@ -4,14 +4,14 @@ using System.IO;
 using System.Threading;
 using CRA.ClientLibrary;
 
-namespace ConnectionPair
+namespace FusableConnectionPair
 {
-    public class MyAsyncInput : IAsyncProcessInputEndpoint
+    public class MyAsyncFusableInput : IAsyncProcessInputEndpoint
     {
         bool _running = true;
         IProcess _process;
 
-        public MyAsyncInput(IProcess process)
+        public MyAsyncFusableInput(IProcess process)
         {
             _process = process;
         }
@@ -43,6 +43,11 @@ namespace ConnectionPair
 
                 if (!_running) break;
             }
+        }
+
+        public void WriteInt32(int val)
+        {
+            Console.WriteLine("Read value: " + val);
         }
     }
 

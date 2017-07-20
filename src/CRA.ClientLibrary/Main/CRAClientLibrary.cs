@@ -84,9 +84,11 @@ namespace CRA.ClientLibrary
 
             _storageAccount = CloudStorageAccount.Parse(_storageConnectionString);
 
+            Debug.WriteLine("Creating blob and table clients");
             _blobClient = _storageAccount.CreateCloudBlobClient();
             _tableClient = _storageAccount.CreateCloudTableClient();
 
+            Debug.WriteLine("Creating table managers");
             _processTableManager = new ProcessTableManager(_storageConnectionString);
             _endpointTableManager = new EndpointTableManager(_storageConnectionString);
             _connectionTableManager = new ConnectionTableManager(_storageConnectionString);
@@ -666,6 +668,7 @@ namespace CRA.ClientLibrary
             CloudTable table = _tableClient.GetTableReference(tableName);
             try
             {
+                Debug.WriteLine("Creating table " + tableName);
                 table.CreateIfNotExists();
             }
             catch { }

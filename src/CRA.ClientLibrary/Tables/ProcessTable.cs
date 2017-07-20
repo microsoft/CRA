@@ -33,7 +33,7 @@ namespace CRA.ClientLibrary
         public string ProcessDefinition { get; set; }
 
         /// <summary>
-        /// Name of the machine
+        /// IP address of the machine
         /// </summary>
         public string Address { get; set; }
 

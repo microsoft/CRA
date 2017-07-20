@@ -37,11 +37,6 @@ namespace BandwidthTest
             }
         }
 
-        public async Task ToInputAsync(IProcessInputEndpoint endpoint, CancellationToken token)
-        {
-            throw new NotImplementedException();
-        }
-
         public async Task ToStreamAsync(Stream stream, string otherProcess, string otherEndpoint, CancellationToken token)
         {
             Console.WriteLine("Sending data to process: " + otherProcess + ", endpoint: " + otherEndpoint);

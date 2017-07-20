@@ -19,13 +19,5 @@ namespace CRA.ClientLibrary
         /// <param name="token"></param>
         /// <returns></returns>
         Task FromStreamAsync(Stream stream, string otherProcess, string otherEndpoint, CancellationToken token);
-
-        /// <summary>
-        /// Async version of FromOutput
-        /// </summary>
-        /// <param name="endpoint"></param>
-        /// <param name="token"></param>
-        /// <returns></returns>
-        Task FromOutputAsync(IProcessOutputEndpoint endpoint, CancellationToken token);
     }
 }
