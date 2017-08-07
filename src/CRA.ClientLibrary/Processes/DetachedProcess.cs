@@ -91,7 +91,6 @@ namespace CRA.ClientLibrary
 
             if (instanceName == "")
             {
-                // _clientLibrary._processTableManager.GetRowForProcess(processName);
                 _instanceName = RandomString(16);
                 _isEphemeralInstance = true;
                 _clientLibrary.RegisterInstance(_instanceName, "", 0);
@@ -152,6 +151,7 @@ namespace CRA.ClientLibrary
         public Stream ToRemoteInputEndpointStream(string localOutputEndpointName, string remoteProcess, string remoteInputEndpoint)
         {
             AddOutputEndpoint(localOutputEndpointName);
+
             _clientLibrary.AddConnectionInfo(_processName, localOutputEndpointName, remoteProcess, remoteInputEndpoint);
             var stream = Connect_InitiatorSide(_processName, localOutputEndpointName, remoteProcess, remoteInputEndpoint, false);
             var conn = new ConnectionInfo(_processName, localOutputEndpointName, remoteProcess, remoteInputEndpoint);
@@ -239,7 +239,7 @@ namespace CRA.ClientLibrary
         {
             Dispose(true);
             GC.SuppressFinalize(this);
-            
+
         }
 
         private void Dispose(bool disposed)
@@ -250,11 +250,14 @@ namespace CRA.ClientLibrary
                 {
                     _clientLibrary.DeleteInstance(_instanceName);
                 }
+
                 _clientLibrary.DeleteProcess(_processName);
+
                 foreach (var endpt in EndpointData.InputEndpoints.Keys)
                 {
                     _clientLibrary.DeleteEndpoint(_processName, endpt);
                 }
+
                 foreach (var endpt in EndpointData.OutputEndpoints.Keys)
                 {
                     _clientLibrary.DeleteEndpoint(_processName, endpt);
@@ -266,13 +269,20 @@ namespace CRA.ClientLibrary
                 foreach (var kvp in ConnectionData.InputConnections)
                 {
                     _clientLibrary.DeleteConnectionInfo(kvp.Key.FromProcess, kvp.Key.FromEndpoint, kvp.Key.ToProcess, kvp.Key.ToEndpoint);
-                    if (kvp.Value != null) kvp.Value.Dispose();
+
+                    if (kvp.Value != null)
+                    {
+                        kvp.Value.Dispose();
+                    }
                 }
 
                 foreach (var kvp in ConnectionData.OutputConnections)
                 {
                     _clientLibrary.DeleteConnectionInfo(kvp.Key.FromProcess, kvp.Key.FromEndpoint, kvp.Key.ToProcess, kvp.Key.ToEndpoint);
-                    if (kvp.Value != null) kvp.Value.Dispose();
+                    if (kvp.Value != null)
+                    {
+                        kvp.Value.Dispose();
+                    }
                 }
 
                 ConnectionData.InputConnections.Clear();
@@ -281,6 +291,7 @@ namespace CRA.ClientLibrary
         }
 
         private static Random random = new Random();
+
         private static string RandomString(int length)
         {
             const string chars = "abcdefghijklmnopqrstuvwxyz";
@@ -299,16 +310,17 @@ namespace CRA.ClientLibrary
 
             var _row = _processTableManager.GetRowForInstanceProcess(row.InstanceName, "");
 
-
             // Send request to CRA instance
-            TcpClient client = null;
             NetworkStream ns = null;
             try
             {
-                client = new TcpClient(_row.Address, _row.Port);
-                client.NoDelay = true;
+                if (!_clientLibrary.TryGetSenderStreamFromPool(_row.Address, _row.Port.ToString(), out ns))
+                {
+                    TcpClient client = new TcpClient(_row.Address, _row.Port);
+                    client.NoDelay = true;
 
-                ns = client.GetStream();
+                    ns = client.GetStream();
+                }
             }
             catch
             {

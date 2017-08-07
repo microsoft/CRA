@@ -11,7 +11,7 @@ namespace CRA.ClientLibrary
 {
     internal static class AssemblyResolver
     {
-        private static readonly ConcurrentDictionary<string, byte[]> assemblies = 
+        private static readonly ConcurrentDictionary<string, byte[]> assemblies =
             new ConcurrentDictionary<string, byte[]>();
 
         private static volatile int handlerRegistered;
@@ -41,7 +41,7 @@ namespace CRA.ClientLibrary
             Contract.Requires(name != null);
             Contract.Requires(assembly != null);
             assemblies.TryAdd(name, assembly);
-            if (handlerRegistered == 0 && 
+            if (handlerRegistered == 0 &&
                 Interlocked.CompareExchange(ref handlerRegistered, 1, 0) == 0)
             {
                 AppDomain.CurrentDomain.AssemblyResolve += Resolver;

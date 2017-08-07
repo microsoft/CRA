@@ -40,6 +40,10 @@
         /// <summary>
         /// Failed to establish a connection
         /// </summary>
-        ConnectionEstablishFailed
+        ConnectionEstablishFailed,
+        /// <summary>
+        /// Failed to match endpoints between fromProcesses and toProcesses
+        /// </summary>
+        ProcessesEndpointsNotMatched
     };
 }

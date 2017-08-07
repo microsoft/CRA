@@ -64,6 +64,35 @@ namespace CRA.ClientLibrary
         }
 
         /// <summary>
+        /// Read integer compressed (Async)
+        /// </summary>
+        /// <param name="stream"></param>
+        /// <returns></returns>
+        public async static Task<int> ReadInt32Async(this Stream stream)
+        {
+            byte[] buffer = new byte[1];
+            await stream.ReadAsync(buffer, 0, 1);
+            var currentByte = (uint)buffer[0];
+            byte read = 1;
+            uint result = currentByte & 0x7FU;
+            int shift = 7;
+            while ((currentByte & 0x80) != 0)
+            {
+                byte[] tmpBuffer = new byte[1];
+                await stream.ReadAsync(tmpBuffer, 0, 1);
+                currentByte = (uint)tmpBuffer[0];
+                read++;
+                result |= (currentByte & 0x7FU) << shift;
+                shift += 7;
+                if (read > 5)
+                {
+                    throw new InvalidOperationException("Invalid integer value in the input stream.");
+                }
+            }
+            return (int)((-(result & 1)) ^ ((result >> 1) & 0x7FFFFFFFU));
+        }
+
+        /// <summary>
         /// Write integer compressed
         /// </summary>
         /// <param name="stream"></param>

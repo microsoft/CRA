@@ -29,6 +29,18 @@ namespace CRA.ClientLibrary
             public string UserDLLsBufferInfo { get; set; }
         }
 
+
+        public static string AssemblyDirectory
+        {
+            get
+            {
+                string codeBase = Assembly.GetExecutingAssembly().CodeBase;
+                UriBuilder uri = new UriBuilder(codeBase);
+                string path = Uri.UnescapeDataString(uri.Path);
+                return Path.GetDirectoryName(path);
+            }
+        }
+
         public static string[] GetExcludedAssemblies()
         {
             string[] excludedAssemblies = new[]
@@ -153,7 +165,6 @@ namespace CRA.ClientLibrary
             {
                 return;
             }
-            // Console.WriteLine("\"" + name + "\",");
 
             exclude.Add(name);
 
@@ -211,7 +222,6 @@ namespace CRA.ClientLibrary
                 byte[] assemblyNameBytes = Encoding.UTF8.GetBytes(assembly.Name);
                 stream.WriteByteArray(assemblyNameBytes);
 
-
                 FileStream fs = new FileStream(assembly.FileName, FileMode.Open, FileAccess.Read);
 
                 using (BinaryReader br = new BinaryReader(fs))
@@ -226,12 +236,37 @@ namespace CRA.ClientLibrary
         {
             int numAssemblies = stream.ReadInt32();
 
-            for (int i=0; i<numAssemblies; i++)
+            for (int i = 0; i < numAssemblies; i++)
             {
                 byte[] assemblyNameBytes = stream.ReadByteArray();
                 string assemblyName = Encoding.UTF8.GetString(assemblyNameBytes);
                 byte[] assemblyFileBytes = stream.ReadByteArray();
                 AssemblyResolver.Register(assemblyName, assemblyFileBytes);
+            }
+        }
+
+        public static void DumpAssemblies()
+        {
+            foreach (String assemblyKey in AssemblyResolver.RegisteredAssemblies)
+            {
+                AssemblyName assemblyFullName = new AssemblyName(assemblyKey);
+                var assemblyPath = Path.Combine(AssemblyDirectory, assemblyFullName.Name + ".dll");
+                if (!File.Exists(assemblyPath))
+                {
+                    bool isSuccess = false;
+                    while (!isSuccess)
+                    {
+                        try
+                        {
+                            File.WriteAllBytes(assemblyPath, AssemblyResolver.GetAssemblyBytes(assemblyKey));
+                            isSuccess = true;
+                        }
+                        catch (Exception e)
+                        {
+                            isSuccess = false;
+                        }
+                    }
+                }
             }
         }
 
@@ -251,7 +286,7 @@ namespace CRA.ClientLibrary
                 List<byte> userDLLsBuffer = new List<byte>();
                 StringBuilder userDLLsBufferInfo = new StringBuilder();
 
-                var relatedAssemblies = GetRelatedApplicationAssemblies(userLibraryPrefix, 
+                var relatedAssemblies = GetRelatedApplicationAssemblies(userLibraryPrefix,
                                                                         GetExcludedAssemblies());
                 foreach (var assembly in relatedAssemblies)
                 {

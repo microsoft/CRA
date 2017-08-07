@@ -1,10 +1,8 @@
-﻿using System.Collections.Generic;
+﻿using System;
 using System.Linq;
+using System.Collections.Generic;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Table;
-using System;
-using System.Diagnostics.CodeAnalysis;
-using System.Diagnostics;
 
 namespace CRA.ClientLibrary
 {
@@ -66,12 +64,16 @@ namespace CRA.ClientLibrary
             return ProcessTable.GetAll(_processTable).Where(gn => instanceName == gn.InstanceName && processName == gn.ProcessName).First();
         }
 
+        internal ProcessTable GetRowForDefaultInstance()
+        {
+            return ProcessTable.GetAll(_processTable).Where(gn => string.IsNullOrEmpty(gn.ProcessName)).First();
+        }
+
         private static CloudTable CreateTableIfNotExists(string tableName, CloudTableClient _tableClient)
         {
             CloudTable table = _tableClient.GetTableReference(tableName);
             try
             {
-                Debug.WriteLine("Creating table " + tableName);
                 table.CreateIfNotExists();
             }
             catch (Exception)
@@ -85,7 +87,7 @@ namespace CRA.ClientLibrary
         {
             TableQuery<ProcessTable> query = new TableQuery<ProcessTable>()
                 .Where(TableQuery.GenerateFilterCondition("PartitionKey", QueryComparisons.NotEqual, ""));
-            return _processTable.ExecuteQuery(query).Where(e => e.ProcessName != "").Select(e => e.ProcessName).ToList();
+            return _processTable.ExecuteQuery(query).Select(e => e.ProcessName).ToList();
         }
 
         internal List<string> GetProcessDefinitions()

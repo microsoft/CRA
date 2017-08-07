@@ -24,7 +24,7 @@ spec :
         spec:
             containers:
             - name : crainst01
-              image : mydockeraccount/cra-0.1-debug
+              image : mydockercontainer/cra-0.1-debug:latest
               ports:
               - containerPort: 1500
               env:
@@ -52,7 +52,7 @@ spec :
         spec:
             containers:
             - name : crainst02
-              image : mydockeraccount/cra-0.1-debug
+              image : mydockercontainer/cra-0.1-debug:latest
               ports:
               - containerPort: 1501
               env: 

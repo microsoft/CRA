@@ -3,6 +3,11 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Linq.Expressions;
+using System.Text;
+using System.IO;
+using System.Configuration;
+using Microsoft.WindowsAzure.Storage;
+using Microsoft.WindowsAzure.Storage.Blob;
 using Microsoft.WindowsAzure.Storage.Table;
 
 namespace CRA.ClientLibrary
@@ -143,13 +148,30 @@ namespace CRA.ClientLibrary
         internal Func<IProcess> GetProcessCreateAction()
         {
             var expr = SerializationHelper.Deserialize(ProcessCreateAction);
-            var actionExpr = AddBox((LambdaExpression) expr);
+            var actionExpr = AddBox((LambdaExpression)expr);
             return actionExpr.Compile();
         }
 
         internal object GetProcessParam()
         {
-            return SerializationHelper.DeserializeObject(this.ProcessParameter);
+            string storageConnectionString = ConfigurationManager.AppSettings.Get("CRA_STORAGE_CONN_STRING");
+            if (storageConnectionString == null)
+                storageConnectionString = Environment.GetEnvironmentVariable("CRA_STORAGE_CONN_STRING");
+            if (storageConnectionString == null)
+                throw new InvalidOperationException("CRA storage connection string not found. Use appSettings in your app.config to provide this using the key CRA_STORAGE_CONN_STRING, or use the environment variable CRA_STORAGE_CONN_STRING.");
+
+            CloudStorageAccount storageAccount = CloudStorageAccount.Parse(storageConnectionString);
+            CloudBlobClient blobClient = storageAccount.CreateCloudBlobClient();
+
+            CloudBlobContainer container = blobClient.GetContainerReference("cra");
+            container.CreateIfNotExists();
+            var blockBlob = container.GetBlockBlobReference(ProcessDefinition + "/" + ProcessName);
+            Stream blobStream = blockBlob.OpenRead();
+            byte[] parameterBytes = blobStream.ReadByteArray();
+            string parameterString = Encoding.UTF8.GetString(parameterBytes);
+            blobStream.Close();
+
+            return SerializationHelper.DeserializeObject(parameterString);
         }
 
 
@@ -213,6 +235,11 @@ namespace CRA.ClientLibrary
         internal static IEnumerable<ProcessTable> GetProcesses(CloudTable instanceTable, string instanceName)
         {
             return GetAll(instanceTable).Where(gn => instanceName == gn.InstanceName && !string.IsNullOrEmpty(gn.ProcessName));
+        }
+
+        internal static IEnumerable<ProcessTable> GetRowsForShardedProcess(CloudTable instanceTable, string processName)
+        {
+            return GetAll(instanceTable).Where(gn => gn.ProcessName.StartsWith(processName + "$") && !string.IsNullOrEmpty(gn.ProcessName));
         }
 
         internal static bool ContainsRow(CloudTable instanceTable, ProcessTable entity)

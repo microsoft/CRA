@@ -17,13 +17,16 @@ namespace CRA.ClientLibrary
     /// <summary>
     /// Worker library for Common Runtime for Applications (CRA)
     /// </summary>
-    public class CRAWorker
+    public class CRAWorker : IDisposable
     {
+        // CRA library client
         CRAClientLibrary _craClient;
 
         string _workerinstanceName;
         string _address;
         int _port;
+        int _streamsPoolSize;
+
 
         // Azure storage clients
         string _storageConnectionString;
@@ -35,13 +38,20 @@ namespace CRA.ClientLibrary
 
         // Timer updateTimer
         ConcurrentDictionary<string, IProcess> _localProcessTable = new ConcurrentDictionary<string, IProcess>();
+
         ConcurrentDictionary<string, CancellationTokenSource> inConnections = new ConcurrentDictionary<string, CancellationTokenSource>();
         ConcurrentDictionary<string, CancellationTokenSource> outConnections = new ConcurrentDictionary<string, CancellationTokenSource>();
-        
+
+
         /// <summary>
         /// Instance name
         /// </summary>
-        public string InstanceName {  get { return _workerinstanceName;  } }
+        public string InstanceName { get { return _workerinstanceName; } }
+
+        /// <summary>
+        /// Streams pool size
+        /// </summary>
+        internal int StreamsPoolSize { get { return _streamsPoolSize; } }
 
         /// <summary>
         /// Define a new worker instance of Common Runtime for Applications (CRA)
@@ -50,13 +60,16 @@ namespace CRA.ClientLibrary
         /// <param name="address">IP address</param>
         /// <param name="port">Port</param>
         /// <param name="storageConnectionString">Storage account to store metadata</param>
-        public CRAWorker(string workerInstanceName, string address, int port, string storageConnectionString)
+        /// <param name="streamsPoolSize">Maximum number of stream connections will be cached in the CRA client</param>
+        public CRAWorker(string workerInstanceName, string address, int port, string storageConnectionString, int streamsPoolSize)
         {
             _craClient = new CRAClientLibrary(storageConnectionString, this);
 
             _workerinstanceName = workerInstanceName;
             _address = address;
             _port = port;
+            _streamsPoolSize = streamsPoolSize;
+
 
             _storageConnectionString = storageConnectionString;
             _storageAccount = CloudStorageAccount.Parse(_storageConnectionString);
@@ -71,7 +84,6 @@ namespace CRA.ClientLibrary
         /// </summary>
         public void Start()
         {
-            Debug.WriteLine("Registering instance with CRA");
             // Update process table
             _craClient.RegisterInstance(_workerinstanceName, _address, _port);
 
@@ -85,8 +97,6 @@ namespace CRA.ClientLibrary
 
             // Restore connections to/from the processes on this machine
             RestoreConnections(null);
-
-
 
             // Wait for server to complete execution
             serverThread.Join();
@@ -111,34 +121,61 @@ namespace CRA.ClientLibrary
                 // Get a stream object for reading and writing
                 NetworkStream stream = client.GetStream();
 
+                // Handle a task message sent to the CRA instance
                 CRATaskMessageType message = (CRATaskMessageType)stream.ReadInt32();
+                HandleCRATaskMessage(message, stream);
+            }
+        }
 
-                switch (message)
+        private void HandleCRATaskMessage(CRATaskMessageType message, Stream stream)
+        {
+            switch (message)
+            {
+                case CRATaskMessageType.LOAD_PROCESS:
+                    Task.Run(() => LoadProcess(stream));
+                    break;
+
+                case CRATaskMessageType.CONNECT_PROCESS_INITIATOR:
+                    Task.Run(() => ConnectProcess_Initiator(stream, false));
+                    break;
+
+                case CRATaskMessageType.CONNECT_PROCESS_RECEIVER:
+                    Task.Run(() => ConnectProcess_Receiver(stream, false));
+                    break;
+
+                case CRATaskMessageType.CONNECT_PROCESS_INITIATOR_REVERSE:
+                    Task.Run(() => ConnectProcess_Initiator(stream, true));
+                    break;
+
+                case CRATaskMessageType.CONNECT_PROCESS_RECEIVER_REVERSE:
+                    Task.Run(() => ConnectProcess_Receiver(stream, true));
+                    break;
+
+                default:
+                    Console.WriteLine("Unknown message type: " + message);
+                    break;
+            }
+        }
+
+        private async void TryReuseReceiverStream(Stream stream)
+        {
+            try
+            {
+                CRATaskMessageType message = (CRATaskMessageType)(await stream.ReadInt32Async());
+                if (message == CRATaskMessageType.PING)
                 {
-                    case CRATaskMessageType.LOAD_PROCESS:
-                        Task.Run(() => LoadProcess(stream));
-                        break;
+                    stream.WriteInt32(0);
 
-                    case CRATaskMessageType.CONNECT_PROCESS_INITIATOR:
-                        Task.Run(() => ConnectProcess_Initiator(stream, false));
-                        break;
-
-                    case CRATaskMessageType.CONNECT_PROCESS_RECEIVER:
-                        Task.Run(() => ConnectProcess_Receiver(stream, false));
-                        break;
-
-                    case CRATaskMessageType.CONNECT_PROCESS_INITIATOR_REVERSE:
-                        Task.Run(() => ConnectProcess_Initiator(stream, true));
-                        break;
-
-                    case CRATaskMessageType.CONNECT_PROCESS_RECEIVER_REVERSE:
-                        Task.Run(() => ConnectProcess_Receiver(stream, true));
-                        break;
-
-                    default:
-                        Console.WriteLine("Unknown message type: " + message);
-                        break;
+                    // Handle a task message sent to the CRA instance
+                    CRATaskMessageType newMessage = (CRATaskMessageType)stream.ReadInt32();
+                    HandleCRATaskMessage(newMessage, (NetworkStream)stream);
                 }
+                else
+                    stream.Close();
+            }
+            catch (Exception e)
+            {
+                stream.Close();
             }
         }
 
@@ -153,7 +190,8 @@ namespace CRA.ClientLibrary
             _craClient.LoadProcess(processName, processDefinition, processParam, _workerinstanceName, _localProcessTable);
 
             stream.WriteInt32(0);
-            stream.Close();
+
+            Task.Run(() => TryReuseReceiverStream(stream));
         }
 
         private void ConnectProcess_Initiator(object streamObject, bool reverse = false)
@@ -172,16 +210,16 @@ namespace CRA.ClientLibrary
                 if (!_localProcessTable.ContainsKey(fromProcessName))
                 {
                     stream.WriteInt32((int)CRAErrorCode.ProcessNotFound);
-                    stream.Close();
+                    Task.Run(() => TryReuseReceiverStream(stream));
                     return;
                 }
 
                 if (!_localProcessTable[fromProcessName].OutputEndpoints.ContainsKey(fromProcessOutput) &&
                     !_localProcessTable[fromProcessName].AsyncOutputEndpoints.ContainsKey(fromProcessOutput)
-                    )
+                   )
                 {
                     stream.WriteInt32((int)CRAErrorCode.ProcessInputNotFound);
-                    stream.Close();
+                    Task.Run(() => TryReuseReceiverStream(stream));
                     return;
                 }
             }
@@ -190,7 +228,7 @@ namespace CRA.ClientLibrary
                 if (!_localProcessTable.ContainsKey(toProcessName))
                 {
                     stream.WriteInt32((int)CRAErrorCode.ProcessNotFound);
-                    stream.Close();
+                    Task.Run(() => TryReuseReceiverStream(stream));
                     return;
                 }
 
@@ -199,22 +237,24 @@ namespace CRA.ClientLibrary
                     )
                 {
                     stream.WriteInt32((int)CRAErrorCode.ProcessInputNotFound);
-                    stream.Close();
+                    Task.Run(() => TryReuseReceiverStream(stream));
                     return;
                 }
             }
 
-
-            var result = Connect_InitiatorSide(fromProcessName, fromProcessOutput, toProcessName, toProcessInput, reverse);
+            CRAErrorCode result = Connect_InitiatorSide(fromProcessName, fromProcessOutput, toProcessName, toProcessInput, reverse);
 
             stream.WriteInt32((int)result);
-            stream.Close();
+
+            Task.Run(() => TryReuseReceiverStream(stream));
         }
 
         internal CRAErrorCode Connect_InitiatorSide(string fromProcessName, string fromProcessOutput, string toProcessName, string toProcessInput, bool reverse, bool killIfExists = true, bool killRemote = true)
         {
+            CRAErrorCode result = CRAErrorCode.Success;
+
             // Need to get the latest address & port
-            var row = reverse ? ProcessTable.GetRowForProcess(_workerInstanceTable, fromProcessName) 
+            var row = reverse ? ProcessTable.GetRowForProcess(_workerInstanceTable, fromProcessName)
                 : ProcessTable.GetRowForProcess(_workerInstanceTable, toProcessName);
 
             // If from and to processes are on the same (this) instance,
@@ -222,10 +262,8 @@ namespace CRA.ClientLibrary
             if (reverse && (row.InstanceName == InstanceName))
                 reverse = false;
 
-
             CancellationTokenSource oldSource;
             var conn = reverse ? inConnections : outConnections;
-
             if (conn.TryGetValue(fromProcessName + ":" + fromProcessOutput + ":" + toProcessName + ":" + toProcessInput,
                 out oldSource))
             {
@@ -236,7 +274,6 @@ namespace CRA.ClientLibrary
                 }
                 return CRAErrorCode.Success;
             }
-
 
             if (TryFusedConnect(row.InstanceName, fromProcessName, fromProcessOutput, toProcessName, toProcessInput))
             {
@@ -257,21 +294,24 @@ namespace CRA.ClientLibrary
             }
 
             // Send request to CRA instance
-            TcpClient client = null;
             NetworkStream ns = null;
+            var _row = ProcessTable.GetRowForInstanceProcess(_workerInstanceTable, row.InstanceName, "");
             try
             {
-                var _row = ProcessTable.GetRowForInstanceProcess(_workerInstanceTable, row.InstanceName, "");
-                client = new TcpClient(_row.Address, _row.Port);
-                client.NoDelay = true;
+                // Get a stream connection from the pool if available
+                if (!_craClient.TryGetSenderStreamFromPool(_row.Address, _row.Port.ToString(), out ns))
+                {
+                    TcpClient client = new TcpClient(_row.Address, _row.Port);
+                    client.NoDelay = true;
 
-                ns = client.GetStream();
+                    ns = client.GetStream();
+                }
             }
             catch
             {
                 return CRAErrorCode.ConnectionEstablishFailed;
             }
-            
+
             if (!reverse)
                 ns.WriteInt32((int)CRATaskMessageType.CONNECT_PROCESS_RECEIVER);
             else
@@ -282,11 +322,12 @@ namespace CRA.ClientLibrary
             ns.WriteByteArray(Encoding.UTF8.GetBytes(toProcessName));
             ns.WriteByteArray(Encoding.UTF8.GetBytes(toProcessInput));
             ns.WriteInt32(killRemote ? 1 : 0);
-            CRAErrorCode result = (CRAErrorCode) ns.ReadInt32();
+            result = (CRAErrorCode)ns.ReadInt32();
 
             if (result != 0)
             {
-                Debug.WriteLine("Client received error code: " + result);
+                Debug.WriteLine("Error occurs while establishing the connection!!");
+                return result;
             }
             else
             {
@@ -296,8 +337,10 @@ namespace CRA.ClientLibrary
                 {
                     if (outConnections.TryAdd(fromProcessName + ":" + fromProcessOutput + ":" + toProcessName + ":" + toProcessInput, source))
                     {
-                        Task.Run(() => 
-                            EgressToStream(fromProcessName, fromProcessOutput, toProcessName, toProcessInput, reverse, ns, source));
+                        Task.Run(() =>
+                            EgressToStream(fromProcessName, fromProcessOutput, toProcessName, toProcessInput, reverse, ns, source, _row.Address, _row.Port));
+
+                        return CRAErrorCode.Success;
                     }
                     else
                     {
@@ -311,8 +354,9 @@ namespace CRA.ClientLibrary
                 {
                     if (inConnections.TryAdd(fromProcessName + ":" + fromProcessOutput + ":" + toProcessName + ":" + toProcessInput, source))
                     {
-                        Task.Run(() => IngressFromStream
-                        (fromProcessName, fromProcessOutput, toProcessName, toProcessInput, reverse, ns, source));
+                        Task.Run(() =>
+                            IngressFromStream(fromProcessName, fromProcessOutput, toProcessName, toProcessInput, reverse, ns, source, _row.Address, _row.Port));
+                        return CRAErrorCode.Success;
                     }
                     else
                     {
@@ -323,7 +367,6 @@ namespace CRA.ClientLibrary
                     }
                 }
             }
-            return result;
         }
 
         private bool TryFusedConnect(string otherInstance, string fromProcessName, string fromProcessOutput, string toProcessName, string toProcessInput)
@@ -381,7 +424,7 @@ namespace CRA.ClientLibrary
         }
 
         private async Task EgressToStream(string fromProcessName, string fromProcessOutput, string toProcessName, string toProcessInput,
-            bool reverse, Stream ns, CancellationTokenSource source)
+            bool reverse, Stream ns, CancellationTokenSource source, string address = null, int port = -1)
         {
             try
             {
@@ -406,7 +449,23 @@ namespace CRA.ClientLibrary
                 if (outConnections.TryRemove(fromProcessName + ":" + fromProcessOutput + ":" + toProcessName + ":" + toProcessInput, out oldSource))
                 {
                     oldSource.Dispose();
-                    ns.Dispose();
+
+                    if (address != null && port != -1)
+                    {
+                        // Add/Return a sender stream connection to the pool
+                        if (!_craClient.TryAddSenderStreamToPool(address, port.ToString(), (NetworkStream)ns))
+                        {
+                            ns.Dispose();
+                        }
+                    }
+                    else
+                    {
+                        // Keep a receiver stream connection to be used later
+#pragma warning disable CS4014
+                        Task.Run(() => TryReuseReceiverStream(ns));
+#pragma warning restore CS4014
+                    }
+
                     _craClient.Disconnect(fromProcessName, fromProcessOutput, toProcessName, toProcessInput);
                 }
             }
@@ -428,7 +487,7 @@ namespace CRA.ClientLibrary
             }
         }
 
-        private async Task EgressToProcessInput(string fromProcessName, string fromProcessOutput, string toProcessName, string toProcessInput, 
+        private async Task EgressToProcessInput(string fromProcessName, string fromProcessOutput, string toProcessName, string toProcessInput,
             CancellationTokenSource source)
         {
             try
@@ -510,7 +569,7 @@ namespace CRA.ClientLibrary
                 if (!_localProcessTable.ContainsKey(toProcessName))
                 {
                     stream.WriteInt32((int)CRAErrorCode.ProcessNotFound);
-                    stream.Close();
+                    Task.Run(() => TryReuseReceiverStream(stream));
                     return;
                 }
 
@@ -519,7 +578,7 @@ namespace CRA.ClientLibrary
                     )
                 {
                     stream.WriteInt32((int)CRAErrorCode.ProcessInputNotFound);
-                    stream.Close();
+                    Task.Run(() => TryReuseReceiverStream(stream));
                     return;
                 }
             }
@@ -528,7 +587,7 @@ namespace CRA.ClientLibrary
                 if (!_localProcessTable.ContainsKey(fromProcessName))
                 {
                     stream.WriteInt32((int)CRAErrorCode.ProcessNotFound);
-                    stream.Close();
+                    Task.Run(() => TryReuseReceiverStream(stream));
                     return;
                 }
 
@@ -537,28 +596,26 @@ namespace CRA.ClientLibrary
                     )
                 {
                     stream.WriteInt32((int)CRAErrorCode.ProcessInputNotFound);
-                    stream.Close();
+                    Task.Run(() => TryReuseReceiverStream(stream));
                     return;
                 }
             }
 
-            var result = Connect_ReceiverSide(fromProcessName, fromProcessOutput, toProcessName, toProcessInput, stream, reverse, killIfExists);
+            int result = Connect_ReceiverSide(fromProcessName, fromProcessOutput, toProcessName, toProcessInput, stream, reverse, killIfExists);
 
             // Do not close and dispose stream because it is being reused for data
             if (result != 0)
             {
-                stream.Close();
+                Task.Run(() => TryReuseReceiverStream(stream));
             }
         }
+
 
         private int Connect_ReceiverSide(string fromProcessName, string fromProcessOutput, string toProcessName, string toProcessInput, Stream stream, bool reverse, bool killIfExists = true)
         {
             CancellationTokenSource oldSource;
-
             var conn = reverse ? outConnections : inConnections;
-
-            if (conn.TryGetValue(fromProcessName + ":" + fromProcessOutput + ":" + toProcessName + ":" + toProcessInput, 
-                out oldSource))
+            if (conn.TryGetValue(fromProcessName + ":" + fromProcessOutput + ":" + toProcessName + ":" + toProcessInput, out oldSource))
             {
                 if (killIfExists)
                 {
@@ -611,9 +668,10 @@ namespace CRA.ClientLibrary
                     return (int)CRAErrorCode.ConnectionAdditionRace;
                 }
             }
+
         }
 
-        private async Task IngressFromStream(string fromProcessName, string fromProcessOutput, string toProcessName, string toProcessInput, bool reverse, Stream ns, CancellationTokenSource source)
+        private async Task IngressFromStream(string fromProcessName, string fromProcessOutput, string toProcessName, string toProcessInput, bool reverse, Stream ns, CancellationTokenSource source, string address = null, int port = -1)
         {
             try
             {
@@ -635,11 +693,25 @@ namespace CRA.ClientLibrary
 
                 // Completed FromStream successfully
                 CancellationTokenSource oldSource;
-                if (outConnections.TryRemove(fromProcessName + ":" + fromProcessOutput + ":" + toProcessName + ":" + toProcessInput, out oldSource))
+                if (inConnections.TryRemove(fromProcessName + ":" + fromProcessOutput + ":" + toProcessName + ":" + toProcessInput, out oldSource))
                 {
                     oldSource.Dispose();
-                    ns.Dispose();
-                    _craClient.Disconnect(fromProcessName, fromProcessOutput, toProcessName, toProcessInput);
+
+                    if (address != null && port != -1)
+                    {
+                        // Add/Return a sender stream connection to the pool
+                        if (!_craClient.TryAddSenderStreamToPool(address, port.ToString(), (NetworkStream)ns))
+                        {
+                            ns.Dispose();
+                        }
+                    }
+                    else
+                    {
+                        // Keep a receiver stream connection to be used later
+#pragma warning disable CS4014
+                        Task.Run(() => TryReuseReceiverStream(ns));
+#pragma warning restore CS4014
+                    }
                 }
             }
             catch (Exception e)
@@ -683,7 +755,7 @@ namespace CRA.ClientLibrary
                 var outRows = ConnectionTable.GetAllConnectionsFromProcess(_connectionTable, _row.ProcessName).ToList();
                 foreach (var row in outRows)
                 {
-                        Task.Run(() => RetryRestoreConnection(row.FromProcess, row.FromEndpoint, row.ToProcess, row.ToEndpoint, false));                                    
+                    Task.Run(() => RetryRestoreConnection(row.FromProcess, row.FromEndpoint, row.ToProcess, row.ToEndpoint, false));
                 }
 
                 var inRows = ConnectionTable.GetAllConnectionsToProcess(_connectionTable, _row.ProcessName).ToList();
@@ -725,12 +797,16 @@ namespace CRA.ClientLibrary
             CloudTable table = _tableClient.GetTableReference(tableName);
             try
             {
-                Debug.WriteLine("Creating table " + tableName);
                 table.CreateIfNotExists();
             }
             catch { }
 
             return table;
+        }
+
+        public void Dispose()
+        {
+            _craClient.Dispose();
         }
     }
 }

@@ -1,25 +1,21 @@
 ﻿using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Microsoft.WindowsAzure.Storage.Table;
-using Microsoft.WindowsAzure.Storage.Table.Queryable;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Configuration;
-using System.Diagnostics;
 using System.IO;
 using System.Linq.Expressions;
 using System.Net.Sockets;
 using System.Text;
-using System.Text.RegularExpressions;
 
 namespace CRA.ClientLibrary
 {
-
     /// <summary>
     /// Client library for Common Runtime for Applications (CRA)
     /// </summary>
-    public class CRAClientLibrary
+    public partial class CRAClientLibrary
     {
         CRAWorker _localWorker;
 
@@ -44,7 +40,6 @@ namespace CRA.ClientLibrary
         /// </summary>
         public CRAClientLibrary() : this("", null)
         {
-
         }
 
         /// <summary>
@@ -54,7 +49,6 @@ namespace CRA.ClientLibrary
         /// not specified, it will use the appSettings key named StorageConnectionString in app.config</param>
         public CRAClientLibrary(string storageConnectionString) : this(storageConnectionString, null)
         {
-
         }
 
         /// <summary>
@@ -84,11 +78,9 @@ namespace CRA.ClientLibrary
 
             _storageAccount = CloudStorageAccount.Parse(_storageConnectionString);
 
-            Debug.WriteLine("Creating blob and table clients");
             _blobClient = _storageAccount.CreateCloudBlobClient();
             _tableClient = _storageAccount.CreateCloudTableClient();
 
-            Debug.WriteLine("Creating table managers");
             _processTableManager = new ProcessTableManager(_storageConnectionString);
             _endpointTableManager = new EndpointTableManager(_storageConnectionString);
             _connectionTableManager = new ConnectionTableManager(_storageConnectionString);
@@ -124,9 +116,9 @@ namespace CRA.ClientLibrary
         /// </summary>
         public void Reset()
         {
-            DeleteContents(_connectionTable);
-            DeleteContents(_processTable);
-            _endpointTableManager.DeleteContents();
+            _connectionTable.DeleteIfExists();
+            _processTable.DeleteIfExists();
+            _endpointTableManager.DeleteTable();
         }
 
         /// <summary>
@@ -185,7 +177,6 @@ namespace CRA.ClientLibrary
             }
         }
 
-
         /// <summary>
         /// Not yet implemented
         /// </summary>
@@ -194,7 +185,6 @@ namespace CRA.ClientLibrary
         {
             throw new NotImplementedException();
         }
-
 
         /// <summary>
         /// Instantiate a process on a CRA instance.
@@ -208,34 +198,52 @@ namespace CRA.ClientLibrary
         {
             var procDefRow = ProcessTable.GetRowForProcessDefinition(_processTable, processDefinition);
 
+            // Serialize and write the process parameters to a blob
+            CloudBlobContainer container = _blobClient.GetContainerReference("cra");
+            container.CreateIfNotExists();
+            var blockBlob = container.GetBlockBlobReference(processDefinition + "/" + processName);
+            CloudBlobStream blobStream = blockBlob.OpenWrite();
+            byte[] parameterBytes = Encoding.UTF8.GetBytes(
+                        SerializationHelper.SerializeObject(processParameter));
+            blobStream.WriteByteArray(parameterBytes);
+            blobStream.Close();
+
             // Add metadata
             var newRow = new ProcessTable(instanceName, processName, processDefinition, "", 0,
-                procDefRow.ProcessCreateAction, 
-                SerializationHelper.SerializeObject(processParameter));
+                procDefRow.ProcessCreateAction, processName);
             TableOperation insertOperation = TableOperation.InsertOrReplace(newRow);
             _processTable.Execute(insertOperation);
 
             CRAErrorCode result = CRAErrorCode.Success;
 
+            // Send request to CRA instance
             ProcessTable instanceRow;
             try
             {
                 instanceRow = ProcessTable.GetRowForInstance(_processTable, instanceName);
 
-                // Send request to CRA instance
-                TcpClient client = new TcpClient(instanceRow.Address, instanceRow.Port);
-                client.NoDelay = true;
+                // Get a stream connection from the pool if available
+                NetworkStream stream;
+                if (!TryGetSenderStreamFromPool(instanceRow.Address, instanceRow.Port.ToString(), out stream))
+                {
+                    TcpClient client = new TcpClient(instanceRow.Address, instanceRow.Port);
+                    client.NoDelay = true;
 
-                NetworkStream stream = client.GetStream();
+                    stream = client.GetStream();
+                }
+
                 stream.WriteInt32((int)CRATaskMessageType.LOAD_PROCESS);
                 stream.WriteByteArray(Encoding.UTF8.GetBytes(processName));
                 stream.WriteByteArray(Encoding.UTF8.GetBytes(processDefinition));
                 stream.WriteByteArray(Encoding.UTF8.GetBytes(newRow.ProcessParameter));
-                result = (CRAErrorCode) stream.ReadInt32();
+                result = (CRAErrorCode)stream.ReadInt32();
                 if (result != 0)
                 {
                     Console.WriteLine("Process was logically loaded. However, we received an error code from the hosting CRA instance: " + result);
                 }
+
+                // Add/Return stream connection to the pool
+                TryAddSenderStreamToPool(instanceRow.Address, instanceRow.Port.ToString(), stream);
             }
             catch
             {
@@ -277,14 +285,13 @@ namespace CRA.ClientLibrary
         }
 
         /// <summary>
-        /// Delete CRA instance with given name
+        /// Delete CRA instance name
         /// </summary>
         /// <param name="instanceName"></param>
         public void DeleteInstance(string instanceName)
         {
             _processTableManager.DeleteInstance(instanceName);
         }
-
 
         /// <summary>
         /// Delete process with given name
@@ -310,7 +317,7 @@ namespace CRA.ClientLibrary
             {
                 DeleteConnectionInfo(conn);
             }
-            
+
             var query = new TableQuery<ProcessTable>()
                    .Where(TableQuery.GenerateFilterCondition("RowKey", QueryComparisons.Equal, processName));
 
@@ -336,6 +343,7 @@ namespace CRA.ClientLibrary
             var blockBlob = container.GetBlockBlobReference(processDefinition + "/binaries");
             blockBlob.DeleteIfExists();
         }
+
 
         /// <summary>
         /// Add endpoint to the appropriate CRA metadata table
@@ -375,6 +383,7 @@ namespace CRA.ClientLibrary
             var blockBlob = container.GetBlockBlobReference(processDefinition + "/binaries");
             Stream blobStream = blockBlob.OpenRead();
             AssemblyUtils.LoadAssembliesFromStream(blobStream);
+            AssemblyUtils.DumpAssemblies();
             blobStream.Close();
 
             var row = ProcessTable.GetRowForProcessDefinition(_processTable, processDefinition);
@@ -432,7 +441,13 @@ namespace CRA.ClientLibrary
                 ((ProcessBase)process).ClientLibrary = this;
             }
 
-            var par = SerializationHelper.DeserializeObject(processParameter);
+            var parametersBlob = container.GetBlockBlobReference(processDefinition + "/" + processName);
+            Stream parametersStream = parametersBlob.OpenRead();
+            byte[] parametersBytes = parametersStream.ReadByteArray();
+            string parameterString = Encoding.UTF8.GetString(parametersBytes);
+            parametersStream.Close();
+
+            var par = SerializationHelper.DeserializeObject(parameterString);
             process.Initialize(par);
 
             return process;
@@ -481,7 +496,6 @@ namespace CRA.ClientLibrary
         {
             _connectionTableManager.DeleteConnection(fromProcessName, fromEndpoint, toProcessName, toEndpoint);
         }
-
 
         /// <summary>
         /// Delete connection info from metadata table
@@ -537,7 +551,6 @@ namespace CRA.ClientLibrary
             _connectionTableManager.AddConnection(fromProcessName, fromEndpoint, toProcessName, toEndpoint);
 
             // We now try best-effort to tell the CRA instance of this connection
-
             CRAErrorCode result = CRAErrorCode.Success;
 
             if (_localWorker != null)
@@ -549,18 +562,21 @@ namespace CRA.ClientLibrary
                 }
             }
 
-
             // Send request to CRA instance
-            TcpClient client = null;
             try
             {
                 // Get address and port for instance, using row with process = ""
                 var row = ProcessTable.GetRowForInstance(_processTable, _row.InstanceName);
 
-                client = new TcpClient(row.Address, row.Port);
-                client.NoDelay = true;
+                // Get a stream connection from the pool if available
+                NetworkStream stream;
+                if (!TryGetSenderStreamFromPool(row.Address, row.Port.ToString(), out stream))
+                {
+                    TcpClient client = new TcpClient(row.Address, row.Port);
+                    client.NoDelay = true;
 
-                NetworkStream stream = client.GetStream();
+                    stream = client.GetStream();
+                }
 
                 if (direction == ConnectionInitiator.FromSide)
                     stream.WriteInt32((int)CRATaskMessageType.CONNECT_PROCESS_INITIATOR);
@@ -572,10 +588,15 @@ namespace CRA.ClientLibrary
                 stream.WriteByteArray(Encoding.UTF8.GetBytes(toProcessName));
                 stream.WriteByteArray(Encoding.UTF8.GetBytes(toEndpoint));
 
-                result = (CRAErrorCode) stream.ReadInt32();
+                result = (CRAErrorCode)stream.ReadInt32();
                 if (result != 0)
                 {
                     Console.WriteLine("Connection was logically established. However, the client received an error code from the connection-initiating CRA instance: " + result);
+                }
+                else
+                {
+                    // Add/Return a stream connection to the pool
+                    TryAddSenderStreamToPool(row.Address, row.Port.ToString(), stream);
                 }
             }
             catch
@@ -583,6 +604,12 @@ namespace CRA.ClientLibrary
                 Console.WriteLine("The connection-initiating CRA instance appears to be down or could not be found. Restart it and this connection will be completed automatically");
             }
             return (CRAErrorCode)result;
+        }
+
+
+        public string GetDefaultInstanceName()
+        {
+            return _processTableManager.GetRowForDefaultInstance().InstanceName;
         }
 
         /// <summary>
@@ -662,13 +689,11 @@ namespace CRA.ClientLibrary
             }
         }
 
-
         private CloudTable CreateTableIfNotExists(string tableName)
         {
             CloudTable table = _tableClient.GetTableReference(tableName);
             try
             {
-                Debug.WriteLine("Creating table " + tableName);
                 table.CreateIfNotExists();
             }
             catch { }
@@ -687,5 +712,6 @@ namespace CRA.ClientLibrary
         {
             _connectionTableManager.DeleteConnection(fromProcessName, fromProcessOutput, toProcessName, toProcessInput);
         }
+
     }
 }

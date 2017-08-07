@@ -39,8 +39,14 @@ namespace CRA.ClientLibrary
             // Make the connection information stable
             var newRow = new ConnectionTable(fromProcess, fromOutput, toConnection, toInput);
             newRow.ETag = "*";
-            TableOperation deleteOperation = TableOperation.Delete(newRow);
-            _connectionTable.Execute(deleteOperation);
+            TableOperation retrieveOperation = TableOperation.Retrieve<ConnectionTable>(newRow.PartitionKey, newRow.RowKey);
+            TableResult retrievedResult = _connectionTable.Execute(retrieveOperation);
+            ConnectionTable deleteEntity = (ConnectionTable)retrievedResult.Result;
+            if (deleteEntity != null)
+            {
+                TableOperation deleteOperation = TableOperation.Delete(deleteEntity);
+                _connectionTable.Execute(deleteOperation);
+            }
         }
 
         internal List<ConnectionInfo> GetConnectionsFromProcess(string processName)

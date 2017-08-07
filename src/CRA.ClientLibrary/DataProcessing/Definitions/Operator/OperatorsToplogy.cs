@@ -1,0 +1,240 @@
+﻿using System;
+using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.Runtime.Serialization;
+
+namespace CRA.ClientLibrary.DataProcessing
+{
+    public class OperatorsToplogy
+    {
+        ConcurrentDictionary<string, OperatorEndpointsDescriptor> _operatorsEndpointsDescriptors;
+        private List<string> _operatorsIds;
+        private List<TaskBase> _operatorsTasks;
+
+        internal ConcurrentDictionary<string, OperatorEndpointsDescriptor> OperatorsEndpointsDescriptors { get { return _operatorsEndpointsDescriptors; } }
+        internal List<string> OperatorsIds { get { return _operatorsIds; } }
+        internal List<TaskBase> OperatorsTasks { get { return _operatorsTasks; } }
+
+        public OperatorsToplogy()
+        {
+            _operatorsEndpointsDescriptors = new ConcurrentDictionary<string, OperatorEndpointsDescriptor>();
+            _operatorsIds = new List<string>();
+            _operatorsTasks = new List<TaskBase>();
+        }
+
+        internal void AddOperatorBase(string taskId, TaskBase task)
+        {
+            _operatorsEndpointsDescriptors.AddOrUpdate(taskId, new OperatorEndpointsDescriptor(), (operatorId, descriptor) => new OperatorEndpointsDescriptor());
+            if (_operatorsIds.Contains(taskId))
+            {
+                int index = _operatorsIds.IndexOf(taskId);
+                _operatorsTasks[index] = task;
+            }
+            else
+            {
+                _operatorsIds.Add(taskId);
+                _operatorsTasks.Add(task);
+            }
+        }
+
+        internal void AddShuffleOperator(string mapperTaskId, string reducerTaskId, ShuffleTask task)
+        {
+            _operatorsEndpointsDescriptors.AddOrUpdate(mapperTaskId, new OperatorEndpointsDescriptor(), (operatorId, descriptor) => new OperatorEndpointsDescriptor());
+            _operatorsEndpointsDescriptors.AddOrUpdate(reducerTaskId, new OperatorEndpointsDescriptor(), (operatorId, descriptor) => new OperatorEndpointsDescriptor());
+            if (_operatorsIds.Contains(reducerTaskId))
+            {
+                int index = _operatorsIds.IndexOf(reducerTaskId);
+                _operatorsTasks[index] = task;
+            }
+            else
+            {
+                _operatorsIds.Add(reducerTaskId);
+                _operatorsTasks.Add(task);
+            }
+        }
+
+        internal void UpdateShuffleOperatorTask(string taskId, ShuffleTask task)
+        {
+            if (_operatorsIds.Contains(taskId))
+            {
+                int index = _operatorsIds.IndexOf(taskId);
+                _operatorsTasks[index] = task;
+            }
+        }
+
+        internal void AddOperatorInput(string taskId, string fromInputId, int inputsCount = 1)
+        {
+            if (taskId != null && taskId != "$" && fromInputId != null && fromInputId != "$")
+            {
+                OperatorEndpointsDescriptor operatorDescriptor = _operatorsEndpointsDescriptors[taskId];
+                operatorDescriptor.FromInputs.AddOrUpdate(fromInputId, inputsCount, (inputId, currentInputs) => inputsCount);
+                _operatorsEndpointsDescriptors[taskId] = operatorDescriptor;
+            }
+        }
+
+        internal void AddOperatorSecondaryInput(string taskId, string secondaryFromInputId, int inputsCount = 1)
+        {
+            if (taskId != null && taskId != "$" && secondaryFromInputId != null && secondaryFromInputId != "$")
+            {
+                OperatorEndpointsDescriptor operatorDescriptor = _operatorsEndpointsDescriptors[taskId];
+                operatorDescriptor.SecondaryFromInputs.AddOrUpdate(secondaryFromInputId, inputsCount, (inputId, currentInputs) => inputsCount);
+                _operatorsEndpointsDescriptors[taskId] = operatorDescriptor;
+            }
+        }
+
+        private int RemoveOperatorInput(string taskId, string fromInputId)
+        {
+            int updatedInputs = 0;
+            if (taskId != null && fromInputId != null)
+            {
+                OperatorEndpointsDescriptor operatorDescriptor = _operatorsEndpointsDescriptors[taskId];
+                operatorDescriptor.FromInputs.TryRemove(fromInputId, out updatedInputs);
+                _operatorsEndpointsDescriptors[taskId] = operatorDescriptor;
+            }
+            return updatedInputs;
+        }
+
+        internal void AddOperatorOutput(string taskId, string toOutputId, int outputsCount = 1)
+        {
+            if (taskId != null && taskId != "$" && toOutputId != null && toOutputId != "$")
+            {
+                OperatorEndpointsDescriptor operatorDescriptor = _operatorsEndpointsDescriptors[taskId];
+                operatorDescriptor.ToOutputs.AddOrUpdate(toOutputId, outputsCount, (outputId, currentOutputs) => outputsCount);
+                _operatorsEndpointsDescriptors[taskId] = operatorDescriptor;
+            }
+        }
+
+        private int RemoveOperatorOutput(string taskId, string toOutputId)
+        {
+            int updatedOutputs = 0;
+            if (taskId != null && toOutputId != null)
+            {
+                OperatorEndpointsDescriptor operatorDescriptor = _operatorsEndpointsDescriptors[taskId];
+                operatorDescriptor.ToOutputs.TryRemove(toOutputId, out updatedOutputs);
+                _operatorsEndpointsDescriptors[taskId] = operatorDescriptor;
+            }
+            return updatedOutputs;
+        }
+
+        internal void UpdateShuffleInputs(string mapperId, string reducerId, int shardingCount)
+        {
+            if (mapperId != null && reducerId != null)
+            {
+                var mapperDescriptor = _operatorsEndpointsDescriptors[mapperId];
+                var mapperInputs = mapperDescriptor.FromInputs;
+                foreach (string inputId in mapperInputs.Keys)
+                {
+                    int outputEndpointsCount = RemoveOperatorOutput(inputId, mapperId);
+                    for (int i = 0; i < shardingCount; i++)
+                        AddOperatorOutput(inputId, reducerId + i, outputEndpointsCount);
+
+                    int inputEndpointsCount = RemoveOperatorInput(mapperId, inputId);
+                    for (int i = 0; i < shardingCount; i++)
+                        AddOperatorInput(reducerId, inputId + i, inputEndpointsCount);
+                }
+            }
+        }
+
+        private void UpdateOperatorsSecondaryInputs(string firstOperatorId, string secondOperatorId)
+        {
+            OperatorEndpointsDescriptor secondOperatorDescriptor = _operatorsEndpointsDescriptors[secondOperatorId];
+            var secondaryInputs = secondOperatorDescriptor.SecondaryFromInputs;
+            foreach (string inputId  in secondaryInputs.Keys)
+            {
+                RemoveOperatorOutput(inputId, secondOperatorId);
+                AddOperatorInput(firstOperatorId, inputId, secondaryInputs[inputId]);
+                AddOperatorOutput(inputId, firstOperatorId, secondaryInputs[inputId]);
+            }
+        }
+
+        internal void PrepareFinalOperatorsTasks()
+        {
+            string[] operatorsIds = _operatorsIds.ToArray();
+            TaskBase[] tasks =  _operatorsTasks.ToArray();
+            if (tasks.Length >= 2)
+            {
+                for (int i = 0; i < operatorsIds.Length - 1; i++) 
+                {
+                    List<string> transforms = new List<string>();
+                    List<string> transformsOperations = new List<string>();
+                    List<string> transformsTypes = new List<string>();
+                    List<OperatorInputs> transformsInputs = new List<OperatorInputs>();
+
+                    if (tasks[i + 1].Transforms != null)
+                    {
+                        transforms.AddRange(tasks[i + 1].Transforms);
+                        transformsOperations.AddRange(tasks[i + 1].TransformsOperations);
+                        transformsTypes.AddRange(tasks[i + 1].TransformsTypes);
+                        transformsInputs.AddRange(tasks[i + 1].TransformsInputs);
+                    }
+
+                    IMoveDescriptor secondaryShuffleDescriptor = null;
+                    if (tasks[i + 1].OperationType == OperatorType.Move)
+                    {
+                        transforms.Add(((ShuffleTask)tasks[i + 1]).ShuffleTransforms[0]);
+                        transformsOperations.Add(((ShuffleTask)tasks[i + 1]).ShuffleTransformsOperations[0]);
+                        transformsTypes.Add(((ShuffleTask)tasks[i + 1]).ShuffleTransformsTypes[0]);
+                        transformsInputs.Add(((ShuffleTask)tasks[i + 1]).ShuffleTransformsInputs[0]);
+                        secondaryShuffleDescriptor = ((ShuffleTask)tasks[i + 1]).ShuffleDescriptor;
+                    }
+                    
+                    if (transforms.Count > 0)
+                    {
+                        tasks[i].Transforms = transforms.ToArray();
+                        tasks[i].TransformsOperations = transformsOperations.ToArray();
+                        tasks[i].TransformsTypes = transformsTypes.ToArray();
+                        tasks[i].TransformsInputs = transformsInputs.ToArray();
+                        tasks[i].SecondaryShuffleDescriptor = secondaryShuffleDescriptor;
+                        tasks[i + 1].ResetTaskTransformations();
+
+                        if (tasks[i].OperationType != OperatorType.Move && tasks[i + 1].OperationType != OperatorType.Move)
+                            UpdateOperatorsSecondaryInputs(operatorsIds[i], operatorsIds[i + 1]);
+                        else if (tasks[i].OperationType != OperatorType.Move && tasks[i + 1].OperationType == OperatorType.Move)
+                            UpdateOperatorsSecondaryInputs(operatorsIds[i], ((ShuffleTask)tasks[i + 1]).MapperProcessName);
+                        else if (tasks[i].OperationType == OperatorType.Move && tasks[i + 1].OperationType != OperatorType.Move)
+                            UpdateOperatorsSecondaryInputs(((ShuffleTask)tasks[i]).ReducerProcessName, operatorsIds[i + 1]);
+                        else
+                            UpdateOperatorsSecondaryInputs(((ShuffleTask)tasks[i]).ReducerProcessName, ((ShuffleTask)tasks[i + 1]).MapperProcessName);
+                    }
+                }
+                _operatorsTasks = new List<TaskBase>(tasks);
+            }
+        }
+    }
+
+    [Serializable, DataContract]
+    public class OperatorEndpointsDescriptor
+    {
+        [DataMember]
+        private ConcurrentDictionary<string, int> _fromInputs;
+
+        [DataMember]
+        private ConcurrentDictionary<string, int> _secondaryFromInputs;
+
+        [DataMember]
+        private ConcurrentDictionary<string, int> _toOutputs;
+
+        public ConcurrentDictionary<string, int> FromInputs
+        {
+            get { return _fromInputs; }
+            set { _fromInputs = value; }
+        }
+
+        public ConcurrentDictionary<string, int> SecondaryFromInputs
+        {
+            get { return _secondaryFromInputs; }
+        }
+
+        public ConcurrentDictionary<string, int> ToOutputs
+        {
+            get { return _toOutputs; }
+        }
+        
+        public OperatorEndpointsDescriptor()
+        {
+            _fromInputs = new ConcurrentDictionary<string, int> ();
+            _secondaryFromInputs = new ConcurrentDictionary<string, int>();
+            _toOutputs = new ConcurrentDictionary<string, int>();
+        }
+    }
+}

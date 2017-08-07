@@ -21,6 +21,14 @@ namespace CRA.ClientLibrary
             _endpointTable = CreateTableIfNotExists("endpointtableforcra", _tableClient);
         }
 
+        public CloudTable EndpointTable
+        {
+            get
+            {
+                return _endpointTable;
+            }
+        }
+
         internal void DeleteTable()
         {
             _endpointTable.DeleteIfExists();
@@ -97,9 +105,7 @@ namespace CRA.ClientLibrary
                 Debug.WriteLine("Creating table " + tableName);
                 table.CreateIfNotExists();
             }
-            catch
-            {
-            }
+            catch { }
 
             return table;
         }

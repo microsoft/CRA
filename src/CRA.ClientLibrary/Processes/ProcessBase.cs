@@ -10,16 +10,19 @@ namespace CRA.ClientLibrary
     {
         private string _processName;
 
+        // Sync input and output endpoints of a process
         private ConcurrentDictionary<string, IProcessInputEndpoint> _inputEndpoints = new ConcurrentDictionary<string, IProcessInputEndpoint>();
         private ConcurrentDictionary<string, IProcessOutputEndpoint> _outputEndpoints = new ConcurrentDictionary<string, IProcessOutputEndpoint>();
         private Action<string, IProcessInputEndpoint> onAddInputEndpoint;
         private Action<string, IProcessOutputEndpoint> onAddOutputEndpoint;
         private Action onDispose;
 
+        // Async input and output endpoints of a process
         private ConcurrentDictionary<string, IAsyncProcessInputEndpoint> _asyncInputEndpoints = new ConcurrentDictionary<string, IAsyncProcessInputEndpoint>();
         private ConcurrentDictionary<string, IAsyncProcessOutputEndpoint> _asyncOutputEndpoints = new ConcurrentDictionary<string, IAsyncProcessOutputEndpoint>();
         private Action<string, IAsyncProcessInputEndpoint> onAddAsyncInputEndpoint;
         private Action<string, IAsyncProcessOutputEndpoint> onAddAsyncOutputEndpoint;
+
         private CRAClientLibrary _clientLibrary;
 
         /// <summary>
@@ -282,7 +285,7 @@ namespace CRA.ClientLibrary
         /// <summary>
         /// Dispose the process
         /// </summary>
-        public void Dispose()
+        public virtual void Dispose()
         {
             Dispose(true);
             GC.SuppressFinalize(this);
@@ -292,7 +295,7 @@ namespace CRA.ClientLibrary
         /// Actual dispose occurs here
         /// </summary>
         /// <param name="disposing"></param>
-        protected virtual void Dispose(bool disposing)
+        protected void Dispose(bool disposing)
         {
             if (disposing)
             {
