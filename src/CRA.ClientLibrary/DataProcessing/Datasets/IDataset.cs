@@ -14,7 +14,9 @@ namespace CRA.ClientLibrary.DataProcessing
 
         void Subscribe(object observer);
 
-        void ToStream(Stream streams);
+        void ToStream(Stream stream);
+
+        IDataset<TKey, TPayload> ToObject();
 
         Expression<Func<Stream, IDataset<TKey, TPayload>>> CreateFromStreamDeserializer();
     }

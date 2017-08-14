@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.IO;
 using System.Reflection;
 using System.Threading;
 
@@ -12,27 +11,41 @@ namespace CRA.ClientLibrary.DataProcessing
         protected int _thisId;
         protected TaskBase _task;
 
-        protected Stream[] _inputs;
+        protected IEndpointContent[] _inputs;
         protected string[] _inputsIds;
-        protected ConcurrentDictionary<int, string> _inputStreamOperatorIndex;
-        protected ConcurrentDictionary<string, List<Tuple<int, bool>>> _inputStreamConnectStatus;
-        protected ConcurrentDictionary<string, List<Tuple<int, bool>>> _inputStreamTriggerStatus;
-        protected ConcurrentDictionary<Stream, int> _inputStreamsInvertedIndex;
+        protected ConcurrentDictionary<int, string> _inputEndpointOperatorIndex;
+        protected ConcurrentDictionary<string, List<Tuple<int, bool>>> _inputEndpointConnectStatus;
+        protected ConcurrentDictionary<string, List<Tuple<int, bool>>> _inputEndpointTriggerStatus;
+        protected ConcurrentDictionary<IEndpointContent, int> _inputEndpointInvertedIndex;
         protected ConcurrentDictionary<string, ManualResetEvent> _onCompletedInputs;
+        protected ConcurrentDictionary<Tuple<string, string>, Tuple<string, string, bool>> _fromToConnections;
 
-        protected Stream[] _outputs;
+        protected IEndpointContent[] _outputs;
         protected string[] _outputsIds;
-        protected ConcurrentDictionary<int, string> _outputStreamOperatorIndex;
-        protected ConcurrentDictionary<string, List<Tuple<int, bool>>> _outputStreamConnectStatus;
-        protected ConcurrentDictionary<string, List<Tuple<int, bool>>> _outputStreamTriggerStatus;
-        protected ConcurrentDictionary<Stream, int> _outputStreamsInvertedIndex;
+        protected ConcurrentDictionary<int, string> _outputEndpointOperatorIndex;
+        protected ConcurrentDictionary<string, List<Tuple<int, bool>>> _outputEndpointConnectStatus;
+        protected ConcurrentDictionary<string, List<Tuple<int, bool>>> _outputEndpointTriggerStatus;
+        protected ConcurrentDictionary<IEndpointContent, int> _outputEndpointInvertedIndex;
         protected ConcurrentDictionary<string, ManualResetEvent> _onCompletedOutputs;
+        protected ConcurrentDictionary<Tuple<string, string>, Tuple<string, string, bool>> _toFromConnections;
 
-        public OperatorBase() : base() { }
+        protected CRAClientLibrary _craClient;
+
+        private System.Object _applyInputLock = new System.Object();
+        private bool _isInputApplied = false;
+
+        private System.Object _applyOutputLock = new System.Object();
+        private bool _isOutputApplied = false;
+
+        public OperatorBase() : base()
+        {
+            _craClient = new CRAClientLibrary();
+        }
 
         public override void Initialize(object processParameter)
         {
             PrepareOperatorParameter(processParameter);
+            PrepareAllConnectionsMap();
             PrepareOperatorInput();
             PrepareOperatorOutput();
             
@@ -66,15 +79,37 @@ namespace CRA.ClientLibrary.DataProcessing
                 throw new InvalidCastException("Unsupported deployment task in CRA");
         }
 
+        private void PrepareAllConnectionsMap()
+        {
+            _fromToConnections = new ConcurrentDictionary<Tuple<string, string>, Tuple<string, string, bool>>();
+            _toFromConnections = new ConcurrentDictionary<Tuple<string, string>, Tuple<string, string, bool>>();
+
+            var connectionsMap = _task.ProcessesConnectionsMap;
+            foreach (var connectionsListKey in connectionsMap.Keys)
+            {
+                var connectionsList = connectionsMap[connectionsListKey];
+                foreach (var connection in connectionsList)
+                {
+                    var fromTuple = new Tuple<string, string>(connection.FromProcess, connection.FromEndpoint);
+                    var toTuple = new Tuple<string, string, bool>(connection.ToProcess, connection.ToEndpoint, connection.IsOnSameCRAInstance);
+                    _fromToConnections.AddOrUpdate(fromTuple, toTuple, (key, value) => toTuple);
+
+                    fromTuple = new Tuple<string, string>(connection.ToProcess, connection.ToEndpoint);
+                    toTuple = new Tuple<string, string, bool>(connection.FromProcess, connection.FromEndpoint, connection.IsOnSameCRAInstance);
+                    _toFromConnections.AddOrUpdate(fromTuple, toTuple, (key, value) => toTuple);
+                }
+            }
+        }
+
         internal virtual void PrepareOperatorInput()
         {
             _inputsIds = ToEndpointsIds(_task.EndpointsDescriptor, false);
             if (_inputsIds != null && _inputsIds.Length > 0)
-                _inputs = new Stream[_inputsIds.Length];
-            _inputStreamOperatorIndex = ToStreamOperatorIndex(_task.EndpointsDescriptor.FromInputs);
-            _inputStreamConnectStatus = ToStreamStatus(_inputStreamOperatorIndex);
-            _inputStreamTriggerStatus = ToStreamStatus(_inputStreamOperatorIndex);
-            _inputStreamsInvertedIndex = new ConcurrentDictionary<Stream, int>();
+                _inputs = new IEndpointContent[_inputsIds.Length];
+            _inputEndpointOperatorIndex = ToEndpointOperatorIndex(_task.EndpointsDescriptor.FromInputs);
+            _inputEndpointConnectStatus = ToEndpointStatus(_inputEndpointOperatorIndex);
+            _inputEndpointTriggerStatus = ToEndpointStatus(_inputEndpointOperatorIndex);
+            _inputEndpointInvertedIndex = new ConcurrentDictionary<IEndpointContent, int>();
             _onCompletedInputs = new ConcurrentDictionary<string, ManualResetEvent>();
             foreach (var operatorId in _task.EndpointsDescriptor.FromInputs.Keys)
                 _onCompletedInputs.AddOrUpdate(operatorId, new ManualResetEvent(false), (key, value) => new ManualResetEvent(false));
@@ -84,37 +119,45 @@ namespace CRA.ClientLibrary.DataProcessing
         {
             _outputsIds = ToEndpointsIds(_task.EndpointsDescriptor, true);
             if (_outputsIds != null && _outputsIds.Length > 0)
-                _outputs = new Stream[_outputsIds.Length];
-            _outputStreamOperatorIndex = ToStreamOperatorIndex(_task.EndpointsDescriptor.ToOutputs);
-            _outputStreamConnectStatus = ToStreamStatus(_outputStreamOperatorIndex);
-            _outputStreamTriggerStatus = ToStreamStatus(_outputStreamOperatorIndex);
-            _outputStreamsInvertedIndex = new ConcurrentDictionary<Stream, int>();
+                _outputs = new IEndpointContent[_outputsIds.Length];
+            _outputEndpointOperatorIndex = ToEndpointOperatorIndex(_task.EndpointsDescriptor.ToOutputs);
+            _outputEndpointConnectStatus = ToEndpointStatus(_outputEndpointOperatorIndex);
+            _outputEndpointTriggerStatus = ToEndpointStatus(_outputEndpointOperatorIndex);
+            _outputEndpointInvertedIndex = new ConcurrentDictionary<IEndpointContent, int>();
             _onCompletedOutputs = new ConcurrentDictionary<string, ManualResetEvent>();
             foreach (var operatorId in _task.EndpointsDescriptor.ToOutputs.Keys)
                 _onCompletedOutputs.AddOrUpdate(operatorId, new ManualResetEvent(false), (key, value) => new ManualResetEvent(false));
         }
 
         
-        public void StartProducer<TKey, TPayload, TDataset>(Object[] datasets, Stream[] streams, int activeStreams)
+        public void StartProducer<TKey, TPayload, TDataset>(Object[] datasets, int[] outputIndices, int activeEndpoints)
              where TDataset : IDataset<TKey, TPayload>
         {
-            if (datasets.Length == activeStreams)
-                for (int i = 0; i < datasets.Length; i++)
-                    ((TDataset)datasets[i]).ToStream(streams[i]);
+            if (datasets.Length == activeEndpoints)
+                for (int i = 0; i < outputIndices.Length; i++)
+                {
+                    if (_outputs[outputIndices[i]] as StreamEndpoint != null)
+                        ((TDataset)datasets[i]).ToStream(((StreamEndpoint)_outputs[outputIndices[i]]).Stream);
+                    else
+                    {
+                        ((ObjectEndpoint)_outputs[outputIndices[i]]).OwningOutputEndpoint.InputEndpoint.Dataset = ((TDataset)datasets[i]).ToObject();
+                        ((ObjectEndpoint)_outputs[outputIndices[i]]).OwningOutputEndpoint.InputEndpoint.EndpointContent.FireTrigger.Set(); 
+                    }
+                }
+                    
             else
                 throw new InvalidOperationException();
         }
-        
 
         protected object CreateDatasetFromInput(string operatorId, Type inputKeyType, Type inputPayloadType, Type inputDatasetType)
         {
             try
             {
-                Stream[] streams = GetSiblingStreamsByOperatorId(_inputStreamTriggerStatus, operatorId, _inputs);
+                int[] endpointsIndices = GetSiblingInputEndpointsByOperatorId(_inputEndpointTriggerStatus, operatorId);
                 MethodInfo method = typeof(OperatorBase).GetMethod("CreateDataset");
                 MethodInfo generic = method.MakeGenericMethod(
                                         new Type[] { inputKeyType, inputPayloadType, inputDatasetType });
-                return generic.Invoke(this, new Object[] { streams });
+                return generic.Invoke(this, new Object[] { endpointsIndices });
             }
             catch (Exception e)
             {
@@ -122,50 +165,59 @@ namespace CRA.ClientLibrary.DataProcessing
             }
         }
 
-        public object CreateDataset<TKey, TPayload, TDataset>(Stream[] inputs)
+        public object CreateDataset<TKey, TPayload, TDataset>(int[] inputsIndices)
             where TDataset : IDataset<TKey, TPayload>
         {
-            if (inputs.Length == 1)
+            if (inputsIndices.Length == 1)
             {
-                TDataset templateDataset = (TDataset)Activator.CreateInstance(typeof(TDataset));
-                var compiledCreator = templateDataset.CreateFromStreamDeserializer().Compile();
-                return (TDataset)compiledCreator(inputs[0]);
+                if (_inputs[inputsIndices[0]] as StreamEndpoint != null)
+                {
+                    TDataset templateDataset = (TDataset)Activator.CreateInstance(typeof(TDataset));
+                    var compiledCreator = templateDataset.CreateFromStreamDeserializer().Compile();
+                    return (TDataset)compiledCreator(((StreamEndpoint)_inputs[inputsIndices[0]]).Stream);
+                }
+                else
+                {
+                    ((ObjectEndpoint)_inputs[inputsIndices[0]]).OnReceivedFireMessage();
+                    return (TDataset)(((ObjectEndpoint)_inputs[inputsIndices[0]]).OwningInputEndpoint.Dataset);
+                }
+
             }
             else
                 throw new InvalidOperationException();
         }
 
 
-        protected ConcurrentDictionary<string, List<Tuple<int, bool>>> ToStreamStatus(ConcurrentDictionary<int, string> streamOperatorIndex)
+        protected ConcurrentDictionary<string, List<Tuple<int, bool>>> ToEndpointStatus(ConcurrentDictionary<int, string> endpointOperatorIndex)
         {
             ConcurrentDictionary<string, List<Tuple<int, bool>>> statusIndex = new ConcurrentDictionary<string, List<Tuple<int, bool>>>();
-            foreach (int streamId in streamOperatorIndex.Keys)
+            foreach (int endpointId in endpointOperatorIndex.Keys)
             {
-                if (!statusIndex.ContainsKey(streamOperatorIndex[streamId]))
-                    statusIndex.AddOrUpdate(streamOperatorIndex[streamId], new List<Tuple<int, bool>>(), (key, value) => new List<Tuple<int, bool>>());
+                if (!statusIndex.ContainsKey(endpointOperatorIndex[endpointId]))
+                    statusIndex.AddOrUpdate(endpointOperatorIndex[endpointId], new List<Tuple<int, bool>>(), (key, value) => new List<Tuple<int, bool>>());
 
-                var streamItems = statusIndex[streamOperatorIndex[streamId]];
-                streamItems.Add(new Tuple<int, bool>(streamId, false));
-                statusIndex[streamOperatorIndex[streamId]] = streamItems;               
+                var endpointItems = statusIndex[endpointOperatorIndex[endpointId]];
+                endpointItems.Add(new Tuple<int, bool>(endpointId, false));
+                statusIndex[endpointOperatorIndex[endpointId]] = endpointItems;               
             }
 
             return statusIndex;
         }
 
-        protected ConcurrentDictionary<int, string> ToStreamOperatorIndex(ConcurrentDictionary<string, int> operatorEndpoints, int startIndex = 0)
+        protected ConcurrentDictionary<int, string> ToEndpointOperatorIndex(ConcurrentDictionary<string, int> operatorEndpoints, int startIndex = 0)
         {
-            ConcurrentDictionary<int, string> streamOperatorMap = new ConcurrentDictionary<int, string>();
+            ConcurrentDictionary<int, string> endpointOperatorMap = new ConcurrentDictionary<int, string>();
 
             int index = startIndex;
             foreach (string operatorId in operatorEndpoints.Keys)
             {
                 for (int i = 0; i < operatorEndpoints[operatorId]; i++)
-                    streamOperatorMap.AddOrUpdate(index + i, operatorId, (key, value) => operatorId);
+                    endpointOperatorMap.AddOrUpdate(index + i, operatorId, (key, value) => operatorId);
 
                 index = index + operatorEndpoints[operatorId];
             }
 
-            return streamOperatorMap;
+            return endpointOperatorMap;
         }
 
         protected string[] ToEndpointsIds(OperatorEndpointsDescriptor endpointDescriptor, bool isToOutput)
@@ -189,107 +241,134 @@ namespace CRA.ClientLibrary.DataProcessing
 
         internal abstract void InitializeOperator();
 
-        internal void AddInput(int i, Stream stream)
+        internal void AddInput(int i, ref IEndpointContent endpoint)
         {
-            if (_inputs != null && _inputStreamConnectStatus != null && _inputStreamOperatorIndex != null && _inputStreamsInvertedIndex != null)
+            if (_inputs != null && _inputEndpointConnectStatus != null && _inputEndpointOperatorIndex != null && _inputEndpointInvertedIndex != null)
             {
-                _inputs[i] = stream;
-                _inputStreamsInvertedIndex.AddOrUpdate(_inputs[i], i, (key, value) => i);
-                UpdateStreamStatus(_inputStreamConnectStatus, _inputStreamOperatorIndex, i, true);
-                if (AreAllStreamsReady(_inputStreamConnectStatus, true))
-                    ApplyOperatorInput(_inputs);
+                _inputs[i] = endpoint;
+                _inputEndpointInvertedIndex.AddOrUpdate(_inputs[i], i, (key, value) => i);
+                UpdateEndpointStatus(_inputEndpointConnectStatus, _inputEndpointOperatorIndex, i, true);
+                if (AreAllEndpointsReady(_inputEndpointConnectStatus, true))
+                {
+                    lock (_applyInputLock)
+                    {
+                        if (!_isInputApplied)
+                        {
+                            int[] inputIndices = new int[_inputs.Length];
+                            for (int j = 0; j < _inputs.Length; j++)
+                                inputIndices[j] = j;
+
+                            ApplyOperatorInput(inputIndices);
+                            _isInputApplied = true;
+                        }
+                    }
+                    
+                }
             }
         }
 
-        internal abstract void AddSecondaryInput(int i, Stream stream);
+        internal abstract void AddSecondaryInput(int i, ref IEndpointContent endpoint);
 
-        internal abstract void ApplyOperatorInput(Stream[] streams);
+        internal abstract void ApplyOperatorInput(int[] inputIndices);
 
-        internal void AddOutput(int i, Stream stream)
+        internal void AddOutput(int i, ref IEndpointContent endpoint)
         {
-            if (_outputs != null  && _outputStreamConnectStatus != null && _outputStreamOperatorIndex != null && _outputStreamsInvertedIndex != null)
+            if (_outputs != null  && _outputEndpointConnectStatus != null && _outputEndpointOperatorIndex != null && _outputEndpointInvertedIndex != null)
             {
-                _outputs[i] = stream;
-                _outputStreamsInvertedIndex.AddOrUpdate(_outputs[i], i, (key, value) => i);
-                UpdateStreamStatus(_outputStreamConnectStatus, _outputStreamOperatorIndex, i, true);
-                if (AreAllStreamsReady(_outputStreamConnectStatus, true))
-                    ApplyOperatorOutput(_outputs);
+                _outputs[i] = endpoint;
+                _outputEndpointInvertedIndex.AddOrUpdate(_outputs[i], i, (key, value) => i);
+                UpdateEndpointStatus(_outputEndpointConnectStatus, _outputEndpointOperatorIndex, i, true);
+                if (AreAllEndpointsReady(_outputEndpointConnectStatus, true))
+                {
+                    lock (_applyOutputLock)
+                    {
+                        if (!_isOutputApplied)
+                        {
+                            int[] outputIndices = new int[_outputs.Length];
+                            for (int j = 0; j < _outputs.Length; j++)
+                                outputIndices[j] = j;
+
+                            ApplyOperatorOutput(outputIndices);
+                            _isOutputApplied = true;
+                        }
+                    }
+                }
             }
         }
 
-        internal abstract void ApplyOperatorOutput(Stream[] streams);
+        internal abstract void ApplyOperatorOutput(int[] outputIndices);
 
-        protected bool AreSiblingStreamsReady(ConcurrentDictionary<string, List<Tuple<int, bool>>> streamsStatusIndex, ConcurrentDictionary<int, string> streamOperatorIndex, int streamId, bool value)
+        protected bool AreSiblingEndpointsReady(ConcurrentDictionary<string, List<Tuple<int, bool>>> endpointsStatusIndex, ConcurrentDictionary<int, string> endpointOperatorIndex, int endpointId, bool value)
         {
-            var streamStatus = streamsStatusIndex[streamOperatorIndex[streamId]];
-            foreach (var status in streamStatus)
+            var endpointStatus = endpointsStatusIndex[endpointOperatorIndex[endpointId]];
+            foreach (var status in endpointStatus)
                 if (!(status.Item2 == value)) return false;
             return true;
         }
 
-        protected bool AreAllStreamsReady(ConcurrentDictionary<string, List<Tuple<int, bool>>> streamsStatusIndex, bool value)
+        protected bool AreAllEndpointsReady(ConcurrentDictionary<string, List<Tuple<int, bool>>> endpointsStatusIndex, bool value)
         {
-            foreach (var key in streamsStatusIndex.Keys)
+            foreach (var key in endpointsStatusIndex.Keys)
             {
-                var streamStatus = streamsStatusIndex[key];
-                foreach (var status in streamStatus)
+                var endpointStatus = endpointsStatusIndex[key];
+                foreach (var status in endpointStatus)
                     if (!(status.Item2 == value)) return false;
             }
             return true;
         }
 
-        protected Stream[] GetSiblingStreamsByStreamId(ConcurrentDictionary<string, List<Tuple<int, bool>>> streamsStatusIndex, ConcurrentDictionary<int, string> streamOperatorIndex, Stream[] endpointStreams, int streamId)
+        protected int[] GetSiblingEndpointsByEndpointId(ConcurrentDictionary<string, List<Tuple<int, bool>>> endpointsStatusIndex, ConcurrentDictionary<int, string> endpointOperatorIndex, int endpointId)
         {
-            var streamStatus = streamsStatusIndex[streamOperatorIndex[streamId]].ToArray();
-            Stream[] siblings = new Stream[streamStatus.Length];
+            var endpointStatus = endpointsStatusIndex[endpointOperatorIndex[endpointId]].ToArray();
+            int[] siblings = new int[endpointStatus.Length];
             for (int i = 0; i < siblings.Length; i++)
-                siblings[i] = endpointStreams[streamStatus[i].Item1];
+                siblings[i] = endpointStatus[i].Item1;
             return siblings;
         }
 
-        protected Stream[] GetSiblingStreamsByOperatorId(ConcurrentDictionary<string, List<Tuple<int, bool>>> streamsStatusIndex, string operatorId, Stream[] endpointStreams)
+        protected int[] GetSiblingInputEndpointsByOperatorId(ConcurrentDictionary<string, List<Tuple<int, bool>>> endpointsStatusIndex, string operatorId)
         {
-            var streamStatus = streamsStatusIndex[operatorId].ToArray();
-            Stream[] siblings = new Stream[streamStatus.Length];
+            var endpointStatus = endpointsStatusIndex[operatorId].ToArray();
+            int[] siblings = new int[endpointStatus.Length];
             for (int i = 0; i < siblings.Length; i++)
-                siblings[i] = endpointStreams[streamStatus[i].Item1];
+                siblings[i] = endpointStatus[i].Item1;
             return siblings;
         }
 
-        protected void UpdateStreamStatus(ConcurrentDictionary<string, List<Tuple<int, bool>>> streamsStatusIndex, ConcurrentDictionary<int, string> streamOperatorIndex, int streamId, bool status)
+        protected void UpdateEndpointStatus(ConcurrentDictionary<string, List<Tuple<int, bool>>> endpointsStatusIndex, ConcurrentDictionary<int, string> endpointOperatorIndex, int endpointId, bool status)
         {
-            var streamStatus = streamsStatusIndex[streamOperatorIndex[streamId]];
-            for (int i = 0; i < streamStatus.Count; i++)
+            var endpointStatus = endpointsStatusIndex[endpointOperatorIndex[endpointId]];
+            for (int i = 0; i < endpointStatus.Count; i++)
             {
-                if (streamStatus[i].Item1 == streamId)
+                if (endpointStatus[i].Item1 == endpointId)
                 {
-                    streamStatus[i] = new Tuple<int, bool>(streamId, status);
+                    endpointStatus[i] = new Tuple<int, bool>(endpointId, status);
                     break;
                 }
             }
-            streamsStatusIndex[streamOperatorIndex[streamId]] = streamStatus;
+            endpointsStatusIndex[endpointOperatorIndex[endpointId]] = endpointStatus;
         }
 
         internal void WaitForInputCompletion(int i)
         {
-            if(_onCompletedInputs != null && _inputStreamOperatorIndex != null)
-                            _onCompletedInputs[_inputStreamOperatorIndex[i]].WaitOne();
+            if(_onCompletedInputs != null && _inputEndpointOperatorIndex != null)
+                            _onCompletedInputs[_inputEndpointOperatorIndex[i]].WaitOne();
         }
 
         internal abstract void WaitForSecondaryInputCompletion(int i);
 
         internal void WaitForOutputCompletion(int i)
         {
-            if(_onCompletedOutputs != null && _outputStreamOperatorIndex != null)
-                            _onCompletedOutputs[_outputStreamOperatorIndex[i]].WaitOne();
+            if(_onCompletedOutputs != null && _outputEndpointOperatorIndex != null)
+                            _onCompletedOutputs[_outputEndpointOperatorIndex[i]].WaitOne();
         }
 
         internal void RemoveInput(int i)
         {
-            if (_inputs != null && _inputStreamConnectStatus != null && _inputStreamOperatorIndex != null)
+            if (_inputs != null && _inputEndpointConnectStatus != null && _inputEndpointOperatorIndex != null)
             {
-                UpdateStreamStatus(_inputStreamConnectStatus, _inputStreamOperatorIndex, i, false);
-                if (AreSiblingStreamsReady(_inputStreamConnectStatus, _inputStreamOperatorIndex, i, false))
+                UpdateEndpointStatus(_inputEndpointConnectStatus, _inputEndpointOperatorIndex, i, false);
+                if (AreSiblingEndpointsReady(_inputEndpointConnectStatus, _inputEndpointOperatorIndex, i, false))
                     ResetAfterInputCompletion(i);
             }
         }
@@ -298,24 +377,24 @@ namespace CRA.ClientLibrary.DataProcessing
 
         internal void RemoveOutput(int i)
         {
-            if (_outputs != null && _outputStreamConnectStatus != null && _outputStreamOperatorIndex != null)
+            if (_outputs != null && _outputEndpointConnectStatus != null && _outputEndpointOperatorIndex != null)
             {
-                UpdateStreamStatus(_outputStreamConnectStatus, _outputStreamOperatorIndex, i, false);
-                if (AreSiblingStreamsReady(_outputStreamConnectStatus, _outputStreamOperatorIndex, i, false))
+                UpdateEndpointStatus(_outputEndpointConnectStatus, _outputEndpointOperatorIndex, i, false);
+                if (AreSiblingEndpointsReady(_outputEndpointConnectStatus, _outputEndpointOperatorIndex, i, false))
                    ResetAfterOutputCompletion(i);
             }
         }
 
         private void ResetAfterInputCompletion(int i)
         {
-            if(_onCompletedInputs != null && _inputStreamOperatorIndex != null)
-                            _onCompletedInputs[_inputStreamOperatorIndex[i]].Reset();
+            if(_onCompletedInputs != null && _inputEndpointOperatorIndex != null)
+                            _onCompletedInputs[_inputEndpointOperatorIndex[i]].Reset();
         }
 
         private void ResetAfterOutputCompletion(int i)
         {
-            if(_onCompletedOutputs != null && _outputStreamOperatorIndex != null)
-                            _onCompletedOutputs[_outputStreamOperatorIndex[i]].Reset();
+            if(_onCompletedOutputs != null && _outputEndpointOperatorIndex != null)
+                            _onCompletedOutputs[_outputEndpointOperatorIndex[i]].Reset();
         }
     }
 }

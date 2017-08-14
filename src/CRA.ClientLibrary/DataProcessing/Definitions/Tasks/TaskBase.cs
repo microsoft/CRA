@@ -1,4 +1,6 @@
-﻿using System.Runtime.Serialization;
+﻿using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.Runtime.Serialization;
 
 namespace CRA.ClientLibrary.DataProcessing
 {
@@ -56,6 +58,9 @@ namespace CRA.ClientLibrary.DataProcessing
         [DataMember]
         internal OperatorEndpointsDescriptor _endpointsDescriptor;
 
+        [DataMember]
+        internal ConcurrentDictionary<string, List<ConnectionInfoWithLocality>> _connectionsMap;
+
         public IDeployDescriptor DeployDescriptor
         {
             set
@@ -85,6 +90,22 @@ namespace CRA.ClientLibrary.DataProcessing
                     _endpointsDescriptor = new OperatorEndpointsDescriptor();
 
                 return _endpointsDescriptor;
+            }
+        }
+
+        public ConcurrentDictionary<string, List<ConnectionInfoWithLocality>> ProcessesConnectionsMap
+        {
+            set
+            {
+                _connectionsMap = value;
+            }
+
+            get
+            {
+                if (_connectionsMap == null)
+                    _connectionsMap = new ConcurrentDictionary<string, List<ConnectionInfoWithLocality>>();
+
+                return _connectionsMap;
             }
         }
 

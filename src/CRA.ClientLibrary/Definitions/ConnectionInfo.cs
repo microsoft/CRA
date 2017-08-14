@@ -1,25 +1,37 @@
-﻿namespace CRA.ClientLibrary
+﻿using System;
+using System.Runtime.Serialization;
+
+namespace CRA.ClientLibrary
 {
     /// <summary>
     /// Describes a connection between two process/endpoint pairs
     /// </summary>
+    [Serializable, DataContract]
     public class ConnectionInfo
     {
         /// <summary>
         /// Connection is from this process
         /// </summary>
+        [DataMember]
         public string FromProcess { get; set; }
         /// <summary>
         /// Connection is from this output endpoint
         /// </summary>
+
+        [DataMember]
+
         public string FromEndpoint { get; set; }
         /// <summary>
         /// Connection is to this process
         /// </summary>
+
+        [DataMember]
         public string ToProcess { get; set; }
+
         /// <summary>
         /// Connection is to this input endpoint
         /// </summary>
+        [DataMember]
         public string ToEndpoint { get; set; }
 
 
@@ -69,4 +81,17 @@
             return FromProcess.GetHashCode() ^ FromEndpoint.GetHashCode() ^ ToProcess.GetHashCode() ^ ToEndpoint.GetHashCode();
         }
     }
+
+    [Serializable, DataContract]
+    public class ConnectionInfoWithLocality : ConnectionInfo
+    {
+        [DataMember]
+        public bool IsOnSameCRAInstance { get; set; }
+
+        public ConnectionInfoWithLocality(string fromProcess, string fromEndpoint, string toProcess, string toEndpoint, bool isOnSameCRAInstance) : base(fromProcess, fromEndpoint, toProcess, toEndpoint)
+        {
+            IsOnSameCRAInstance = isOnSameCRAInstance;
+        }
+    }
+
 }

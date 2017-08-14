@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Reflection;
 using System.Linq.Expressions;
-using System.IO;
 using System.Threading.Tasks;
 using System.Collections.Generic;
 
@@ -16,6 +15,9 @@ namespace CRA.ClientLibrary.DataProcessing
         private Type _outputDatasetType;
         private string _outputId;
 
+        private System.Object _produceIfReadyLock = new System.Object();
+        private bool _isProduceIfReadyApplied = false;
+
         public ProducerOperator() : base()
         {
             _cachedDatasets = new Dictionary<string, object>();
@@ -23,20 +25,29 @@ namespace CRA.ClientLibrary.DataProcessing
 
         internal override void InitializeOperator()
         {
-
+            IProcess thisOperator = this;
             if (_inputsIds != null)
-            {
                 for (int i = 0; i < _inputsIds.Length; i++)
-                    AddAsyncInputEndpoint(_inputsIds[i], new OperatorInput(this, i));
-            }
+                {
+                    var fromTuple = _toFromConnections[new Tuple<string, string>(ProcessName, _inputsIds[i])];
+                    if (fromTuple.Item3)
+                        AddAsyncInputEndpoint(_inputsIds[i], new OperatorFusableInput(ref thisOperator, i));
+                    else
+                        AddAsyncInputEndpoint(_inputsIds[i], new OperatorInput(ref thisOperator, i));                   
+                }
 
             CreateAndTransformDataset();
 
             if (_outputsIds != null)
-            {
                 for (int i = 0; i < _outputsIds.Length; i++)
-                    AddAsyncOutputEndpoint(_outputsIds[i], new OperatorOutput(this, i));
-            }
+                {
+                    var toTuple = _fromToConnections[new Tuple<string, string>(ProcessName, _outputsIds[i])];
+                    if(toTuple.Item3)
+                        AddAsyncOutputEndpoint(_outputsIds[i], new OperatorFusableOutput(ref thisOperator, i));
+                    else
+                        AddAsyncOutputEndpoint(_outputsIds[i], new OperatorOutput(ref thisOperator, i));
+                }
+
         }
 
         public void CreateAndTransformDataset()
@@ -161,92 +172,149 @@ namespace CRA.ClientLibrary.DataProcessing
             return compiledProducer(_thisId);
         }
 
-        internal override void ApplyOperatorInput(Stream[] streams)
+        internal override void ApplyOperatorInput(int[] inputIndices)
         {
-            for (int i = 0; i < streams.Length; i++)
-                UpdateStreamStatus(_inputStreamTriggerStatus, _inputStreamOperatorIndex, _inputStreamsInvertedIndex[streams[i]], true);
+            for (int i = 0; i < inputIndices.Length; i++)
+                UpdateEndpointStatus(_inputEndpointTriggerStatus, _inputEndpointOperatorIndex, inputIndices[i], true);
         }
 
-        internal override void ApplyOperatorOutput(Stream[] streams)
+        internal override void ApplyOperatorOutput(int[] outputIndices)
         {
-            for (int i = 0; i < streams.Length; i++)
+            for (int i = 0; i < outputIndices.Length; i++)
             {
-                int currentIndex = i;
-                Task.Run(() => StartProducerAfterTrigger(streams[currentIndex]));
+                int currentIndex = outputIndices[i];
+                Task.Run(() => StartProducerAfterTrigger(currentIndex));
             }
         }
 
-        private async void StartProducerAfterTrigger(Stream stream)
+        private async void StartProducerAfterTrigger(int outputIndex)
         {
-            CRATaskMessageType message = (CRATaskMessageType)(await stream.ReadInt32Async());
-            if (message == CRATaskMessageType.READY)
-                    StartProducerIfReady(stream);                
+            if (_outputs[outputIndex] as StreamEndpoint != null)
+            {
+                CRATaskMessageType message = (CRATaskMessageType)
+                    (await ((StreamEndpoint)_outputs[outputIndex]).Stream.ReadInt32Async());
+                if (message == CRATaskMessageType.READY)
+                {
+                    StartProducerIfReady(outputIndex);
+                }
+            }
+            else
+            {
+                bool isReceived = await ((ObjectEndpoint)_outputs[outputIndex]).OwningOutputEndpoint.InputEndpoint.EndpointContent.OnReceivedReadyMessage();
+                if (isReceived)
+                    StartProducerIfReady(outputIndex);
+            }
+                            
         }
 
-        private void StartProducerIfReady(Stream stream)
+        private void StartProducerIfReady(int outputIndex)
         {
-            UpdateStreamStatus(_outputStreamTriggerStatus, _outputStreamOperatorIndex, _outputStreamsInvertedIndex[stream], true);
-            if (AreAllStreamsReady(_outputStreamTriggerStatus, true))
+            UpdateEndpointStatus(_outputEndpointTriggerStatus, _outputEndpointOperatorIndex, outputIndex, true);
+            if (AreAllEndpointsReady(_outputEndpointTriggerStatus, true))
             {
-                bool isSplitProducer = false;
-                if (_task.Transforms != null && _task.Transforms.Length != 0 &&
-                       _task.TransformsOperations[_task.Transforms.Length - 1] == OperatorType.MoveSplit.ToString())
-                    isSplitProducer = true;
-
-                Task<bool>[] tasks = new Task<bool>[_outputsIds.Length];
-                for (int i = 0; i < tasks.Length; i++)
+                lock (_produceIfReadyLock)
                 {
-                    int taskIndex = i;
-
-                    if (isSplitProducer)
-                        tasks[taskIndex] = StartSplitProducerAsync(taskIndex);
-                    else
-                        tasks[taskIndex] = StartProducerAsync(taskIndex);
-                }
-                bool[] results = Task.WhenAll(tasks).Result;
-
-                bool isSuccess = true;
-                for (int i = 0; i < results.Length; i++)
-                    if (!results[i])
+                    if (!_isProduceIfReadyApplied)
                     {
-                        isSuccess = false;
-                        break;
+                        bool isSplitProducer = false;
+                        if (_task.Transforms != null && _task.Transforms.Length != 0 &&
+                               _task.TransformsOperations[_task.Transforms.Length - 1] == OperatorType.MoveSplit.ToString())
+                            isSplitProducer = true;
+
+                        Task<bool>[] tasks = new Task<bool>[_outputsIds.Length];
+                        for (int i = 0; i < tasks.Length; i++)
+                        {
+                            int taskIndex = i;
+
+                            if (isSplitProducer)
+                                tasks[taskIndex] = StartSplitProducerAsync(taskIndex);
+                            else
+                                tasks[taskIndex] = StartProducerAsync(taskIndex);
+                        }
+                        bool[] results = Task.WhenAll(tasks).Result;
+
+                        bool isSuccess = true;
+                        for (int i = 0; i < results.Length; i++)
+                            if (!results[i])
+                            {
+                                isSuccess = false;
+                                break;
+                            }
+
+                        if (isSuccess)
+                        {
+                            bool[] isSuccessfullyReleased = Task.WhenAll(new Task<bool>[] { ReleaseEndpoints() }).Result;
+                            if (!isSuccessfullyReleased[0])
+                                throw new InvalidOperationException();
+                        }
+
+                        _isProduceIfReadyApplied = true;
                     }
-
-                if (isSuccess)
-                {
-                    if (AreAllStreamsReady(_inputStreamTriggerStatus, true))
-                        foreach (string operatorId in _inputStreamTriggerStatus.Keys)
-                            _onCompletedInputs[operatorId].Set();
-
-                    foreach (string operatorId in _outputStreamTriggerStatus.Keys)
-                           _onCompletedOutputs[operatorId].Set();
                 }
             }
         }
 
-        private Task<bool> StartProducerAsync(int streamIndex)
+        private async Task<bool> ReleaseEndpoints()
+        {
+            for (int i = 0; i < _outputs.Length; i++)
+            {
+                if (_outputs[i] as StreamEndpoint != null)
+                {
+                    CRATaskMessageType message = (CRATaskMessageType)(await((StreamEndpoint)_outputs[i]).Stream.ReadInt32Async());
+                    if (message != CRATaskMessageType.RELEASE)
+                        throw new InvalidOperationException();
+                }
+                else
+                {
+                    bool isReceived = await((ObjectEndpoint)_outputs[i]).OwningOutputEndpoint.InputEndpoint.EndpointContent.OnReceivedReleaseMessage();
+                    if (!isReceived)
+                        throw new InvalidOperationException();
+                }
+            }
+            
+            if (AreAllEndpointsReady(_inputEndpointTriggerStatus, true))
+                foreach (string operatorId in _inputEndpointTriggerStatus.Keys)
+                    _onCompletedInputs[operatorId].Set();
+
+            foreach (string operatorId in _outputEndpointTriggerStatus.Keys)
+                _onCompletedOutputs[operatorId].Set();
+
+            if (_inputs != null)
+            {
+                for (int i = 0; i < _inputs.Length; i++)
+                {
+                    if (_inputs[i] as StreamEndpoint != null)
+                        ((StreamEndpoint)_inputs[i]).Stream.WriteInt32((int)CRATaskMessageType.RELEASE);
+                    else
+                        ((ObjectEndpoint)_inputs[i]).ReleaseTrigger.Set();
+                }
+            }
+
+            return true;
+        }
+
+        private Task<bool> StartProducerAsync(int endpointIndex)
         {
             return Task.Factory.StartNew(() => {
                 MethodInfo method = typeof(OperatorBase).GetMethod("StartProducer");
                 MethodInfo generic = method.MakeGenericMethod(
                         new Type[] { _outputKeyType, _outputPayloadType, _outputDatasetType });
-                generic.Invoke(this, new Object[] { new object[]{_cachedDatasets[_outputId]}, GetSiblingStreamsByStreamId(_outputStreamTriggerStatus,
-                        _outputStreamOperatorIndex, _outputs, streamIndex), 1 });
+                generic.Invoke(this, new Object[] { new object[]{_cachedDatasets[_outputId]}, GetSiblingEndpointsByEndpointId(_outputEndpointTriggerStatus,
+                        _outputEndpointOperatorIndex, endpointIndex), 1 });
                 return true;
             });
         }
 
-        private Task<bool> StartSplitProducerAsync(int streamIndex)
+        private Task<bool> StartSplitProducerAsync(int endpointIndex)
         {
             return Task.Factory.StartNew(() => {
-                int splitIndex = Convert.ToInt32(_outputStreamOperatorIndex[streamIndex].Substring(_outputStreamOperatorIndex[streamIndex].Length - 1));
+                int splitIndex = Convert.ToInt32(_outputEndpointOperatorIndex[endpointIndex].Substring(_outputEndpointOperatorIndex[endpointIndex].Length - 1));
                 object[] splitDatasets = (object[])_cachedDatasets[_outputId];
                 MethodInfo method = typeof(OperatorBase).GetMethod("StartProducer");
                 MethodInfo generic = method.MakeGenericMethod(
                         new Type[] { _outputKeyType, _outputPayloadType, _outputDatasetType });
-                generic.Invoke(this, new Object[] { new object[]{splitDatasets[splitIndex]}, GetSiblingStreamsByStreamId(_outputStreamTriggerStatus,
-                        _outputStreamOperatorIndex, _outputs, streamIndex), 1 });
+                generic.Invoke(this, new Object[] { new object[]{splitDatasets[splitIndex]}, GetSiblingEndpointsByEndpointId(_outputEndpointTriggerStatus,
+                        _outputEndpointOperatorIndex, endpointIndex), 1 });
                 return true;                
             });
         }
@@ -261,7 +329,7 @@ namespace CRA.ClientLibrary.DataProcessing
             base.PrepareOperatorOutput();
         }
 
-        internal override void AddSecondaryInput(int i, Stream stream)
+        internal override void AddSecondaryInput(int i, ref IEndpointContent endpoint)
         {
             throw new NotImplementedException();
         }

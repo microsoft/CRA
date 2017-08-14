@@ -11,7 +11,7 @@ namespace CRA.ClientLibrary.DataProcessing
         protected int _thisId;
         private bool _isSecondaryInput = false;
 
-        public OperatorInput(IProcess process, int thisId, bool isSecondaryInput = false)
+        public OperatorInput(ref IProcess process, int thisId, bool isSecondaryInput = false)
         {
             _operator = (OperatorBase)process;
             _thisId = thisId;
@@ -20,27 +20,30 @@ namespace CRA.ClientLibrary.DataProcessing
 
         public void Dispose()
         {
-            Console.WriteLine("Disposing OperatorInput");
+            Dispose(true);
+            GC.SuppressFinalize(this);
         }
 
-        public Task FromOutputAsync(IProcessOutputEndpoint endpoint, CancellationToken token)
+        protected virtual void Dispose(bool disposing)
         {
-            throw new NotImplementedException();
+            if (disposing)
+            {
+                Console.WriteLine("Disposing OperatorInput");
+            }
         }
 
         public async Task FromStreamAsync(Stream stream, string otherProcess, string otherEndpoint, CancellationToken token)
         {
+            IEndpointContent streamEndpoint = new StreamEndpoint(stream);
             if (_isSecondaryInput)
             {
-                _operator.AddSecondaryInput(_thisId, stream);
+                _operator.AddSecondaryInput(_thisId, ref streamEndpoint);
                 _operator.WaitForSecondaryInputCompletion(_thisId);
-                _operator.RemoveSecondaryInput(_thisId);
             }
             else
             {
-                _operator.AddInput(_thisId, stream);
+                _operator.AddInput(_thisId, ref streamEndpoint);
                 _operator.WaitForInputCompletion(_thisId);
-                _operator.RemoveInput(_thisId);
             }
         }
     }

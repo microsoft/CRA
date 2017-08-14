@@ -1,5 +1,4 @@
 ﻿using System;
-using System.IO;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Text;
@@ -13,40 +12,55 @@ namespace CRA.ClientLibrary.DataProcessing
 
         private string[] _outputsObservers;
 
+        private System.Object _produceIfReadyLock = new System.Object();
+        private bool _isProduceIfReadyApplied = false;
+
         public SubscribeOperator() : base() {}
 
         internal override void InitializeOperator()
         {
+            IProcess thisOperator = this;
             if (_inputsIds != null)
-            {
                 for (int i = 0; i < _inputsIds.Length; i++)
-                    AddAsyncInputEndpoint(_inputsIds[i], new OperatorInput(this, i));
-            }
+                {
+                    var fromTuple = _toFromConnections[new Tuple<string, string>(ProcessName, _inputsIds[i])];
+                    if (fromTuple.Item3)
+                        AddAsyncInputEndpoint(_inputsIds[i], new OperatorFusableInput(ref thisOperator, i));
+                    else
+                        AddAsyncInputEndpoint(_inputsIds[i], new OperatorInput(ref thisOperator, i));
+                }
 
             if (_outputsIds != null)
-            {
                 for (int i = 0; i < _outputsIds.Length; i++)
-                    AddAsyncOutputEndpoint(_outputsIds[i], new OperatorOutput(this, i));
-            }
+                        AddAsyncOutputEndpoint(_outputsIds[i], new OperatorOutput(ref thisOperator, i));
         }
         
-        internal override void ApplyOperatorInput(Stream[] streams){ }
+        internal override void ApplyOperatorInput(int[] inputIndices){ }
 
-        private async Task StartSubscribeIfReady(Stream stream)
+        private async Task StartSubscribeIfReady(int inputIndex)
         {
-            UpdateStreamStatus(_inputStreamTriggerStatus, _inputStreamOperatorIndex, _inputStreamsInvertedIndex[stream], true);
-            if (AreAllStreamsReady(_inputStreamTriggerStatus, true))
+            UpdateEndpointStatus(_inputEndpointTriggerStatus, _inputEndpointOperatorIndex, inputIndex, true);
+            if (AreAllEndpointsReady(_inputEndpointTriggerStatus, true))
             {
                 await Task.Run(() => ApplySubscribe());
 
-                foreach (string operatorId in _outputStreamTriggerStatus.Keys)
-                       _onCompletedOutputs[operatorId].Set();
+                
+                foreach (string operatorId in _outputEndpointTriggerStatus.Keys)
+                    _onCompletedOutputs[operatorId].Set();
 
-                foreach (string operatorId in _inputStreamTriggerStatus.Keys)
-                       _onCompletedInputs[operatorId].Set();
+                foreach (string operatorId in _inputEndpointTriggerStatus.Keys)
+                    _onCompletedInputs[operatorId].Set();
+                  
+
+                for (int i = 0; i < _inputs.Length; i++)
+                {
+                    if (_inputs[i] as StreamEndpoint != null)
+                        ((StreamEndpoint)_inputs[i]).Stream.WriteInt32((int)CRATaskMessageType.RELEASE);
+                    else
+                        ((ObjectEndpoint)_inputs[i]).ReleaseTrigger.Set();
+                }
             }
         }
-
 
         private void ApplySubscribe()
         {
@@ -71,38 +85,67 @@ namespace CRA.ClientLibrary.DataProcessing
             ((TDataset)dataset).Subscribe(observerObject);
         }
 
-        internal override void ApplyOperatorOutput(Stream[] streams)
+        internal override void ApplyOperatorOutput(int[] outputIndices)
         {
-            for (int i = 0; i < streams.Length; i++)
+            for (int i = 0; i < outputIndices.Length; i++)
             {
-                int currentIndex = i;
-                Task.Run(() => StartProducerAfterTrigger(streams[currentIndex]));
+                int currentIndex = outputIndices[i];
+                Task.Run(() => StartProducerAfterTrigger(currentIndex));
             }
         }
 
-        private async void StartProducerAfterTrigger(Stream stream)
+        private async void StartProducerAfterTrigger(int outputIndex)
         {
-            CRATaskMessageType message = (CRATaskMessageType)(await stream.ReadInt32Async());
-            if (message == CRATaskMessageType.READY)
-                    StartProducerIfReady(stream);
+            if (_outputs[outputIndex] as StreamEndpoint != null)
+            {
+                CRATaskMessageType message = (CRATaskMessageType)(await ((StreamEndpoint)_outputs[outputIndex]).Stream.ReadInt32Async());
+                if (message == CRATaskMessageType.READY)
+                            StartProducerIfReady(outputIndex);
+            }
+            else
+            {
+                throw new InvalidCastException();
+            }
         }
 
-        private void StartProducerIfReady(Stream stream)
+        private void StartProducerIfReady(int outputIndex)
         {
-            UpdateStreamStatus(_outputStreamTriggerStatus, _outputStreamOperatorIndex, _outputStreamsInvertedIndex[stream], true);
-            _outputsObservers[_outputStreamsInvertedIndex[stream]] = Encoding.UTF8.GetString(stream.ReadByteArray());
-            if (AreAllStreamsReady(_outputStreamTriggerStatus, true))
+            UpdateEndpointStatus(_outputEndpointTriggerStatus, _outputEndpointOperatorIndex, outputIndex, true);
+            if (_outputs[outputIndex] as StreamEndpoint != null)
             {
-                if (AreAllStreamsReady(_inputStreamConnectStatus, true))
-                {
-                    for (int i = 0; i < _inputs.Length; i++)
-                    {
-                        int currentIndex = i;
-                        Task.Run(() => StartSubscribeIfReady(_inputs[currentIndex]));
-                    }
+                _outputsObservers[outputIndex] =
+                            Encoding.UTF8.GetString(((StreamEndpoint)_outputs[outputIndex]).Stream.ReadByteArray());
+            }
+            else
+            {
+                throw new InvalidCastException();
+            }
 
-                    for (int i = 0; i < _inputs.Length; i++)
-                        _inputs[i].WriteInt32((int)CRATaskMessageType.READY);
+            if (AreAllEndpointsReady(_outputEndpointTriggerStatus, true))
+            {
+                if (AreAllEndpointsReady(_inputEndpointConnectStatus, true))
+                {
+                    lock (_produceIfReadyLock)
+                    {
+                        if (!_isProduceIfReadyApplied)
+                        {
+                            for (int i = 0; i < _inputs.Length; i++)
+                            {
+                                int currentIndex = i;
+                                Task.Run(() => StartSubscribeIfReady(currentIndex));
+                            }
+
+                            for (int i = 0; i < _inputs.Length; i++)
+                            {
+                                if (_inputs[i] as StreamEndpoint != null)
+                                    ((StreamEndpoint)_inputs[i]).Stream.WriteInt32((int)CRATaskMessageType.READY);
+                                else
+                                    ((ObjectEndpoint)_inputs[i]).ReadyTrigger.Set();
+                            }
+
+                            _isProduceIfReadyApplied = true;
+                        }
+                    }
                 }
             }
         }
@@ -119,7 +162,7 @@ namespace CRA.ClientLibrary.DataProcessing
                 _outputsObservers = new string[_outputsIds.Length];
         }
 
-        internal override void AddSecondaryInput(int i, Stream stream)
+        internal override void AddSecondaryInput(int i, ref IEndpointContent endpoint)
         {
             throw new NotImplementedException();
         }

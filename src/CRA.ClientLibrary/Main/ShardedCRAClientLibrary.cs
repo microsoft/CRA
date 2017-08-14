@@ -64,7 +64,6 @@ namespace CRA.ClientLibrary
                 () => { return InstantiateProcess(instanceName, processName, processDefinition, processParameter); });
         }
 
-
         internal int CountProcessShards(ConcurrentDictionary<string, int> processesPerInstanceMap)
         {
             int count = 0;
@@ -73,6 +72,52 @@ namespace CRA.ClientLibrary
                 count += processesPerInstanceMap[key];
             }
             return count;
+        }
+        public bool AreTwoProcessessOnSameCRAInstance(string fromProcessName, ConcurrentDictionary<string, int> fromProcessShards, string toProcessName, ConcurrentDictionary<string, int> toProcessShards)
+        {
+            string fromProcessInstance = null;
+            string fromProcessId = fromProcessName.Substring(fromProcessName.Length - 2);
+            int fromProcessesCount = CountProcessShards(fromProcessShards);
+            int currentCount = 0;
+            foreach (var key in fromProcessShards.Keys)
+            {
+                for (int i = currentCount; i < currentCount + fromProcessShards[key]; i++)
+                {
+                    if (fromProcessId.Equals("$" + i))
+                    {
+                        fromProcessInstance = key;
+                        break;
+                    }
+                }
+
+                if (fromProcessInstance != null)
+                    break;
+
+                currentCount += fromProcessShards[key];
+            }
+
+            string toProcessInstance = null;
+            string toProcessId = toProcessName.Substring(toProcessName.Length - 2);
+            int toProcessesCount = CountProcessShards(toProcessShards);
+            currentCount = 0;
+            foreach (var key in toProcessShards.Keys)
+            {
+                for (int i = currentCount; i < currentCount + toProcessShards[key]; i++)
+                {
+                    if (toProcessId.Equals("$" + i))
+                    {
+                        toProcessInstance = key;
+                        break;
+                    }
+                }
+
+                if (toProcessInstance != null)
+                    break;
+
+                currentCount += toProcessShards[key];
+            }
+
+            return (fromProcessInstance != null) && (toProcessInstance != null) && (fromProcessInstance.Equals(toProcessInstance));
         }
 
         /// <summary>
@@ -179,18 +224,18 @@ namespace CRA.ClientLibrary
         /// </summary>
         /// <param name="fromToConnections"></param>
         /// <returns></returns>
-        public CRAErrorCode ConnectShardedProcesses(ConcurrentDictionary<Tuple<string, string>, Tuple<string, string>> fromToConnections)
+        public CRAErrorCode ConnectShardedProcesses(List<ConnectionInfoWithLocality> fromToConnections)
         {
-            Task<CRAErrorCode>[] tasks = new Task<CRAErrorCode>[fromToConnections.Keys.Count];
+            Task<CRAErrorCode>[] tasks = new Task<CRAErrorCode>[fromToConnections.Count];
 
             int i = 0;
             foreach (var fromToConnection in fromToConnections)
             {
                 int fromToEndpointIndex = i;
                 var currentFromToConnection = fromToConnection;
-                tasks[fromToEndpointIndex] = ConnectAsync(currentFromToConnection.Key.Item1,
-                                                currentFromToConnection.Key.Item2, currentFromToConnection.Value.Item1,
-                                                currentFromToConnection.Value.Item2, ConnectionInitiator.FromSide);
+                tasks[fromToEndpointIndex] = ConnectAsync(currentFromToConnection.FromProcess,
+                                                currentFromToConnection.FromEndpoint, currentFromToConnection.ToProcess,
+                                                currentFromToConnection.ToEndpoint, ConnectionInitiator.FromSide);
                 i++;
             }
             CRAErrorCode[] results = Task.WhenAll(tasks).Result;

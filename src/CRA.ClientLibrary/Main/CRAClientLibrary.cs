@@ -712,6 +712,5 @@ namespace CRA.ClientLibrary
         {
             _connectionTableManager.DeleteConnection(fromProcessName, fromProcessOutput, toProcessName, toProcessInput);
         }
-
     }
 }

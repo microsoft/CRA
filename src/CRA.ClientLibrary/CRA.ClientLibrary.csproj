@@ -121,9 +121,14 @@
     <Compile Include="DataProcessing\Definitions\Tasks\ShuffleTask.cs" />
     <Compile Include="DataProcessing\Definitions\Tasks\SubscribeTask.cs" />
     <Compile Include="DataProcessing\Definitions\Tasks\TaskBase.cs" />
+    <Compile Include="DataProcessing\Operators\Endpoints\IEndpointContent.cs" />
+    <Compile Include="DataProcessing\Operators\Endpoints\OperatorFusableInput.cs" />
     <Compile Include="DataProcessing\Operators\OperatorBase.cs" />
-    <Compile Include="DataProcessing\Operators\OperatorInput.cs" />
-    <Compile Include="DataProcessing\Operators\OperatorOutput.cs" />
+    <Compile Include="DataProcessing\Operators\Endpoints\OperatorInput.cs" />
+    <Compile Include="DataProcessing\Operators\Endpoints\ObjectEndpoint.cs" />
+    <Compile Include="DataProcessing\Operators\Endpoints\OperatorOutput.cs" />
+    <Compile Include="DataProcessing\Operators\Endpoints\OperatorFusableOutput.cs" />
+    <Compile Include="DataProcessing\Operators\Endpoints\StreamEndpoint.cs" />
     <Compile Include="DataProcessing\Operators\ProducerOperator.cs" />
     <Compile Include="DataProcessing\Operators\ShuffleOperator.cs" />
     <Compile Include="DataProcessing\Operators\SubscribeOperator.cs" />

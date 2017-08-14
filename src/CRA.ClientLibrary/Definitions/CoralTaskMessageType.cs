@@ -9,6 +9,7 @@
         CONNECT_PROCESS_RECEIVER_REVERSE,
         PING,
         READY,
+        RELEASE
     };
 
 }

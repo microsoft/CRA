@@ -132,6 +132,11 @@ namespace CRA.ClientLibrary.DataProcessing
         }
 
         public void Subscribe(object observer){}
+
+        public IDataset<Empty, Empty> ToObject()
+        {
+            throw new NotImplementedException();
+        }
     }
 
     public class ShardedDatasetClient

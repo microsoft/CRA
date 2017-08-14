@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.Serialization;
-using System.Threading;
 
 namespace CRA.ClientLibrary.DataProcessing
 {
@@ -33,7 +33,7 @@ namespace CRA.ClientLibrary.DataProcessing
         public static IDeployDescriptor CreateDefaultDeployDescriptor()
         {
             ConcurrentDictionary<string, int> deployShards = new ConcurrentDictionary<string, int>();
-            deployShards.AddOrUpdate("crainst01", 1, (inst, proc) => 1);
+            deployShards.AddOrUpdate("crainst01", 2, (inst, proc) => 1);
             deployShards.AddOrUpdate("crainst02", 1, (inst, proc) => 1);
             return new DeployDescriptorBase(deployShards);
         }
@@ -59,11 +59,14 @@ namespace CRA.ClientLibrary.DataProcessing
                 }
             }
 
+            var tasksDictionary = PrepareTasksDictionary(tasks);
+            var connectionsMap = PrepareProcessesConnectionsMap(client, tasks, tasksIds, tasksDictionary, topology);
+
             bool isSuccessful = true;
             for (int i = 0; i < tasks.Length; i++)
             {
                 tasks[i].EndpointsDescriptor = topology.OperatorsEndpointsDescriptors[tasksIds[i]];
-                
+                tasks[i].ProcessesConnectionsMap = connectionsMap;
                 if (tasks[i].OperationType == OperatorType.Produce)
                     isSuccessful = DeployProduceTask(client, (ProduceTask)tasks[i]);
                 else if (tasks[i].OperationType == OperatorType.Subscribe)
@@ -76,7 +79,66 @@ namespace CRA.ClientLibrary.DataProcessing
 
             return isSuccessful;
         }
-        
+
+        private static Dictionary<string, TaskBase> PrepareTasksDictionary(TaskBase[] tasks)
+        {
+            Dictionary<string, TaskBase> dictionary = new Dictionary<string, TaskBase>();
+            for (int i = 0; i < tasks.Length; i++)
+            {
+                if (tasks[i].OperationType == OperatorType.Move)
+                    dictionary.Add(((ShuffleTask)tasks[i]).ReducerProcessName, tasks[i]);
+                else
+                    dictionary.Add(tasks[i].OutputId, tasks[i]);
+            }
+
+            return dictionary;
+        }
+
+        private static ConcurrentDictionary<string, List<ConnectionInfoWithLocality>> PrepareProcessesConnectionsMap(
+                        CRAClientLibrary client, TaskBase[] tasks, string[] tasksIds, Dictionary<string, TaskBase> tasksDictionary, OperatorsToplogy topology)
+        {
+            ConcurrentDictionary<string, List<ConnectionInfoWithLocality>> processesConnectionsMap = new ConcurrentDictionary<string, List<ConnectionInfoWithLocality>>();
+
+            for (int i = 0; i < tasks.Length; i++)
+            {
+                int shardsCount = client.CountProcessShards(tasks[i].DeployDescriptor.InstancesMap());
+
+                tasks[i].EndpointsDescriptor = topology.OperatorsEndpointsDescriptors[tasksIds[i]];
+                if (tasks[i].OperationType == OperatorType.Move)
+                {
+                    var shuffleTask = (ShuffleTask)tasks[i];
+                    foreach (string fromInputId in shuffleTask.SecondaryEndpointsDescriptor.FromInputs.Keys)
+                    {
+                        var flatFromToConnections = PrepareFlatConnectionsMap(client, shardsCount,
+                                    fromInputId, topology.OperatorsEndpointsDescriptors[fromInputId], tasksDictionary[fromInputId].DeployDescriptor.InstancesMap(),
+                                    shuffleTask.ReducerProcessName, shuffleTask.EndpointsDescriptor, shuffleTask.DeployDescriptor.InstancesMap());
+                        processesConnectionsMap.AddOrUpdate(fromInputId + shuffleTask.OutputId, 
+                                                flatFromToConnections, (key, value) => flatFromToConnections);
+                    }
+
+                    var fromInput = shuffleTask.EndpointsDescriptor.FromInputs.First().Key;
+                    var newFromInputId = fromInput.Substring(0, fromInput.Length - 1);
+                    var shuffleFromToConnections = PrepareShuffleConnectionsMap(client, shardsCount,
+                                                    newFromInputId, topology.OperatorsEndpointsDescriptors[newFromInputId], tasksDictionary[newFromInputId].DeployDescriptor.InstancesMap(),
+                                                    shuffleTask.ReducerProcessName, shuffleTask.EndpointsDescriptor, shuffleTask.DeployDescriptor.InstancesMap());
+                    processesConnectionsMap.AddOrUpdate(newFromInputId + shuffleTask.ReducerProcessName, 
+                                            shuffleFromToConnections, (key, value) => shuffleFromToConnections);
+                }
+                else
+                {
+                    foreach (string fromInputId in tasks[i].EndpointsDescriptor.FromInputs.Keys)
+                    {
+                        var flatFromToConnections = PrepareFlatConnectionsMap(client, shardsCount,
+                                    fromInputId, topology.OperatorsEndpointsDescriptors[fromInputId], tasksDictionary[fromInputId].DeployDescriptor.InstancesMap(),
+                                    tasks[i].OutputId, tasks[i].EndpointsDescriptor, tasks[i].DeployDescriptor.InstancesMap());
+                        processesConnectionsMap.AddOrUpdate(fromInputId + tasks[i].OutputId,
+                                                flatFromToConnections, (key, value) => flatFromToConnections);
+                    }
+                }
+            }
+            return processesConnectionsMap;
+        }
+
         public static bool DeployProduceTask(CRAClientLibrary client, ProduceTask task)
         {
             try { 
@@ -104,14 +166,9 @@ namespace CRA.ClientLibrary.DataProcessing
                                             task, task.DeployDescriptor.InstancesMap());
                 if (status == CRAErrorCode.Success)
                 {
-                    int shardsCount = client.CountProcessShards(task.DeployDescriptor.InstancesMap());
                     foreach (string fromInputId in task.EndpointsDescriptor.FromInputs.Keys)
-                    {
-                        var flatFromToConnections = PrepareFlatConnectionsMap(shardsCount,
-                                    fromInputId, topology.OperatorsEndpointsDescriptors[fromInputId],
-                                    task.OutputId, task.EndpointsDescriptor);
-                        client.ConnectShardedProcesses(flatFromToConnections);
-                    }
+                        client.ConnectShardedProcesses(task.ProcessesConnectionsMap[fromInputId  + task.OutputId]);
+
                     return true;
                 }
                 else
@@ -133,21 +190,12 @@ namespace CRA.ClientLibrary.DataProcessing
                                                 task, task.DeployDescriptor.InstancesMap());
                 if (status == CRAErrorCode.Success)
                 {
-                    int shardsCount = client.CountProcessShards(task.DeployDescriptor.InstancesMap());
                     foreach (string fromInputId in task.SecondaryEndpointsDescriptor.FromInputs.Keys)
-                    {
-                        var flatFromToConnections = PrepareFlatConnectionsMap(shardsCount,
-                                    fromInputId, topology.OperatorsEndpointsDescriptors[fromInputId],
-                                    task.OutputId, task.EndpointsDescriptor);
-                        client.ConnectShardedProcesses(flatFromToConnections);
-                    }
+                        client.ConnectShardedProcesses(task.ProcessesConnectionsMap[fromInputId + task.OutputId]);
 
                     var fromInput = task.EndpointsDescriptor.FromInputs.First().Key;
                     var newFromInputId = fromInput.Substring(0, fromInput.Length - 1);
-                    var shuffleFromToConnections = PrepareShuffleConnectionsMap(shardsCount,
-                                                    newFromInputId, topology.OperatorsEndpointsDescriptors[newFromInputId],
-                                                    task.ReducerProcessName, task.EndpointsDescriptor);
-                    client.ConnectShardedProcesses(shuffleFromToConnections);
+                    client.ConnectShardedProcesses(task.ProcessesConnectionsMap[newFromInputId + task.ReducerProcessName]);
 
                     return true;
                 }
@@ -175,7 +223,6 @@ namespace CRA.ClientLibrary.DataProcessing
                     for (int i = 0; i < shardsCount; i++)
                         for (int j = 0; j < inputEndpoints.Length; j++)
                             clientTerminal.FromRemoteOutputEndpointStream(inputEndpoints[j] + i, fromInputId + "$" + i, outputEndpoints[j]);
-                    Thread.Sleep(1000);
                 }
                 return true;
             }
@@ -186,12 +233,11 @@ namespace CRA.ClientLibrary.DataProcessing
             }
         }
 
-        private static ConcurrentDictionary<Tuple<string, string>, Tuple<string, string>> PrepareFlatConnectionsMap(
-                            int shardsCount, string fromProcess, OperatorEndpointsDescriptor fromProcessDescriptor,
-                            string toProcess, OperatorEndpointsDescriptor toProcessDescriptor)
+        private static List<ConnectionInfoWithLocality> PrepareFlatConnectionsMap(CRAClientLibrary client, int shardsCount, 
+                            string fromProcess, OperatorEndpointsDescriptor fromProcessDescriptor, ConcurrentDictionary<string, int> fromProcessShards,
+                            string toProcess, OperatorEndpointsDescriptor toProcessDescriptor, ConcurrentDictionary<string, int> toProcessShards)
         {
-            ConcurrentDictionary<Tuple<string, string>, Tuple<string, string>> fromToConnections 
-                            = new ConcurrentDictionary<Tuple<string, string>, Tuple<string, string>>();
+            List<ConnectionInfoWithLocality> fromToConnections = new List<ConnectionInfoWithLocality>();
             string[] outputs = OperatorUtils.PrepareOutputEndpointsIdsForOperator(
                                                             toProcess, fromProcessDescriptor);
             string[] inputs = OperatorUtils.PrepareInputEndpointsIdsForOperator(
@@ -200,22 +246,22 @@ namespace CRA.ClientLibrary.DataProcessing
             {
                 string currentFromProcess = fromProcess + "$" + i;
                 string currentToProcess = toProcess + "$" + i;
+                bool hasSameCRAInstances = client.AreTwoProcessessOnSameCRAInstance(currentFromProcess, fromProcessShards, currentToProcess, toProcessShards);
                 for (int j = 0; j < outputs.Length; j++)
                 {
                     var fromProcessTuple = new Tuple<string, string>(currentFromProcess, outputs[j]);
                     var toProcessTuple = new Tuple<string, string>(currentToProcess, inputs[j]);
-                    fromToConnections.AddOrUpdate(fromProcessTuple, toProcessTuple, (fromTuple, toTuple) => toProcessTuple);
+                    fromToConnections.Add(new ConnectionInfoWithLocality(currentFromProcess, outputs[j], currentToProcess, inputs[j], hasSameCRAInstances));
                 }
             }
             return fromToConnections;
         }
 
-        private static ConcurrentDictionary<Tuple<string, string>, Tuple<string, string>> PrepareShuffleConnectionsMap(
-                            int shardsCount, string fromProcess, OperatorEndpointsDescriptor fromProcessDescriptor, 
-                            string toProcess, OperatorEndpointsDescriptor toProcessDescriptor)
+        private static List<ConnectionInfoWithLocality> PrepareShuffleConnectionsMap(CRAClientLibrary client, int shardsCount, 
+                            string fromProcess, OperatorEndpointsDescriptor fromProcessDescriptor, ConcurrentDictionary<string, int> fromProcessShards,
+                            string toProcess, OperatorEndpointsDescriptor toProcessDescriptor, ConcurrentDictionary<string, int> toProcessShards)
         {
-            ConcurrentDictionary<Tuple<string, string>, Tuple<string, string>> fromToConnections
-                            = new ConcurrentDictionary<Tuple<string, string>, Tuple<string, string>>();
+           List<ConnectionInfoWithLocality> fromToConnections = new List<ConnectionInfoWithLocality>();
             for (int i = 0; i < shardsCount; i++)
             {
                 for (int j = 0; j < shardsCount; j++)
@@ -226,12 +272,9 @@ namespace CRA.ClientLibrary.DataProcessing
                                                                 toProcess + j, fromProcessDescriptor);
                     string[] currentInputs = OperatorUtils.PrepareInputEndpointsIdsForOperator(
                                                                 fromProcess + i, toProcessDescriptor);
+                    bool hasSameCRAInstances = client.AreTwoProcessessOnSameCRAInstance(currentFromProcess, fromProcessShards, currentToProcess, toProcessShards);
                     for (int k = 0; k < currentOutputs.Length; k++)
-                    {
-                        var fromProcessTuple = new Tuple<string, string>(currentFromProcess, currentOutputs[k]);
-                        var toProcessTuple = new Tuple<string, string>(currentToProcess, currentInputs[k]);
-                        fromToConnections.AddOrUpdate(fromProcessTuple, toProcessTuple, (fromTuple, toTuple) => toProcessTuple);
-                    }
+                        fromToConnections.Add(new ConnectionInfoWithLocality(currentFromProcess, currentOutputs[k], currentToProcess, currentInputs[k], hasSameCRAInstances));
                 }
             }
 

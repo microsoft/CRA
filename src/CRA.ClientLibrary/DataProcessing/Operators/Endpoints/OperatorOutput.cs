@@ -10,7 +10,7 @@ namespace CRA.ClientLibrary.DataProcessing
         protected OperatorBase _operator;
         protected int _thisId;
 
-        public OperatorOutput(IProcess process, int thisId)
+        public OperatorOutput(ref IProcess process, int thisId)
         {
             _operator = (OperatorBase)process;
             _thisId = thisId;
@@ -18,19 +18,23 @@ namespace CRA.ClientLibrary.DataProcessing
 
         public void Dispose()
         {
-            Console.WriteLine("Disposing OperatorOutput");
+            Dispose(true);
+            GC.SuppressFinalize(this);
         }
 
-        public Task ToInputAsync(IProcessInputEndpoint endpoint, CancellationToken token)
+        protected virtual void Dispose(bool disposing)
         {
-            throw new NotImplementedException();
+            if (disposing)
+            {
+                Console.WriteLine("Disposing OperatorOutput");
+            }
         }
 
         public async Task ToStreamAsync(Stream stream, string otherProcess, string otherEndpoint, CancellationToken token)
         {
-            _operator.AddOutput(_thisId, stream);
+            IEndpointContent streamEndpoint = new StreamEndpoint(stream);
+            _operator.AddOutput(_thisId, ref streamEndpoint);
             _operator.WaitForOutputCompletion(_thisId);
-            _operator.RemoveOutput(_thisId);
         }
     }
 }
