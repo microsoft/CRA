@@ -25,6 +25,18 @@ namespace CRA.ClientLibrary.DataProcessing
     }
 
     [Serializable, DataContract]
+    public class StructTuple<T1, T2>
+    {
+        [DataMember]
+        public T1 Item1;
+
+        [DataMember]
+        public T2 Item2;
+   
+        public StructTuple() { }
+    }
+
+    [Serializable, DataContract]
     public struct Empty : IEquatable<Empty>
     {
         /// <summary>

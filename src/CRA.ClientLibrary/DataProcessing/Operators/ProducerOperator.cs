@@ -191,8 +191,7 @@ namespace CRA.ClientLibrary.DataProcessing
         {
             if (_outputs[outputIndex] as StreamEndpoint != null)
             {
-                CRATaskMessageType message = (CRATaskMessageType)
-                    (await ((StreamEndpoint)_outputs[outputIndex]).Stream.ReadInt32Async());
+                CRATaskMessageType message = (CRATaskMessageType)(await ((StreamEndpoint)_outputs[outputIndex]).Stream.ReadInt32Async());
                 if (message == CRATaskMessageType.READY)
                 {
                     StartProducerIfReady(outputIndex);
@@ -202,9 +201,11 @@ namespace CRA.ClientLibrary.DataProcessing
             {
                 bool isReceived = await ((ObjectEndpoint)_outputs[outputIndex]).OwningOutputEndpoint.InputEndpoint.EndpointContent.OnReceivedReadyMessage();
                 if (isReceived)
+                {
+                    ((ObjectEndpoint)_outputs[outputIndex]).OwningOutputEndpoint.InputEndpoint.EndpointContent.ReadyTrigger.Reset();
                     StartProducerIfReady(outputIndex);
+                }
             }
-                            
         }
 
         private void StartProducerIfReady(int outputIndex)
@@ -243,10 +244,21 @@ namespace CRA.ClientLibrary.DataProcessing
 
                         if (isSuccess)
                         {
-                            bool[] isSuccessfullyReleased = Task.WhenAll(new Task<bool>[] { ReleaseEndpoints() }).Result;
-                            if (!isSuccessfullyReleased[0])
-                                throw new InvalidOperationException();
+                            bool[] isReleased = Task.WhenAll(new Task<bool>[] { isReleaseAcquired() }).Result;
+                            if (!isReleased[0])
+                            {
+                                _isProduceIfReadyApplied = false;
+                                for (int i = 0; i < _outputs.Length; i++)
+                                {
+                                    if (_outputs[i] as ObjectEndpoint != null)
+                                        ((ObjectEndpoint)_outputs[i]).OwningOutputEndpoint.InputEndpoint.EndpointContent.ReadyTrigger.Reset();
+                                }
+
+                                StartProducerIfReady(0);
+                            }
                         }
+                        else
+                            throw new InvalidOperationException();
 
                         _isProduceIfReadyApplied = true;
                     }
@@ -254,43 +266,86 @@ namespace CRA.ClientLibrary.DataProcessing
             }
         }
 
-        private async Task<bool> ReleaseEndpoints()
+        private Task<bool> OnReceivedReadyMessage(int outputId)
         {
+            return ((ObjectEndpoint)_outputs[outputId]).OwningOutputEndpoint.InputEndpoint.EndpointContent.OnReceivedReadyMessage();
+        }
+
+        private Task<bool> OnReceivedReleaseMessage(int outputId)
+        {
+           return ((ObjectEndpoint)_outputs[outputId]).OwningOutputEndpoint.InputEndpoint.EndpointContent.OnReceivedReleaseMessage();
+        }
+
+        private bool AreAllFlagsTrue(bool[] flags)
+        {
+            bool areAllFlagsTrue = true;
+            for (int i = 0; i < flags.Length; i++)
+            {
+                if (flags[i] == false)
+                {
+                    areAllFlagsTrue = false;
+                    break;
+                }               
+            }
+            return areAllFlagsTrue;
+        }
+
+        private async Task<bool> isReleaseAcquired()
+        {
+            bool[] releaseFlags = new bool[_outputs.Length];
+            for (int i = 0; i < releaseFlags.Length; i++)
+                releaseFlags[i] = false;
+
+            bool[] reuseFlags = new bool[_outputs.Length];
+            for (int i = 0; i < reuseFlags.Length; i++)
+                reuseFlags[i] = false;
+
             for (int i = 0; i < _outputs.Length; i++)
             {
                 if (_outputs[i] as StreamEndpoint != null)
                 {
-                    CRATaskMessageType message = (CRATaskMessageType)(await((StreamEndpoint)_outputs[i]).Stream.ReadInt32Async());
-                    if (message != CRATaskMessageType.RELEASE)
+                    CRATaskMessageType message = (CRATaskMessageType)(await ((StreamEndpoint)_outputs[i]).Stream.ReadInt32Async());
+                    if (message == CRATaskMessageType.READY)
+                        reuseFlags[i] = true;
+                    else if (message == CRATaskMessageType.RELEASE)
+                        releaseFlags[i] = true;
+                    else
                         throw new InvalidOperationException();
                 }
                 else
                 {
-                    bool isReceived = await((ObjectEndpoint)_outputs[i]).OwningOutputEndpoint.InputEndpoint.EndpointContent.OnReceivedReleaseMessage();
-                    if (!isReceived)
-                        throw new InvalidOperationException();
-                }
-            }
-            
-            if (AreAllEndpointsReady(_inputEndpointTriggerStatus, true))
-                foreach (string operatorId in _inputEndpointTriggerStatus.Keys)
-                    _onCompletedInputs[operatorId].Set();
-
-            foreach (string operatorId in _outputEndpointTriggerStatus.Keys)
-                _onCompletedOutputs[operatorId].Set();
-
-            if (_inputs != null)
-            {
-                for (int i = 0; i < _inputs.Length; i++)
-                {
-                    if (_inputs[i] as StreamEndpoint != null)
-                        ((StreamEndpoint)_inputs[i]).Stream.WriteInt32((int)CRATaskMessageType.RELEASE);
+                    int currentIndex = i;
+                    int receivedMessageType = Task.WaitAny(new Task<bool>[] { Task.Run(() => OnReceivedReadyMessage(currentIndex)), Task.Run(() => OnReceivedReleaseMessage(currentIndex)) });
+                    if (receivedMessageType == 0)
+                        reuseFlags[i] = true;
                     else
-                        ((ObjectEndpoint)_inputs[i]).ReleaseTrigger.Set();
+                        releaseFlags[i] = true;
                 }
             }
 
-            return true;
+            if (AreAllFlagsTrue(releaseFlags))
+            {
+                if (AreAllEndpointsReady(_inputEndpointTriggerStatus, true))
+                    foreach (string operatorId in _inputEndpointTriggerStatus.Keys)
+                        _onCompletedInputs[operatorId].Set();
+
+                foreach (string operatorId in _outputEndpointTriggerStatus.Keys)
+                    _onCompletedOutputs[operatorId].Set();
+
+                if (_inputs != null)
+                {
+                    for (int i = 0; i < _inputs.Length; i++)
+                    {
+                        if (_inputs[i] as StreamEndpoint != null)
+                            ((StreamEndpoint)_inputs[i]).Stream.WriteInt32((int)CRATaskMessageType.RELEASE);
+                        else
+                            ((ObjectEndpoint)_inputs[i]).ReleaseTrigger.Set();
+                    }
+                }
+                return true;
+            }
+            else
+                return false;
         }
 
         private Task<bool> StartProducerAsync(int endpointIndex)

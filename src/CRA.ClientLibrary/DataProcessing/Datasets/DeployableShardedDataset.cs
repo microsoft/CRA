@@ -282,13 +282,34 @@ namespace CRA.ClientLibrary.DataProcessing
                 {
                     inputConnections[key].WriteInt32((int)CRATaskMessageType.READY);
                     inputConnections[key].WriteByteArray(Encoding.UTF8.GetBytes(SerializationHelper.Serialize(observer)));
+                    inputConnections[key].WriteInt32((int)CRATaskMessageType.RELEASE);
                 }
             }
         }
 
-        public override void SubscribeToClient<TDatasetObserver>(Expression<Func<TDatasetObserver>> observer)
+        public override void MultiSubscribe<TDatasetObserver>(Expression<Func<TDatasetObserver>> observer, int runsCount)
         {
-            Subscribe(observer);
+            var inputConnections = _clientTerminal.ConnectionData.InputConnections;
+            for (int i = 0; i < runsCount; i++)
+            {
+                IShardedDataset<TKeyO, TPayloadO, TDataSetO> deployedDataset = null;
+                if (!_isDeployed)
+                    deployedDataset = Deploy();
+
+                if (!_isDeployed && deployedDataset == null)
+                    throw new InvalidOperationException();
+                else
+                {
+                    foreach (var key in inputConnections.Keys)
+                    {
+                        inputConnections[key].WriteInt32((int)CRATaskMessageType.READY);
+                        inputConnections[key].WriteByteArray(Encoding.UTF8.GetBytes(SerializationHelper.Serialize(observer)));
+                    }
+                }
+            }
+
+            foreach (var key in inputConnections.Keys)
+                inputConnections[key].WriteInt32((int)CRATaskMessageType.RELEASE);
         }
 
     }

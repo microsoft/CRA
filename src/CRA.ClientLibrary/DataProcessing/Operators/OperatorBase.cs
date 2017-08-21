@@ -179,6 +179,7 @@ namespace CRA.ClientLibrary.DataProcessing
                 else
                 {
                     ((ObjectEndpoint)_inputs[inputsIndices[0]]).OnReceivedFireMessage();
+                    ((ObjectEndpoint)_inputs[inputsIndices[0]]).FireTrigger.Reset();
                     return (TDataset)(((ObjectEndpoint)_inputs[inputsIndices[0]]).OwningInputEndpoint.Dataset);
                 }
 

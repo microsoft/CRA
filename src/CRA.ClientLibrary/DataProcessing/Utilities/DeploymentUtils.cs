@@ -30,12 +30,18 @@ namespace CRA.ClientLibrary.DataProcessing
 
     public static class DeploymentUtils
     {
+        public static IDeployDescriptor DefaultDeployDescriptor { get; set; }
+
         public static IDeployDescriptor CreateDefaultDeployDescriptor()
         {
-            ConcurrentDictionary<string, int> deployShards = new ConcurrentDictionary<string, int>();
-            deployShards.AddOrUpdate("crainst01", 2, (inst, proc) => 1);
-            deployShards.AddOrUpdate("crainst02", 1, (inst, proc) => 1);
-            return new DeployDescriptorBase(deployShards);
+            if (DefaultDeployDescriptor == null)
+            {
+                ConcurrentDictionary<string, int> deployShards = new ConcurrentDictionary<string, int>();
+                deployShards.AddOrUpdate("crainst01", 1, (inst, proc) => 1);
+                return new DeployDescriptorBase(deployShards);
+            }
+            else
+                return DefaultDeployDescriptor;
         }
 
         public static bool DeployOperators(CRAClientLibrary client, OperatorsToplogy topology)

@@ -87,7 +87,7 @@ namespace CRA.ClientLibrary.DataProcessing
             //TODO: to be implemented here
         }
 
-        public override void SubscribeToClient<TDatasetObserver>(Expression<Func<TDatasetObserver>> observer)
+        public override void MultiSubscribe<TDatasetObserver>(Expression<Func<TDatasetObserver>> observer, int runsCount)
         {
             if (!_isDeployed) Deploy();
             //TODO: to be implemented here
