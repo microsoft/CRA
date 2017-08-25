@@ -15,7 +15,17 @@ namespace CRA.ClientLibrary.DataProcessing
         internal List<string> OperatorsIds { get { return _operatorsIds; } }
         internal List<TaskBase> OperatorsTasks { get { return _operatorsTasks; } }
 
-        public OperatorsToplogy()
+        private static OperatorsToplogy _instance = null;
+
+        public static OperatorsToplogy GetInstance()
+        {
+            if (_instance == null)
+                _instance = new OperatorsToplogy();
+
+            return _instance;
+        }
+
+        private OperatorsToplogy()
         {
             _operatorsEndpointsDescriptors = new ConcurrentDictionary<string, OperatorEndpointsDescriptor>();
             _operatorsIds = new List<string>();
@@ -147,13 +157,136 @@ namespace CRA.ClientLibrary.DataProcessing
             }
         }
 
+        private void UpdateOperatorsSecondaryInput(string firstOperatorId, string secondOperatorId, string secondaryInputId)
+        {
+            OperatorEndpointsDescriptor secondOperatorDescriptor = _operatorsEndpointsDescriptors[secondOperatorId];
+            var secondaryInputs = secondOperatorDescriptor.SecondaryFromInputs;
+
+            var secondOperatorInputs = secondOperatorDescriptor.FromInputs;
+            if (!secondOperatorInputs.ContainsKey(secondaryInputId))
+                RemoveOperatorOutput(secondaryInputId, secondOperatorId);
+            AddOperatorInput(firstOperatorId, secondaryInputId, secondaryInputs[secondaryInputId]);
+            AddOperatorOutput(secondaryInputId, firstOperatorId, secondaryInputs[secondaryInputId]);
+        }
+
+        private int RetrieveTaskIndexOfOperator(string operatorId, string[] operatorsIds)
+        {
+            for (int i = 0; i < operatorsIds.Length; i++)
+            {
+                if (operatorsIds[i].Equals(operatorId))
+                    return i;
+            }
+
+            throw new InvalidOperationException();
+        }
+
         internal void PrepareFinalOperatorsTasks()
         {
             string[] operatorsIds = _operatorsIds.ToArray();
             TaskBase[] tasks =  _operatorsTasks.ToArray();
+
+            List<string>[] tmpTransforms = new List<string>[tasks.Length];
+            List<string>[] tmpTransformsOperations = new List<string>[tasks.Length];
+            List<string>[] tmpTransformsTypes = new List<string>[tasks.Length];
+            List<OperatorInputs>[] tmpTransformsInputs = new List<OperatorInputs>[tasks.Length];
+
+            for(int i = 0; i < tasks.Length; i++)
+            {
+                tmpTransforms[i] = new List<string>();
+                tmpTransformsOperations[i] = new List<string>();
+                tmpTransformsTypes[i] = new List<string>();
+                tmpTransformsInputs[i] = new List<OperatorInputs>();
+            }
+
             if (tasks.Length >= 2)
             {
-                for (int i = 0; i < operatorsIds.Length - 1; i++) 
+                for (int i = 0; i < operatorsIds.Length; i++)
+                {
+                    if (tasks[i].Transforms != null)
+                    {
+                        int lastProcessedTransformIndex = 0;
+                        for (int j = 0; j < tasks[i].Transforms.Length; j++)
+                        {
+                            var currentInput = tasks[i].TransformsInputs[j].InputId1;
+                            int inputTaskIndex = RetrieveTaskIndexOfOperator(currentInput, operatorsIds);
+
+                            if (tmpTransforms[inputTaskIndex].Count > 0 &&
+                                tmpTransformsOperations[inputTaskIndex][tmpTransforms[inputTaskIndex].Count - 1] == OperatorType.MoveSplit.ToString())
+                            {
+                                break;
+                            }
+                            else
+                            {
+                                tmpTransforms[inputTaskIndex].Add(tasks[i].Transforms[j]);
+                                tmpTransformsOperations[inputTaskIndex].Add(tasks[i].TransformsOperations[j]);
+                                tmpTransformsTypes[inputTaskIndex].Add(tasks[i].TransformsTypes[j]);
+                                tmpTransformsInputs[inputTaskIndex].Add(tasks[i].TransformsInputs[j]);
+
+                                if (tasks[i].TransformsOperations[j] == OperatorType.BinaryTransform.ToString())
+                                {
+                                    var currentSecondaryInput = tasks[i].TransformsInputs[j].InputId2;
+
+                                    if (tasks[inputTaskIndex].OperationType != OperatorType.Move && tasks[i].OperationType != OperatorType.Move)
+                                        UpdateOperatorsSecondaryInput(operatorsIds[inputTaskIndex], operatorsIds[i], currentSecondaryInput);
+                                    else if (tasks[inputTaskIndex].OperationType != OperatorType.Move && tasks[i].OperationType == OperatorType.Move)
+                                        UpdateOperatorsSecondaryInput(operatorsIds[inputTaskIndex], ((ShuffleTask)tasks[i]).MapperProcessName, currentSecondaryInput);
+                                    else if (tasks[inputTaskIndex].OperationType == OperatorType.Move && tasks[i].OperationType != OperatorType.Move)
+                                        UpdateOperatorsSecondaryInput(((ShuffleTask)tasks[inputTaskIndex]).ReducerProcessName, operatorsIds[i], currentSecondaryInput);
+                                    else
+                                        UpdateOperatorsSecondaryInput(((ShuffleTask)tasks[inputTaskIndex]).ReducerProcessName, ((ShuffleTask)tasks[i]).MapperProcessName, currentSecondaryInput);
+                                }
+
+                                lastProcessedTransformIndex++;
+                            }
+                        }
+
+                        for (int k = lastProcessedTransformIndex; k < tasks[i].Transforms.Length; k++)
+                        {
+                            tmpTransforms[i].Add(tasks[i].Transforms[k]);
+                            tmpTransformsOperations[i].Add(tasks[i].TransformsOperations[k]);
+                            tmpTransformsTypes[i].Add(tasks[i].TransformsTypes[k]);
+                            tmpTransformsInputs[i].Add(tasks[i].TransformsInputs[k]);
+                        }
+
+                        if (tasks[i].OperationType == OperatorType.Move)
+                        {
+                            var currentInput = ((ShuffleTask)tasks[i]).ShuffleTransformsInputs[0].InputId1;
+                            int inputTaskIndex = RetrieveTaskIndexOfOperator(currentInput, operatorsIds);
+
+                            if (!(tmpTransforms[inputTaskIndex].Count > 0 &&
+                                tmpTransformsOperations[inputTaskIndex][tmpTransforms[inputTaskIndex].Count - 1] == OperatorType.MoveSplit.ToString()))
+                            {
+                                tmpTransforms[inputTaskIndex].Add(((ShuffleTask)tasks[i]).ShuffleTransforms[0]);
+                                tmpTransformsOperations[inputTaskIndex].Add(((ShuffleTask)tasks[i]).ShuffleTransformsOperations[0]);
+                                tmpTransformsTypes[inputTaskIndex].Add(((ShuffleTask)tasks[i]).ShuffleTransformsTypes[0]);
+                                tmpTransformsInputs[inputTaskIndex].Add(((ShuffleTask)tasks[i]).ShuffleTransformsInputs[0]);
+                                tasks[inputTaskIndex].SecondaryShuffleDescriptor = ((ShuffleTask)tasks[i]).ShuffleDescriptor;
+                            }
+                            
+                        }
+                    }
+                }
+
+                for (int i = 0; i < tasks.Length; i++)
+                {
+                    tasks[i].Transforms = tmpTransforms[i].ToArray();
+                    tasks[i].TransformsOperations = tmpTransformsOperations[i].ToArray();
+                    tasks[i].TransformsTypes = tmpTransformsTypes[i].ToArray();
+                    tasks[i].TransformsInputs = tmpTransformsInputs[i].ToArray();
+                }
+
+                _operatorsTasks = new List<TaskBase>(tasks);
+            }
+        }
+
+        /*
+        internal void PrepareFinalOperatorsTasks()
+        {
+            string[] operatorsIds = _operatorsIds.ToArray();
+            TaskBase[] tasks = _operatorsTasks.ToArray();
+            if (tasks.Length >= 2)
+            {
+                for (int i = 0; i < operatorsIds.Length - 1; i++)
                 {
                     List<string> transforms = new List<string>();
                     List<string> transformsOperations = new List<string>();
@@ -177,7 +310,7 @@ namespace CRA.ClientLibrary.DataProcessing
                         transformsInputs.Add(((ShuffleTask)tasks[i + 1]).ShuffleTransformsInputs[0]);
                         secondaryShuffleDescriptor = ((ShuffleTask)tasks[i + 1]).ShuffleDescriptor;
                     }
-                    
+
                     if (transforms.Count > 0)
                     {
                         tasks[i].Transforms = transforms.ToArray();
@@ -199,7 +332,7 @@ namespace CRA.ClientLibrary.DataProcessing
                 }
                 _operatorsTasks = new List<TaskBase>(tasks);
             }
-        }
+        }*/
     }
 
     [Serializable, DataContract]

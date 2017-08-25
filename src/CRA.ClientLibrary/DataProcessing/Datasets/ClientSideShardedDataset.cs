@@ -49,7 +49,7 @@ namespace CRA.ClientLibrary.DataProcessing
         {
             if (!_isDeployed)
             {
-                OperatorsToplogy operatorsTopology = new OperatorsToplogy();
+                OperatorsToplogy operatorsTopology = OperatorsToplogy.GetInstance();
 
                 GenerateProduceTask(ref operatorsTopology);
 

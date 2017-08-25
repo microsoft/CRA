@@ -138,16 +138,11 @@ namespace CRA.ClientLibrary.DataProcessing
         
         private void ApplySubscribe()
         {
-            object dataset = CreateDatasetFromInput(_task.InputIds.InputId1, _task.OperationTypes.OutputKeyType,
-                                          _task.OperationTypes.OutputPayloadType, _task.OperationTypes.OutputDatasetType);
-
             if (!_cachedDatasets.ContainsKey(_task.InputIds.InputId1))
             {
+                object dataset = CreateDatasetFromInput(_task.InputIds.InputId1, _task.OperationTypes.OutputKeyType,
+                                       _task.OperationTypes.OutputPayloadType, _task.OperationTypes.OutputDatasetType);
                 _cachedDatasets.Add(_task.InputIds.InputId1, dataset);
-            }
-            else
-            {
-                _cachedDatasets[_task.InputIds.InputId1] = dataset;
             }
 
             _watch.Reset();

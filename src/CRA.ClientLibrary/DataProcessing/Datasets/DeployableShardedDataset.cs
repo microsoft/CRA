@@ -213,7 +213,7 @@ namespace CRA.ClientLibrary.DataProcessing
         {
             if (!_isDeployed)
             {
-                OperatorsToplogy toplogy = new OperatorsToplogy();
+                OperatorsToplogy toplogy = OperatorsToplogy.GetInstance();
 
                 TaskBase subscribeTask = new SubscribeTask();
                 subscribeTask.OperationTypes = TransformUtils.FillBinaryTransformTypes(
