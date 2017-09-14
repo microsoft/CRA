@@ -16,7 +16,9 @@ namespace CRA.ClientLibrary
         {
             public string Name;
 
-            public string FileName;
+            public string FilePath;
+
+            public bool ManagedReference;
         }
 
         [DataContract]
@@ -165,7 +167,24 @@ namespace CRA.ClientLibrary
                     GetApplicationAssemblies(referenced, assemblies, exclude);
                 }
 
-                assemblies.Add(new ApplicationAssembly { Name = name, FileName = assembly.Location });
+                assemblies.Add(new ApplicationAssembly { Name = name, FilePath = assembly.Location, ManagedReference = true });
+
+                // Now if the assembly has a location, look to see if there are any other
+                // dlls that need to get carried along
+                var assemblyPath = assembly.Location;
+                if (!String.IsNullOrWhiteSpace(assemblyPath))
+                {
+                    // ignore it if it is a framework assembly?
+                    var dlls = Directory.GetFiles(Path.GetDirectoryName(assemblyPath), "*.dll", SearchOption.TopDirectoryOnly);
+                    foreach (var dllPath in dlls)
+                    {
+                        var dllName = Path.GetFileNameWithoutExtension(dllPath);
+                        if (dllName.Equals(assembly.GetName().Name)) continue;
+                        if (assemblies.Any(e => e.Name.StartsWith(dllName))) continue;
+                        if (exclude.Any(e => e.StartsWith(dllName))) continue;
+                        assemblies.Add(new ApplicationAssembly { Name = dllName, FilePath = dllPath, ManagedReference = false, });
+                    }
+                }
             }
             catch (Exception e)
             {
@@ -211,8 +230,9 @@ namespace CRA.ClientLibrary
                 byte[] assemblyNameBytes = Encoding.UTF8.GetBytes(assembly.Name);
                 stream.WriteByteArray(assemblyNameBytes);
 
+                stream.WriteByte(assembly.ManagedReference ? (byte)1 : (byte)0);
 
-                FileStream fs = new FileStream(assembly.FileName, FileMode.Open, FileAccess.Read);
+                FileStream fs = new FileStream(assembly.FilePath, FileMode.Open, FileAccess.Read);
 
                 using (BinaryReader br = new BinaryReader(fs))
                 {
@@ -226,12 +246,25 @@ namespace CRA.ClientLibrary
         {
             int numAssemblies = stream.ReadInt32();
 
-            for (int i=0; i<numAssemblies; i++)
+            for (int i = 0; i < numAssemblies; i++)
             {
                 byte[] assemblyNameBytes = stream.ReadByteArray();
                 string assemblyName = Encoding.UTF8.GetString(assemblyNameBytes);
+
+                var managedAssembly = stream.ReadByte() == 0 ? false : true;
+
                 byte[] assemblyFileBytes = stream.ReadByteArray();
-                AssemblyResolver.Register(assemblyName, assemblyFileBytes);
+
+                if (!managedAssembly)
+                {
+                    var assemblyPath = assemblyName + ".dll";
+                    File.WriteAllBytes(assemblyPath, assemblyFileBytes);
+                }
+                else
+                {
+                    AssemblyResolver.Register(assemblyName, assemblyFileBytes);
+                }
+
             }
         }
 
@@ -258,7 +291,7 @@ namespace CRA.ClientLibrary
                     byte[] assemblyNameBytes = Encoding.UTF8.GetBytes(assembly.Name);
                     userDLLsBuffer.AddRange(assemblyNameBytes);
 
-                    FileStream fs = new FileStream(assembly.FileName, FileMode.Open, FileAccess.Read);
+                    FileStream fs = new FileStream(assembly.FilePath, FileMode.Open, FileAccess.Read);
 
                     using (BinaryReader br = new BinaryReader(fs))
                     {
