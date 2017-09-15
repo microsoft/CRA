@@ -258,7 +258,14 @@ namespace CRA.ClientLibrary
                 if (!managedAssembly)
                 {
                     var assemblyPath = assemblyName + ".dll";
-                    File.WriteAllBytes(assemblyPath, assemblyFileBytes);
+
+                    try
+                    {
+                        File.WriteAllBytes(assemblyPath, assemblyFileBytes);
+                    }
+                    catch (Exception e) {
+                        // we don't care if it can't be written. assume that means it is already there
+                    }
                 }
                 else
                 {
