@@ -213,9 +213,18 @@ namespace CRA.ClientLibrary
 
         internal CRAErrorCode Connect_InitiatorSide(string fromProcessName, string fromProcessOutput, string toProcessName, string toProcessInput, bool reverse, bool killIfExists = true, bool killRemote = true)
         {
-            // Need to get the latest address & port
-            var row = reverse ? ProcessTable.GetRowForProcess(_workerInstanceTable, fromProcessName) 
+            ProcessTable row;
+
+            try
+            {
+                // Need to get the latest address & port
+                row = reverse ? ProcessTable.GetRowForProcess(_workerInstanceTable, fromProcessName)
                 : ProcessTable.GetRowForProcess(_workerInstanceTable, toProcessName);
+            }
+            catch
+            {
+                return CRAErrorCode.ActiveProcessNotFound;
+            }
 
             // If from and to processes are on the same (this) instance,
             // we can convert a "reverse" connection into a normal connection

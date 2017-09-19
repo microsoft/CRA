@@ -95,6 +95,11 @@ namespace CRA.ClientLibrary
             }
         }
 
+        public void ActivateProcess()
+        {
+            _clientLibrary.ActivateProcess(_processName);
+        }
+
         /// <summary>
         /// Connect local output endpoint (ToStream) to remote process' input endpoint (FromStream)
         /// </summary>
@@ -270,13 +275,26 @@ namespace CRA.ClientLibrary
             }
         }
 
+
         /// <summary>
-        /// Initialize
+        /// Initialize process
         /// </summary>
         /// <param name="processParameter"></param>
+        /// <param name="activateProcess"></param>
+        public virtual void Initialize(object processParameter, bool activateProcess = true)
+        {
+            if (activateProcess)
+                ActivateProcess();
+        }
+
+        /// <summary>
+        /// Initialize process
+        /// </summary>
+        /// <param name="processParameter"></param>
+        /// <param name="activateProcess"></param>
         public virtual void Initialize(object processParameter)
         {
-
+            Initialize(processParameter, true);
         }
 
         /// <summary>

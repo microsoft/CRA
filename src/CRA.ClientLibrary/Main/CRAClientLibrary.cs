@@ -112,11 +112,34 @@ namespace CRA.ClientLibrary
             blobStream.Close();
 
             // Add metadata
-            var newRow = new ProcessTable("", processDefinition, processDefinition, "", 0, creator, null);
+            var newRow = new ProcessTable("", processDefinition, processDefinition, "", 0, creator, null, true);
             TableOperation insertOperation = TableOperation.InsertOrReplace(newRow);
             _processTable.Execute(insertOperation);
 
             return CRAErrorCode.Success;
+        }
+
+        /// <summary>
+        /// Make this process the current "active".
+        /// </summary>
+        /// <param name="processName"></param>
+        /// <param name="instanceName"></param>
+        public void ActivateProcess(string processName, string instanceName)
+        {
+            _processTableManager.ActivateProcessOnInstance(processName, instanceName);
+        }
+
+        /// <summary>
+        /// Make this process the current "active" on local worker.
+        /// </summary>
+        /// <param name="processName"></param>
+        /// <param name="instanceName"></param>
+        public void ActivateProcess(string processName)
+        {
+            if (_localWorker != null)
+                _processTableManager.ActivateProcessOnInstance(processName, _localWorker.InstanceName);
+            else
+                throw new Exception("No local worker found to activate process on");
         }
 
         /// <summary>
@@ -211,7 +234,8 @@ namespace CRA.ClientLibrary
             // Add metadata
             var newRow = new ProcessTable(instanceName, processName, processDefinition, "", 0,
                 procDefRow.ProcessCreateAction, 
-                SerializationHelper.SerializeObject(processParameter));
+                SerializationHelper.SerializeObject(processParameter),
+                false);
             TableOperation insertOperation = TableOperation.InsertOrReplace(newRow);
             _processTable.Execute(insertOperation);
 
@@ -521,12 +545,6 @@ namespace CRA.ClientLibrary
             // Tell from process to establish connection
             // Send request to CRA instance
 
-            // Get instance for source process
-            var _row = direction == ConnectionInitiator.FromSide ?
-                                        ProcessTable.GetRowForProcess(_processTable, fromProcessName) :
-                                        ProcessTable.GetRowForProcess(_processTable, toProcessName);
-
-
             // Check that process and endpoints are valid and existing
             if (!_processTableManager.ExistsProcess(fromProcessName) || !_processTableManager.ExistsProcess(toProcessName))
             {
@@ -537,23 +555,36 @@ namespace CRA.ClientLibrary
             _connectionTableManager.AddConnection(fromProcessName, fromEndpoint, toProcessName, toEndpoint);
 
             // We now try best-effort to tell the CRA instance of this connection
-
             CRAErrorCode result = CRAErrorCode.Success;
 
-            if (_localWorker != null)
-            {
-                if (_localWorker.InstanceName == _row.InstanceName)
-                {
-                    return _localWorker.Connect_InitiatorSide(fromProcessName, fromEndpoint,
-                            toProcessName, toEndpoint, direction == ConnectionInitiator.ToSide);
-                }
-            }
-
-
-            // Send request to CRA instance
-            TcpClient client = null;
+            ProcessTable _row;
             try
             {
+                // Get instance for source process
+                _row = direction == ConnectionInitiator.FromSide ?
+                                        ProcessTable.GetRowForProcess(_processTable, fromProcessName) :
+                                        ProcessTable.GetRowForProcess(_processTable, toProcessName);
+            }
+            catch
+            {
+                Console.WriteLine("Unable to find active instance with process. On process activation, the connection should be completed automatically.");
+                return result;
+            }
+
+            try
+            {
+                if (_localWorker != null)
+                {
+                    if (_localWorker.InstanceName == _row.InstanceName)
+                    {
+                        return _localWorker.Connect_InitiatorSide(fromProcessName, fromEndpoint,
+                                toProcessName, toEndpoint, direction == ConnectionInitiator.ToSide);
+                    }
+                }
+
+
+                // Send request to CRA instance
+                TcpClient client = null;
                 // Get address and port for instance, using row with process = ""
                 var row = ProcessTable.GetRowForInstance(_processTable, _row.InstanceName);
 
@@ -572,7 +603,7 @@ namespace CRA.ClientLibrary
                 stream.WriteByteArray(Encoding.UTF8.GetBytes(toProcessName));
                 stream.WriteByteArray(Encoding.UTF8.GetBytes(toEndpoint));
 
-                result = (CRAErrorCode) stream.ReadInt32();
+                result = (CRAErrorCode)stream.ReadInt32();
                 if (result != 0)
                 {
                     Console.WriteLine("Connection was logically established. However, the client received an error code from the connection-initiating CRA instance: " + result);
@@ -582,7 +613,7 @@ namespace CRA.ClientLibrary
             {
                 Console.WriteLine("The connection-initiating CRA instance appears to be down or could not be found. Restart it and this connection will be completed automatically");
             }
-            return (CRAErrorCode)result;
+            return result;
         }
 
         /// <summary>

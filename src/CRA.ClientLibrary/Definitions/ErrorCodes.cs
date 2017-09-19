@@ -14,6 +14,10 @@
         /// </summary>
         ProcessNotFound,
         /// <summary>
+        /// ActiveProcess not found
+        /// </summary>
+        ActiveProcessNotFound,
+        /// <summary>
         /// Process output endpoint not found
         /// </summary>
         ProcessOutputNotFound,

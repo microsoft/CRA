@@ -37,15 +37,38 @@ namespace CRA.ClientLibrary
         internal void RegisterInstance(string instanceName, string address, int port)
         {
             TableOperation insertOperation = TableOperation.InsertOrReplace(new ProcessTable
-                (instanceName, "", "", address, port, "", ""));
+                (instanceName, "", "", address, port, "", "", true));
             _processTable.Execute(insertOperation);
         }
 
         internal void RegisterProcess(string processName, string instanceName)
         {
             TableOperation insertOperation = TableOperation.InsertOrReplace(new ProcessTable
-                (instanceName, processName, "", "", 0, "", ""));
+                (instanceName, processName, "", "", 0, "", "", false));
             _processTable.Execute(insertOperation);
+        }
+
+        internal void ActivateProcessOnInstance(string processName, string instanceName)
+        {
+            var newActiveProcess = ProcessTable.GetAll(_processTable)
+                .Where(gn => instanceName == gn.InstanceName && processName == gn.ProcessName)
+                .First();
+
+            newActiveProcess.IsActive = true;
+            TableOperation insertOperation = TableOperation.InsertOrReplace(newActiveProcess);
+            _processTable.Execute(insertOperation);
+
+            var procs = ProcessTable.GetAll(_processTable)
+                .Where(gn => processName == gn.ProcessName && instanceName != gn.InstanceName);
+            foreach (var proc in procs)
+            {
+                if (proc.IsActive)
+                {
+                    proc.IsActive = false;
+                    TableOperation _insertOperation = TableOperation.InsertOrReplace(proc);
+                    _processTable.Execute(_insertOperation);
+                }
+            }
         }
 
         internal void DeleteInstance(string instanceName)
