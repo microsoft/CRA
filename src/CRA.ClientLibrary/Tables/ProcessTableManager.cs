@@ -71,6 +71,17 @@ namespace CRA.ClientLibrary
             }
         }
 
+        internal void DeactivateProcessOnInstance(string processName, string instanceName)
+        {
+            var newActiveProcess = ProcessTable.GetAll(_processTable)
+                .Where(gn => instanceName == gn.InstanceName && processName == gn.ProcessName)
+                .First();
+
+            newActiveProcess.IsActive = false;
+            TableOperation insertOperation = TableOperation.InsertOrReplace(newActiveProcess);
+            _processTable.Execute(insertOperation);
+        }
+
         internal void DeleteInstance(string instanceName)
         {
             var newRow = new DynamicTableEntity(instanceName, "");

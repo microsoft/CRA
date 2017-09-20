@@ -12,6 +12,7 @@ using System.Linq.Expressions;
 using System.Net.Sockets;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 
 namespace CRA.ClientLibrary
 {
@@ -127,6 +128,16 @@ namespace CRA.ClientLibrary
         public void ActivateProcess(string processName, string instanceName)
         {
             _processTableManager.ActivateProcessOnInstance(processName, instanceName);
+        }
+
+        /// <summary>
+        /// Make this process the current "inactive".
+        /// </summary>
+        /// <param name="processName"></param>
+        /// <param name="instanceName"></param>
+        public void DeactivateProcess(string processName, string instanceName)
+        {
+            _processTableManager.DeactivateProcessOnInstance(processName, instanceName);
         }
 
         /// <summary>
@@ -392,7 +403,7 @@ namespace CRA.ClientLibrary
         /// <param name="instanceName"></param>
         /// <param name="table"></param>
         /// <returns></returns>
-        public IProcess LoadProcess(string processName, string processDefinition, string processParameter, string instanceName, ConcurrentDictionary<string, IProcess> table)
+        public async Task<IProcess> LoadProcessAsync(string processName, string processDefinition, string processParameter, string instanceName, ConcurrentDictionary<string, IProcess> table)
         {
             CloudBlobContainer container = _blobClient.GetContainerReference("cra");
             container.CreateIfNotExists();
@@ -458,12 +469,15 @@ namespace CRA.ClientLibrary
 
             var par = SerializationHelper.DeserializeObject(processParameter);
             process.Initialize(par);
+            await process.InitializeAsync(par);
+            ActivateProcess(processName, instanceName);
 
             return process;
         }
 
         /// <summary>
-        /// Load all processes for the given instance name.
+        /// Load all processes for the given instance name, returns only when all
+        /// processes have been initialized and activated.
         /// </summary>
         /// <param name="thisInstanceName"></param>
         /// <returns></returns>
@@ -472,11 +486,13 @@ namespace CRA.ClientLibrary
             ConcurrentDictionary<string, IProcess> result = new ConcurrentDictionary<string, IProcess>();
             var rows = ProcessTable.GetAllRowsForInstance(_processTable, thisInstanceName);
 
+            List<Task> t = new List<Task>();
             foreach (var row in rows)
             {
                 if (row.ProcessName == "") continue;
-                LoadProcess(row.ProcessName, row.ProcessDefinition, row.ProcessParameter, thisInstanceName, result);
+                t.Add(LoadProcessAsync(row.ProcessName, row.ProcessDefinition, row.ProcessParameter, thisInstanceName, result));
             }
+            Task.WaitAll(t.ToArray());
 
             return result;
         }

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Concurrent;
+using System.Threading.Tasks;
 
 namespace CRA.ClientLibrary
 {
@@ -95,10 +96,6 @@ namespace CRA.ClientLibrary
             }
         }
 
-        public void ActivateProcess()
-        {
-            _clientLibrary.ActivateProcess(_processName);
-        }
 
         /// <summary>
         /// Connect local output endpoint (ToStream) to remote process' input endpoint (FromStream)
@@ -280,21 +277,17 @@ namespace CRA.ClientLibrary
         /// Initialize process
         /// </summary>
         /// <param name="processParameter"></param>
-        /// <param name="activateProcess"></param>
-        public virtual void Initialize(object processParameter, bool activateProcess = true)
+        public virtual void Initialize(object processParameter)
         {
-            if (activateProcess)
-                ActivateProcess();
         }
 
         /// <summary>
         /// Initialize process
         /// </summary>
         /// <param name="processParameter"></param>
-        /// <param name="activateProcess"></param>
-        public virtual void Initialize(object processParameter)
+        public virtual Task InitializeAsync(object processParameter)
         {
-            Initialize(processParameter, true);
+            return Task.FromResult(true);
         }
 
         /// <summary>
