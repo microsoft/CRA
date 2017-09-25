@@ -90,9 +90,17 @@ namespace CRA.ClientLibrary
             _processTable.Execute(deleteOperation);
         }
 
-        internal ProcessTable GetRowForProcess(string processName)
+        internal ProcessTable GetRowForActiveProcess(string processName)
         {
-            return ProcessTable.GetAll(_processTable).Where(gn => processName == gn.ProcessName && !string.IsNullOrEmpty(gn.InstanceName)).First();
+            return ProcessTable.GetAll(_processTable)
+                .Where(gn => processName == gn.ProcessName && !string.IsNullOrEmpty(gn.InstanceName))
+                .Where(gn => gn.IsActive)
+                .First();
+        }
+
+        internal ProcessTable GetRowForInstance(string instanceName)
+        {
+            return GetRowForInstanceProcess(instanceName, "");
         }
 
         internal ProcessTable GetRowForInstanceProcess(string instanceName, string processName)

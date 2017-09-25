@@ -405,6 +405,9 @@ namespace CRA.ClientLibrary
         /// <returns></returns>
         public async Task<IProcess> LoadProcessAsync(string processName, string processDefinition, string processParameter, string instanceName, ConcurrentDictionary<string, IProcess> table)
         {
+            // Deactivate process
+            _processTableManager.DeactivateProcessOnInstance(processName, instanceName);
+
             CloudBlobContainer container = _blobClient.GetContainerReference("cra");
             container.CreateIfNotExists();
             var blockBlob = container.GetBlockBlobReference(processDefinition + "/binaries");
@@ -470,6 +473,8 @@ namespace CRA.ClientLibrary
             var par = SerializationHelper.DeserializeObject(processParameter);
             process.Initialize(par);
             await process.InitializeAsync(par);
+
+            // Activate process
             ActivateProcess(processName, instanceName);
 
             return process;

@@ -673,10 +673,6 @@ namespace CRA.ClientLibrary
             foreach (var _row in rows)
             {
                 if (string.IsNullOrEmpty(_row.ProcessName)) continue;
-                if (_row.IsActive)
-                {
-                    _craClient.DeactivateProcess(_row.ProcessName, _workerinstanceName);
-                }
                 RestoreProcessAndConnections(_row);
             }
         }
