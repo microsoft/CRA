@@ -306,9 +306,9 @@ namespace CRA.ClientLibrary
             var _processTableManager = _clientLibrary._processTableManager;
 
             // Need to get the latest address & port
-            var row = reverse ? _processTableManager.GetRowForProcess(fromProcessName) : _processTableManager.GetRowForProcess(toProcessName);
+            var row = reverse ? _processTableManager.GetRowForActiveProcess(fromProcessName) : _processTableManager.GetRowForActiveProcess(toProcessName);
 
-            var _row = _processTableManager.GetRowForInstanceProcess(row.InstanceName, "");
+            var _row = _processTableManager.GetRowForInstance(row.InstanceName);
 
             // Send request to CRA instance
             NetworkStream ns = null;

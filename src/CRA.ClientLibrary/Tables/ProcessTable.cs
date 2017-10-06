@@ -37,7 +37,7 @@ namespace CRA.ClientLibrary
         /// </summary>
         public string ProcessDefinition { get; set; }
 
-        /// <summary>
+            /// <summary>
         /// IP address of the machine
         /// </summary>
         public string Address { get; set; }
@@ -58,6 +58,13 @@ namespace CRA.ClientLibrary
         public string ProcessParameter { get; set; }
 
         /// <summary>
+        /// Whether the process is the "active" process
+        /// (only one process can be active at a time, even
+        /// if many process copies exist on different instances)
+        /// </summary>
+        public bool IsActive { get; set; }
+
+        /// <summary>
         /// Constructor
         /// </summary>
         /// <param name="instanceName"></param>
@@ -67,7 +74,8 @@ namespace CRA.ClientLibrary
         /// <param name="port"></param>
         /// <param name="processCreateAction"></param>
         /// <param name="processParameter"></param>
-        public ProcessTable(string instanceName, string processName, string processDefinition, string address, int port, Expression<Func<IProcess>> processCreateAction, object processParameter)
+        /// <param name="isActive"></param>
+        public ProcessTable(string instanceName, string processName, string processDefinition, string address, int port, Expression<Func<IProcess>> processCreateAction, object processParameter, bool isActive)
         {
             this.PartitionKey = instanceName;
             this.RowKey = processName;
@@ -76,6 +84,7 @@ namespace CRA.ClientLibrary
             this.Address = address;
             this.Port = port;
             this.ProcessCreateAction = "";
+            this.IsActive = isActive;
 
             if (processCreateAction != null)
             {
@@ -99,7 +108,8 @@ namespace CRA.ClientLibrary
         /// <param name="port"></param>
         /// <param name="processCreateAction"></param>
         /// <param name="processParameter"></param>
-        public ProcessTable(string instanceName, string processName, string processDefinition, string address, int port, string processCreateAction, string processParameter)
+        /// <param name="isActive"></param>
+        public ProcessTable(string instanceName, string processName, string processDefinition, string address, int port, string processCreateAction, string processParameter, bool isActive)
         {
             this.PartitionKey = instanceName;
             this.RowKey = processName;
@@ -109,6 +119,7 @@ namespace CRA.ClientLibrary
             this.Port = port;
             this.ProcessCreateAction = processCreateAction;
             this.ProcessParameter = processParameter;
+            this.IsActive = isActive;
         }
 
         /// <summary>
@@ -229,7 +240,10 @@ namespace CRA.ClientLibrary
 
         internal static ProcessTable GetRowForProcess(CloudTable instanceTable, string processName)
         {
-            return GetAll(instanceTable).Where(gn => processName == gn.ProcessName && !string.IsNullOrEmpty(gn.InstanceName)).First();
+            return GetAll(instanceTable)
+                .Where(gn => processName == gn.ProcessName && !string.IsNullOrEmpty(gn.InstanceName))
+                .Where(gn => gn.IsActive)
+                .First();
         }
 
         internal static IEnumerable<ProcessTable> GetProcesses(CloudTable instanceTable, string instanceName)

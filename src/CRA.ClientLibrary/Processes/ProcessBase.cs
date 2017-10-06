@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Concurrent;
+using System.Threading.Tasks;
 
 namespace CRA.ClientLibrary
 {
@@ -97,6 +98,7 @@ namespace CRA.ClientLibrary
                 return _asyncInputEndpoints;
             }
         }
+
 
         /// <summary>
         /// Connect local output endpoint (ToStream) to remote process' input endpoint (FromStream)
@@ -273,13 +275,22 @@ namespace CRA.ClientLibrary
             }
         }
 
+
         /// <summary>
-        /// Initialize
+        /// Initialize process
         /// </summary>
         /// <param name="processParameter"></param>
         public virtual void Initialize(object processParameter)
         {
+        }
 
+        /// <summary>
+        /// Initialize process
+        /// </summary>
+        /// <param name="processParameter"></param>
+        public virtual Task InitializeAsync(object processParameter)
+        {
+            return Task.FromResult(true);
         }
 
         /// <summary>

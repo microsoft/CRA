@@ -35,14 +35,48 @@ namespace CRA.ClientLibrary
         internal void RegisterInstance(string instanceName, string address, int port)
         {
             TableOperation insertOperation = TableOperation.InsertOrReplace(new ProcessTable
-                (instanceName, "", "", address, port, "", ""));
+                (instanceName, "", "", address, port, "", "", true));
             _processTable.Execute(insertOperation);
         }
 
         internal void RegisterProcess(string processName, string instanceName)
         {
             TableOperation insertOperation = TableOperation.InsertOrReplace(new ProcessTable
-                (instanceName, processName, "", "", 0, "", ""));
+                (instanceName, processName, "", "", 0, "", "", false));
+            _processTable.Execute(insertOperation);
+        }
+
+        internal void ActivateProcessOnInstance(string processName, string instanceName)
+        {
+            var newActiveProcess = ProcessTable.GetAll(_processTable)
+                .Where(gn => instanceName == gn.InstanceName && processName == gn.ProcessName)
+                .First();
+
+            newActiveProcess.IsActive = true;
+            TableOperation insertOperation = TableOperation.InsertOrReplace(newActiveProcess);
+            _processTable.Execute(insertOperation);
+
+            var procs = ProcessTable.GetAll(_processTable)
+                .Where(gn => processName == gn.ProcessName && instanceName != gn.InstanceName);
+            foreach (var proc in procs)
+            {
+                if (proc.IsActive)
+                {
+                    proc.IsActive = false;
+                    TableOperation _insertOperation = TableOperation.InsertOrReplace(proc);
+                    _processTable.Execute(_insertOperation);
+                }
+            }
+        }
+
+        internal void DeactivateProcessOnInstance(string processName, string instanceName)
+        {
+            var newActiveProcess = ProcessTable.GetAll(_processTable)
+                .Where(gn => instanceName == gn.InstanceName && processName == gn.ProcessName)
+                .First();
+
+            newActiveProcess.IsActive = false;
+            TableOperation insertOperation = TableOperation.InsertOrReplace(newActiveProcess);
             _processTable.Execute(insertOperation);
         }
 
@@ -54,9 +88,17 @@ namespace CRA.ClientLibrary
             _processTable.Execute(deleteOperation);
         }
 
-        internal ProcessTable GetRowForProcess(string processName)
+        internal ProcessTable GetRowForActiveProcess(string processName)
         {
-            return ProcessTable.GetAll(_processTable).Where(gn => processName == gn.ProcessName && !string.IsNullOrEmpty(gn.InstanceName)).First();
+            return ProcessTable.GetAll(_processTable)
+                .Where(gn => processName == gn.ProcessName && !string.IsNullOrEmpty(gn.InstanceName))
+                .Where(gn => gn.IsActive)
+                .First();
+        }
+
+        internal ProcessTable GetRowForInstance(string instanceName)
+        {
+            return GetRowForInstanceProcess(instanceName, "");
         }
 
         internal ProcessTable GetRowForInstanceProcess(string instanceName, string processName)

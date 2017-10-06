@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Concurrent;
+using System.Threading.Tasks;
 
 namespace CRA.ClientLibrary
 {
@@ -71,5 +72,12 @@ namespace CRA.ClientLibrary
         /// </summary>
         /// <param name="processParameter"></param>
         void Initialize(object processParameter);
+
+        /// <summary>
+        /// Initialize process asynchronously with specified params
+        /// </summary>
+        /// <param name="processParameter"></param>
+        /// <returns></returns>
+        Task InitializeAsync(object processParameter);
     }
 }

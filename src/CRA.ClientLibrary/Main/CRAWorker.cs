@@ -3,6 +3,7 @@ using Microsoft.WindowsAzure.Storage.Blob;
 using Microsoft.WindowsAzure.Storage.Table;
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -87,16 +88,13 @@ namespace CRA.ClientLibrary
             // Update process table
             _craClient.RegisterInstance(_workerinstanceName, _address, _port);
 
-            // Restore processes on machine - not connections between processes
-            // This ensures others can establish connections to it as soon as
-            // as we start the server
-            RestoreProcesses();
+            // Restore processes on machine
+            RestoreProcessesAndConnections();
 
+            // Then start server. This ensures that others can establish 
+            // connections to local processes at this point.
             Thread serverThread = new Thread(StartServer);
             serverThread.Start();
-
-            // Restore connections to/from the processes on this machine
-            RestoreConnections(null);
 
             // Wait for server to complete execution
             serverThread.Join();
@@ -187,7 +185,9 @@ namespace CRA.ClientLibrary
             string processDefinition = Encoding.UTF8.GetString(stream.ReadByteArray());
             string processParam = Encoding.UTF8.GetString(stream.ReadByteArray());
 
-            _craClient.LoadProcess(processName, processDefinition, processParam, _workerinstanceName, _localProcessTable);
+            _craClient
+                .LoadProcessAsync(processName, processDefinition, processParam, _workerinstanceName, _localProcessTable)
+                .Wait();
 
             stream.WriteInt32(0);
 
@@ -251,11 +251,18 @@ namespace CRA.ClientLibrary
 
         internal CRAErrorCode Connect_InitiatorSide(string fromProcessName, string fromProcessOutput, string toProcessName, string toProcessInput, bool reverse, bool killIfExists = true, bool killRemote = true)
         {
-            CRAErrorCode result = CRAErrorCode.Success;
+            ProcessTable row;
 
-            // Need to get the latest address & port
-            var row = reverse ? ProcessTable.GetRowForProcess(_workerInstanceTable, fromProcessName)
+            try
+            {
+                // Need to get the latest address & port
+                row = reverse ? ProcessTable.GetRowForProcess(_workerInstanceTable, fromProcessName)
                 : ProcessTable.GetRowForProcess(_workerInstanceTable, toProcessName);
+            }
+            catch
+            {
+                return CRAErrorCode.ActiveProcessNotFound;
+            }
 
             // If from and to processes are on the same (this) instance,
             // we can convert a "reverse" connection into a normal connection
@@ -731,38 +738,36 @@ namespace CRA.ClientLibrary
             }
         }
 
-        private void RestoreProcesses()
-        {
-            var rows = ProcessTable.GetAllRowsForInstance(_workerInstanceTable, _workerinstanceName);
-
-            foreach (var row in rows)
-            {
-                if (string.IsNullOrEmpty(row.ProcessName)) continue;
-
-                _craClient.LoadProcess(row.ProcessName, row.ProcessDefinition, row.ProcessParameter, _workerinstanceName, _localProcessTable);
-            }
-        }
-
-        private void RestoreConnections(object obj)
+        private void RestoreProcessesAndConnections()
         {
             var rows = ProcessTable.GetAllRowsForInstance(_workerInstanceTable, _workerinstanceName);
 
             foreach (var _row in rows)
             {
                 if (string.IsNullOrEmpty(_row.ProcessName)) continue;
+                RestoreProcessAndConnections(_row);
+            }
+        }
 
-                // Decide what to do if connection creation fails
-                var outRows = ConnectionTable.GetAllConnectionsFromProcess(_connectionTable, _row.ProcessName).ToList();
-                foreach (var row in outRows)
-                {
-                    Task.Run(() => RetryRestoreConnection(row.FromProcess, row.FromEndpoint, row.ToProcess, row.ToEndpoint, false));
-                }
+        private async void RestoreProcessAndConnections(ProcessTable _row)
+        {
+            await _craClient.LoadProcessAsync(_row.ProcessName, _row.ProcessDefinition, _row.ProcessParameter, _workerinstanceName, _localProcessTable);
+            RestoreConnections(_row);
+        }
 
-                var inRows = ConnectionTable.GetAllConnectionsToProcess(_connectionTable, _row.ProcessName).ToList();
-                foreach (var row in inRows)
-                {
-                    Task.Run(() => RetryRestoreConnection(row.FromProcess, row.FromEndpoint, row.ToProcess, row.ToEndpoint, true));
-                }
+        private void RestoreConnections(ProcessTable _row)
+        {
+            // Decide what to do if connection creation fails
+            var outRows = ConnectionTable.GetAllConnectionsFromProcess(_connectionTable, _row.ProcessName).ToList();
+            foreach (var row in outRows)
+            {
+                Task.Run(() => RetryRestoreConnection(row.FromProcess, row.FromEndpoint, row.ToProcess, row.ToEndpoint, false));
+            }
+
+            var inRows = ConnectionTable.GetAllConnectionsToProcess(_connectionTable, _row.ProcessName).ToList();
+            foreach (var row in inRows)
+            {
+                Task.Run(() => RetryRestoreConnection(row.FromProcess, row.FromEndpoint, row.ToProcess, row.ToEndpoint, true));
             }
         }
 
