@@ -208,7 +208,7 @@ namespace CRA.ClientLibrary.DataProcessing
                 else
                     return false;
             }
-            catch(Exception e)
+            catch(Exception)
             {
                 Console.WriteLine("Error in deploying a sharded CRA shuffle mapper task. Please, double check your task configurations");
                 return false;

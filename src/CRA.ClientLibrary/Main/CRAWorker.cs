@@ -171,7 +171,7 @@ namespace CRA.ClientLibrary
                 else
                     stream.Close();
             }
-            catch (Exception e)
+            catch (Exception)
             {
                 stream.Close();
             }
@@ -329,7 +329,7 @@ namespace CRA.ClientLibrary
             ns.WriteByteArray(Encoding.UTF8.GetBytes(toProcessName));
             ns.WriteByteArray(Encoding.UTF8.GetBytes(toProcessInput));
             ns.WriteInt32(killRemote ? 1 : 0);
-            result = (CRAErrorCode)ns.ReadInt32();
+            CRAErrorCode result = (CRAErrorCode)ns.ReadInt32();
 
             if (result != 0)
             {

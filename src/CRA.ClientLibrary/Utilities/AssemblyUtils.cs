@@ -274,7 +274,7 @@ namespace CRA.ClientLibrary
                     {
                         File.WriteAllBytes(assemblyPath, assemblyFileBytes);
                     }
-                    catch (Exception e) {
+                    catch (Exception) {
                         // we don't care if it can't be written. assume that means it is already there
                     }
                 }
@@ -302,7 +302,7 @@ namespace CRA.ClientLibrary
                             File.WriteAllBytes(assemblyPath, AssemblyResolver.GetAssemblyBytes(assemblyKey));
                             isSuccess = true;
                         }
-                        catch (Exception e)
+                        catch (Exception)
                         {
                             isSuccess = false;
                         }

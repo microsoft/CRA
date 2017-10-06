@@ -9,6 +9,7 @@ using System.IO;
 using System.Linq.Expressions;
 using System.Net.Sockets;
 using System.Text;
+using System.Threading.Tasks;
 
 namespace CRA.ClientLibrary
 {
@@ -627,7 +628,7 @@ namespace CRA.ClientLibrary
                 NetworkStream stream;
                 if (!TryGetSenderStreamFromPool(row.Address, row.Port.ToString(), out stream))
                 {
-                    TcpClient client = new TcpClient(row.Address, row.Port);
+                    client = new TcpClient(row.Address, row.Port);
                     client.NoDelay = true;
 
                     stream = client.GetStream();
