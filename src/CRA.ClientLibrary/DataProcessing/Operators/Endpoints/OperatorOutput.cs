@@ -5,14 +5,14 @@ using System.Threading.Tasks;
 
 namespace CRA.ClientLibrary.DataProcessing
 {
-    public class OperatorOutput : IAsyncProcessOutputEndpoint
+    public class OperatorOutput : IAsyncVertexOutputEndpoint
     {
         protected OperatorBase _operator;
         protected int _thisId;
 
-        public OperatorOutput(ref IProcess process, int thisId)
+        public OperatorOutput(ref IVertex vertex, int thisId)
         {
-            _operator = (OperatorBase)process;
+            _operator = (OperatorBase)vertex;
             _thisId = thisId;
         }
 
@@ -30,7 +30,7 @@ namespace CRA.ClientLibrary.DataProcessing
             }
         }
 
-        public async Task ToStreamAsync(Stream stream, string otherProcess, string otherEndpoint, CancellationToken token)
+        public async Task ToStreamAsync(Stream stream, string otherVertex, string otherEndpoint, CancellationToken token)
         {
             IEndpointContent streamEndpoint = new StreamEndpoint(stream);
             _operator.AddOutput(_thisId, ref streamEndpoint);

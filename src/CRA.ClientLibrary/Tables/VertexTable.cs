@@ -15,7 +15,7 @@ namespace CRA.ClientLibrary
     /// <summary>
     /// An assignment of one machine to a group
     /// </summary>
-    public class ProcessTable : TableEntity
+    public class VertexTable : TableEntity
     {
         /// <summary>
         /// The time interval at which workers refresh their membership entry
@@ -28,14 +28,14 @@ namespace CRA.ClientLibrary
         public string InstanceName { get { return this.PartitionKey; } }
 
         /// <summary>
-        /// Name of process
+        /// Name of vertex
         /// </summary>
-        public string ProcessName { get { return this.RowKey; } }
+        public string VertexName { get { return this.RowKey; } }
 
         /// <summary>
-        /// Definition of process
+        /// Definition of vertex
         /// </summary>
-        public string ProcessDefinition { get; set; }
+        public string VertexDefinition { get; set; }
 
             /// <summary>
         /// IP address of the machine
@@ -48,19 +48,19 @@ namespace CRA.ClientLibrary
         public int Port { get; set; }
 
         /// <summary>
-        /// Action to create process
+        /// Action to create vertex
         /// </summary>
-        public string ProcessCreateAction { get; set; }
+        public string VertexCreateAction { get; set; }
 
         /// <summary>
-        /// Parameter to process creator
+        /// Parameter to vertex creator
         /// </summary>
-        public string ProcessParameter { get; set; }
+        public string VertexParameter { get; set; }
 
         /// <summary>
-        /// Whether the process is the "active" process
-        /// (only one process can be active at a time, even
-        /// if many process copies exist on different instances)
+        /// Whether the vertex is the "active" vertex
+        /// (only one vertex can be active at a time, even
+        /// if many vertex copies exist on different instances)
         /// </summary>
         public bool IsActive { get; set; }
 
@@ -68,64 +68,64 @@ namespace CRA.ClientLibrary
         /// Constructor
         /// </summary>
         /// <param name="instanceName"></param>
-        /// <param name="processName"></param>
-        /// <param name="processDefinition"></param>
+        /// <param name="vertexName"></param>
+        /// <param name="vertexDefinition"></param>
         /// <param name="address"></param>
         /// <param name="port"></param>
-        /// <param name="processCreateAction"></param>
-        /// <param name="processParameter"></param>
+        /// <param name="vertexCreateAction"></param>
+        /// <param name="vertexParameter"></param>
         /// <param name="isActive"></param>
-        public ProcessTable(string instanceName, string processName, string processDefinition, string address, int port, Expression<Func<IProcess>> processCreateAction, object processParameter, bool isActive)
+        public VertexTable(string instanceName, string vertexName, string vertexDefinition, string address, int port, Expression<Func<IVertex>> vertexCreateAction, object vertexParameter, bool isActive)
         {
             this.PartitionKey = instanceName;
-            this.RowKey = processName;
+            this.RowKey = vertexName;
 
-            this.ProcessDefinition = processDefinition;
+            this.VertexDefinition = vertexDefinition;
             this.Address = address;
             this.Port = port;
-            this.ProcessCreateAction = "";
+            this.VertexCreateAction = "";
             this.IsActive = isActive;
 
-            if (processCreateAction != null)
+            if (vertexCreateAction != null)
             {
                 var closureEliminator = new ClosureEliminator();
-                Expression processedUserLambdaExpression = closureEliminator.Visit(
-                        processCreateAction);
+                Expression vertexedUserLambdaExpression = closureEliminator.Visit(
+                        vertexCreateAction);
 
-                this.ProcessCreateAction = SerializationHelper.Serialize(processedUserLambdaExpression);
+                this.VertexCreateAction = SerializationHelper.Serialize(vertexedUserLambdaExpression);
             }
 
-            this.ProcessParameter = SerializationHelper.SerializeObject(processParameter);
+            this.VertexParameter = SerializationHelper.SerializeObject(vertexParameter);
         }
 
         /// <summary>
         /// Constructor
         /// </summary>
         /// <param name="instanceName"></param>
-        /// <param name="processName"></param>
-        /// <param name="processDefinition"></param>
+        /// <param name="vertexName"></param>
+        /// <param name="vertexDefinition"></param>
         /// <param name="address"></param>
         /// <param name="port"></param>
-        /// <param name="processCreateAction"></param>
-        /// <param name="processParameter"></param>
+        /// <param name="vertexCreateAction"></param>
+        /// <param name="vertexParameter"></param>
         /// <param name="isActive"></param>
-        public ProcessTable(string instanceName, string processName, string processDefinition, string address, int port, string processCreateAction, string processParameter, bool isActive)
+        public VertexTable(string instanceName, string vertexName, string vertexDefinition, string address, int port, string vertexCreateAction, string vertexParameter, bool isActive)
         {
             this.PartitionKey = instanceName;
-            this.RowKey = processName;
+            this.RowKey = vertexName;
 
-            this.ProcessDefinition = processDefinition;
+            this.VertexDefinition = vertexDefinition;
             this.Address = address;
             this.Port = port;
-            this.ProcessCreateAction = processCreateAction;
-            this.ProcessParameter = processParameter;
+            this.VertexCreateAction = vertexCreateAction;
+            this.VertexParameter = vertexParameter;
             this.IsActive = isActive;
         }
 
         /// <summary>
         /// Constructor
         /// </summary>
-        public ProcessTable() { }
+        public VertexTable() { }
 
         /// <summary>
         /// ToString
@@ -143,7 +143,7 @@ namespace CRA.ClientLibrary
         /// <returns></returns>
         public override bool Equals(object obj)
         {
-            ProcessTable other = obj as ProcessTable;
+            VertexTable other = obj as VertexTable;
             return this.PartitionKey.Equals(other.PartitionKey) && this.RowKey.Equals(other.RowKey);
         }
 
@@ -156,14 +156,14 @@ namespace CRA.ClientLibrary
             return PartitionKey.GetHashCode() ^ RowKey.GetHashCode();
         }
 
-        internal Func<IProcess> GetProcessCreateAction()
+        internal Func<IVertex> GetVertexCreateAction()
         {
-            var expr = SerializationHelper.Deserialize(ProcessCreateAction);
+            var expr = SerializationHelper.Deserialize(VertexCreateAction);
             var actionExpr = AddBox((LambdaExpression)expr);
             return actionExpr.Compile();
         }
 
-        internal object GetProcessParam()
+        internal object GetVertexParam()
         {
             string storageConnectionString = ConfigurationManager.AppSettings.Get("CRA_STORAGE_CONN_STRING");
             if (storageConnectionString == null)
@@ -176,7 +176,7 @@ namespace CRA.ClientLibrary
 
             CloudBlobContainer container = blobClient.GetContainerReference("cra");
             container.CreateIfNotExists();
-            var blockBlob = container.GetBlockBlobReference(ProcessDefinition + "/" + ProcessName);
+            var blockBlob = container.GetBlockBlobReference(VertexDefinition + "/" + VertexName);
             Stream blobStream = blockBlob.OpenRead();
             byte[] parameterBytes = blobStream.ReadByteArray();
             string parameterString = Encoding.UTF8.GetString(parameterBytes);
@@ -186,11 +186,11 @@ namespace CRA.ClientLibrary
         }
 
 
-        private static Expression<Func<IProcess>> AddBox(LambdaExpression expression)
+        private static Expression<Func<IVertex>> AddBox(LambdaExpression expression)
         {
             Expression converted = Expression.Convert
-                 (expression.Body, typeof(IProcess));
-            return Expression.Lambda<Func<IProcess>>
+                 (expression.Body, typeof(IVertex));
+            return Expression.Lambda<Func<IVertex>>
                  (converted, expression.Parameters);
         }
 
@@ -199,9 +199,9 @@ namespace CRA.ClientLibrary
         /// </summary>
         /// <param name="instanceTable"></param>
         /// <returns></returns>
-        internal static IEnumerable<ProcessTable> GetAll(CloudTable instanceTable)
+        internal static IEnumerable<VertexTable> GetAll(CloudTable instanceTable)
         {
-            TableQuery<ProcessTable> query = new TableQuery<ProcessTable>();
+            TableQuery<VertexTable> query = new TableQuery<VertexTable>();
             return instanceTable.ExecuteQuery(query);
         }
 
@@ -214,49 +214,49 @@ namespace CRA.ClientLibrary
             return GetAll(instanceTable).Count();
         }
 
-        internal static ProcessTable GetInstanceFromAddress(CloudTable instanceTable, string address, int port)
+        internal static VertexTable GetInstanceFromAddress(CloudTable instanceTable, string address, int port)
         {
             return GetAll(instanceTable).Where(gn => address == gn.Address && port == gn.Port).First();
         }
 
-        internal static ProcessTable GetRowForInstance(CloudTable instanceTable, string instanceName)
+        internal static VertexTable GetRowForInstance(CloudTable instanceTable, string instanceName)
         {
-            return GetAll(instanceTable).Where(gn => instanceName == gn.InstanceName && string.IsNullOrEmpty(gn.ProcessName)).First();
+            return GetAll(instanceTable).Where(gn => instanceName == gn.InstanceName && string.IsNullOrEmpty(gn.VertexName)).First();
         }
-        internal static IEnumerable<ProcessTable> GetAllRowsForInstance(CloudTable instanceTable, string instanceName)
+        internal static IEnumerable<VertexTable> GetAllRowsForInstance(CloudTable instanceTable, string instanceName)
         {
             return GetAll(instanceTable).Where(gn => instanceName == gn.InstanceName);
         }
 
-        internal static ProcessTable GetRowForInstanceProcess(CloudTable instanceTable, string instanceName, string processName)
+        internal static VertexTable GetRowForInstanceVertex(CloudTable instanceTable, string instanceName, string vertexName)
         {
-            return GetAll(instanceTable).Where(gn => instanceName == gn.InstanceName && processName == gn.ProcessName).First();
+            return GetAll(instanceTable).Where(gn => instanceName == gn.InstanceName && vertexName == gn.VertexName).First();
         }
 
-        internal static ProcessTable GetRowForProcessDefinition(CloudTable instanceTable, string processDefinition)
+        internal static VertexTable GetRowForVertexDefinition(CloudTable instanceTable, string vertexDefinition)
         {
-            return GetAll(instanceTable).Where(gn => processDefinition == gn.ProcessName && string.IsNullOrEmpty(gn.InstanceName)).First();
+            return GetAll(instanceTable).Where(gn => vertexDefinition == gn.VertexName && string.IsNullOrEmpty(gn.InstanceName)).First();
         }
 
-        internal static ProcessTable GetRowForProcess(CloudTable instanceTable, string processName)
+        internal static VertexTable GetRowForVertex(CloudTable instanceTable, string vertexName)
         {
             return GetAll(instanceTable)
-                .Where(gn => processName == gn.ProcessName && !string.IsNullOrEmpty(gn.InstanceName))
+                .Where(gn => vertexName == gn.VertexName && !string.IsNullOrEmpty(gn.InstanceName))
                 .Where(gn => gn.IsActive)
                 .First();
         }
 
-        internal static IEnumerable<ProcessTable> GetProcesses(CloudTable instanceTable, string instanceName)
+        internal static IEnumerable<VertexTable> GetVertexes(CloudTable instanceTable, string instanceName)
         {
-            return GetAll(instanceTable).Where(gn => instanceName == gn.InstanceName && !string.IsNullOrEmpty(gn.ProcessName));
+            return GetAll(instanceTable).Where(gn => instanceName == gn.InstanceName && !string.IsNullOrEmpty(gn.VertexName));
         }
 
-        internal static IEnumerable<ProcessTable> GetRowsForShardedProcess(CloudTable instanceTable, string processName)
+        internal static IEnumerable<VertexTable> GetRowsForShardedVertex(CloudTable instanceTable, string vertexName)
         {
-            return GetAll(instanceTable).Where(gn => gn.ProcessName.StartsWith(processName + "$") && !string.IsNullOrEmpty(gn.ProcessName));
+            return GetAll(instanceTable).Where(gn => gn.VertexName.StartsWith(vertexName + "$") && !string.IsNullOrEmpty(gn.VertexName));
         }
 
-        internal static bool ContainsRow(CloudTable instanceTable, ProcessTable entity)
+        internal static bool ContainsRow(CloudTable instanceTable, VertexTable entity)
         {
             var temp = GetAll(instanceTable);
 

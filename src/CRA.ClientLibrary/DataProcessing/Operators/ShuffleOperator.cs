@@ -42,11 +42,11 @@ namespace CRA.ClientLibrary.DataProcessing
 
         internal override void InitializeOperator()
         {
-            IProcess thisOperator = this;
+            IVertex thisOperator = this;
             if (_inputsIds != null)
                 for (int i = 0; i < _inputsIds.Length; i++)
                 {
-                    var fromTuple = _toFromConnections[new Tuple<string, string>(ProcessName, _inputsIds[i])];
+                    var fromTuple = _toFromConnections[new Tuple<string, string>(VertexName, _inputsIds[i])];
                     if (fromTuple.Item3)
                         AddAsyncInputEndpoint(_inputsIds[i], new OperatorFusableInput(ref thisOperator, i));
                     else
@@ -56,7 +56,7 @@ namespace CRA.ClientLibrary.DataProcessing
             if (_secondaryInputsIds != null)
                 for (int i = 0; i < _secondaryInputsIds.Length; i++)
                 {
-                    var fromTuple = _toFromConnections[new Tuple<string, string>(ProcessName, _secondaryInputsIds[i])];
+                    var fromTuple = _toFromConnections[new Tuple<string, string>(VertexName, _secondaryInputsIds[i])];
                     if (fromTuple.Item3)
                         AddAsyncInputEndpoint(_secondaryInputsIds[i], new OperatorFusableInput(ref thisOperator, i, true));
                     else
@@ -66,7 +66,7 @@ namespace CRA.ClientLibrary.DataProcessing
             if (_outputsIds != null)
                 for (int i = 0; i < _outputsIds.Length; i++)
                 {
-                    var toTuple = _fromToConnections[new Tuple<string, string>(ProcessName, _outputsIds[i])];
+                    var toTuple = _fromToConnections[new Tuple<string, string>(VertexName, _outputsIds[i])];
                     if (toTuple.Item3)
                         AddAsyncOutputEndpoint(_outputsIds[i], new OperatorFusableOutput(ref thisOperator, i));
                     else

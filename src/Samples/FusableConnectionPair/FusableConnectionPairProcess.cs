@@ -2,17 +2,17 @@
 
 namespace FusableConnectionPair
 {
-    public class FusableConnectionPairProcess : ProcessBase
+    public class FusableConnectionPairVertex : VertexBase
     {
-        public FusableConnectionPairProcess() : base()
+        public FusableConnectionPairVertex() : base()
         {
         }
 
-        public override void Initialize(object processParameter)
+        public override void Initialize(object vertexParameter)
         {
             AddAsyncInputEndpoint("input", new MyAsyncFusableInput(this));
             AddAsyncOutputEndpoint("output", new MyAsyncFusableOutput(this));
-            base.Initialize(processParameter);
+            base.Initialize(vertexParameter);
         }
     }
 }

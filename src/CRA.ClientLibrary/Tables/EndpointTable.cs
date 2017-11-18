@@ -18,7 +18,7 @@ namespace CRA.ClientLibrary
         /// <summary>
         /// Name of the group
         /// </summary>
-        public string ProcessName { get { return this.PartitionKey; } }
+        public string VertexName { get { return this.PartitionKey; } }
 
         /// <summary>
         /// Endpoint name
@@ -39,13 +39,13 @@ namespace CRA.ClientLibrary
         /// <summary>
         /// Constructor
         /// </summary>
-        /// <param name="processName"></param>
+        /// <param name="vertexName"></param>
         /// <param name="endpointName"></param>
         /// <param name="isInput"></param>
         /// <param name="isAsync"></param>
-        public EndpointTable(string processName, string endpointName, bool isInput, bool isAsync)
+        public EndpointTable(string vertexName, string endpointName, bool isInput, bool isAsync)
         {
-            this.PartitionKey = processName;
+            this.PartitionKey = vertexName;
             this.RowKey = endpointName;
 
             this.IsInput = isInput;
@@ -63,7 +63,7 @@ namespace CRA.ClientLibrary
         /// <returns></returns>
         public override string ToString()
         {
-            return string.Format(CultureInfo.CurrentCulture, "Process '{0}', Endpoint '{1}'", PartitionKey, RowKey);
+            return string.Format(CultureInfo.CurrentCulture, "Vertex '{0}', Endpoint '{1}'", PartitionKey, RowKey);
         }
 
         /// <summary>

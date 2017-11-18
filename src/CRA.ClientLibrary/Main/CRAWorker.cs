@@ -38,7 +38,7 @@ namespace CRA.ClientLibrary
         CloudTable _connectionTable;
 
         // Timer updateTimer
-        ConcurrentDictionary<string, IProcess> _localProcessTable = new ConcurrentDictionary<string, IProcess>();
+        ConcurrentDictionary<string, IVertex> _localVertexTable = new ConcurrentDictionary<string, IVertex>();
 
         ConcurrentDictionary<string, CancellationTokenSource> inConnections = new ConcurrentDictionary<string, CancellationTokenSource>();
         ConcurrentDictionary<string, CancellationTokenSource> outConnections = new ConcurrentDictionary<string, CancellationTokenSource>();
@@ -76,7 +76,7 @@ namespace CRA.ClientLibrary
             _storageAccount = CloudStorageAccount.Parse(_storageConnectionString);
             _blobClient = _storageAccount.CreateCloudBlobClient();
             _tableClient = _storageAccount.CreateCloudTableClient();
-            _workerInstanceTable = CreateTableIfNotExists("processtableforcra");
+            _workerInstanceTable = CreateTableIfNotExists("vertextableforcra");
             _connectionTable = CreateTableIfNotExists("connectiontableforcra");
         }
 
@@ -85,14 +85,14 @@ namespace CRA.ClientLibrary
         /// </summary>
         public void Start()
         {
-            // Update process table
+            // Update vertex table
             _craClient.RegisterInstance(_workerinstanceName, _address, _port);
 
-            // Restore processes on machine
-            RestoreProcessesAndConnections();
+            // Restore vertexes on machine
+            RestoreVertexesAndConnections();
 
             // Then start server. This ensures that others can establish 
-            // connections to local processes at this point.
+            // connections to local vertexes at this point.
             Thread serverThread = new Thread(StartServer);
             serverThread.Start();
 
@@ -130,23 +130,23 @@ namespace CRA.ClientLibrary
             switch (message)
             {
                 case CRATaskMessageType.LOAD_PROCESS:
-                    Task.Run(() => LoadProcess(stream));
+                    Task.Run(() => LoadVertex(stream));
                     break;
 
                 case CRATaskMessageType.CONNECT_PROCESS_INITIATOR:
-                    Task.Run(() => ConnectProcess_Initiator(stream, false));
+                    Task.Run(() => ConnectVertex_Initiator(stream, false));
                     break;
 
                 case CRATaskMessageType.CONNECT_PROCESS_RECEIVER:
-                    Task.Run(() => ConnectProcess_Receiver(stream, false));
+                    Task.Run(() => ConnectVertex_Receiver(stream, false));
                     break;
 
                 case CRATaskMessageType.CONNECT_PROCESS_INITIATOR_REVERSE:
-                    Task.Run(() => ConnectProcess_Initiator(stream, true));
+                    Task.Run(() => ConnectVertex_Initiator(stream, true));
                     break;
 
                 case CRATaskMessageType.CONNECT_PROCESS_RECEIVER_REVERSE:
-                    Task.Run(() => ConnectProcess_Receiver(stream, true));
+                    Task.Run(() => ConnectVertex_Receiver(stream, true));
                     break;
 
                 default:
@@ -177,16 +177,16 @@ namespace CRA.ClientLibrary
             }
         }
 
-        private void LoadProcess(object streamObject)
+        private void LoadVertex(object streamObject)
         {
             var stream = (Stream)streamObject;
 
-            string processName = Encoding.UTF8.GetString(stream.ReadByteArray());
-            string processDefinition = Encoding.UTF8.GetString(stream.ReadByteArray());
-            string processParam = Encoding.UTF8.GetString(stream.ReadByteArray());
+            string vertexName = Encoding.UTF8.GetString(stream.ReadByteArray());
+            string vertexDefinition = Encoding.UTF8.GetString(stream.ReadByteArray());
+            string vertexParam = Encoding.UTF8.GetString(stream.ReadByteArray());
 
             _craClient
-                .LoadProcessAsync(processName, processDefinition, processParam, _workerinstanceName, _localProcessTable)
+                .LoadVertexAsync(vertexName, vertexDefinition, vertexParam, _workerinstanceName, _localVertexTable)
                 .Wait();
 
             stream.WriteInt32(0);
@@ -194,84 +194,84 @@ namespace CRA.ClientLibrary
             Task.Run(() => TryReuseReceiverStream(stream));
         }
 
-        private void ConnectProcess_Initiator(object streamObject, bool reverse = false)
+        private void ConnectVertex_Initiator(object streamObject, bool reverse = false)
         {
             var stream = (Stream)streamObject;
 
-            string fromProcessName = Encoding.UTF8.GetString(stream.ReadByteArray());
-            string fromProcessOutput = Encoding.UTF8.GetString(stream.ReadByteArray());
-            string toProcessName = Encoding.UTF8.GetString(stream.ReadByteArray());
-            string toProcessInput = Encoding.UTF8.GetString(stream.ReadByteArray());
+            string fromVertexName = Encoding.UTF8.GetString(stream.ReadByteArray());
+            string fromVertexOutput = Encoding.UTF8.GetString(stream.ReadByteArray());
+            string toVertexName = Encoding.UTF8.GetString(stream.ReadByteArray());
+            string toVertexInput = Encoding.UTF8.GetString(stream.ReadByteArray());
 
             Debug.WriteLine("Processing request to initiate connection");
 
             if (!reverse)
             {
-                if (!_localProcessTable.ContainsKey(fromProcessName))
+                if (!_localVertexTable.ContainsKey(fromVertexName))
                 {
-                    stream.WriteInt32((int)CRAErrorCode.ProcessNotFound);
+                    stream.WriteInt32((int)CRAErrorCode.VertexNotFound);
                     Task.Run(() => TryReuseReceiverStream(stream));
                     return;
                 }
 
-                if (!_localProcessTable[fromProcessName].OutputEndpoints.ContainsKey(fromProcessOutput) &&
-                    !_localProcessTable[fromProcessName].AsyncOutputEndpoints.ContainsKey(fromProcessOutput)
+                if (!_localVertexTable[fromVertexName].OutputEndpoints.ContainsKey(fromVertexOutput) &&
+                    !_localVertexTable[fromVertexName].AsyncOutputEndpoints.ContainsKey(fromVertexOutput)
                    )
                 {
-                    stream.WriteInt32((int)CRAErrorCode.ProcessInputNotFound);
+                    stream.WriteInt32((int)CRAErrorCode.VertexInputNotFound);
                     Task.Run(() => TryReuseReceiverStream(stream));
                     return;
                 }
             }
             else
             {
-                if (!_localProcessTable.ContainsKey(toProcessName))
+                if (!_localVertexTable.ContainsKey(toVertexName))
                 {
-                    stream.WriteInt32((int)CRAErrorCode.ProcessNotFound);
+                    stream.WriteInt32((int)CRAErrorCode.VertexNotFound);
                     Task.Run(() => TryReuseReceiverStream(stream));
                     return;
                 }
 
-                if (!_localProcessTable[toProcessName].InputEndpoints.ContainsKey(toProcessInput) &&
-                    !_localProcessTable[toProcessName].AsyncInputEndpoints.ContainsKey(toProcessInput)
+                if (!_localVertexTable[toVertexName].InputEndpoints.ContainsKey(toVertexInput) &&
+                    !_localVertexTable[toVertexName].AsyncInputEndpoints.ContainsKey(toVertexInput)
                     )
                 {
-                    stream.WriteInt32((int)CRAErrorCode.ProcessInputNotFound);
+                    stream.WriteInt32((int)CRAErrorCode.VertexInputNotFound);
                     Task.Run(() => TryReuseReceiverStream(stream));
                     return;
                 }
             }
 
-            CRAErrorCode result = Connect_InitiatorSide(fromProcessName, fromProcessOutput, toProcessName, toProcessInput, reverse);
+            CRAErrorCode result = Connect_InitiatorSide(fromVertexName, fromVertexOutput, toVertexName, toVertexInput, reverse);
 
             stream.WriteInt32((int)result);
 
             Task.Run(() => TryReuseReceiverStream(stream));
         }
 
-        internal CRAErrorCode Connect_InitiatorSide(string fromProcessName, string fromProcessOutput, string toProcessName, string toProcessInput, bool reverse, bool killIfExists = true, bool killRemote = true)
+        internal CRAErrorCode Connect_InitiatorSide(string fromVertexName, string fromVertexOutput, string toVertexName, string toVertexInput, bool reverse, bool killIfExists = true, bool killRemote = true)
         {
-            ProcessTable row;
+            VertexTable row;
 
             try
             {
                 // Need to get the latest address & port
-                row = reverse ? ProcessTable.GetRowForProcess(_workerInstanceTable, fromProcessName)
-                : ProcessTable.GetRowForProcess(_workerInstanceTable, toProcessName);
+                row = reverse ? VertexTable.GetRowForVertex(_workerInstanceTable, fromVertexName)
+                : VertexTable.GetRowForVertex(_workerInstanceTable, toVertexName);
             }
             catch
             {
-                return CRAErrorCode.ActiveProcessNotFound;
+                return CRAErrorCode.ActiveVertexNotFound;
             }
 
-            // If from and to processes are on the same (this) instance,
+            // If from and to vertexes are on the same (this) instance,
             // we can convert a "reverse" connection into a normal connection
             if (reverse && (row.InstanceName == InstanceName))
                 reverse = false;
 
             CancellationTokenSource oldSource;
             var conn = reverse ? inConnections : outConnections;
-            if (conn.TryGetValue(fromProcessName + ":" + fromProcessOutput + ":" + toProcessName + ":" + toProcessInput,
+            if (conn.TryGetValue(fromVertexName + ":" + fromVertexOutput + ":" + toVertexName + ":" + toVertexInput,
                 out oldSource))
             {
                 if (killIfExists)
@@ -282,14 +282,14 @@ namespace CRA.ClientLibrary
                 return CRAErrorCode.Success;
             }
 
-            if (TryFusedConnect(row.InstanceName, fromProcessName, fromProcessOutput, toProcessName, toProcessInput))
+            if (TryFusedConnect(row.InstanceName, fromVertexName, fromVertexOutput, toVertexName, toVertexInput))
             {
                 return CRAErrorCode.Success;
             }
 
             // Re-check the connection table as someone may have successfully
             // created a fused connection
-            if (conn.TryGetValue(fromProcessName + ":" + fromProcessOutput + ":" + toProcessName + ":" + toProcessInput,
+            if (conn.TryGetValue(fromVertexName + ":" + fromVertexOutput + ":" + toVertexName + ":" + toVertexInput,
                 out oldSource))
             {
                 if (killIfExists)
@@ -302,7 +302,7 @@ namespace CRA.ClientLibrary
 
             // Send request to CRA instance
             NetworkStream ns = null;
-            var _row = ProcessTable.GetRowForInstanceProcess(_workerInstanceTable, row.InstanceName, "");
+            var _row = VertexTable.GetRowForInstanceVertex(_workerInstanceTable, row.InstanceName, "");
             try
             {
                 // Get a stream connection from the pool if available
@@ -324,10 +324,10 @@ namespace CRA.ClientLibrary
             else
                 ns.WriteInt32((int)CRATaskMessageType.CONNECT_PROCESS_RECEIVER_REVERSE);
 
-            ns.WriteByteArray(Encoding.UTF8.GetBytes(fromProcessName));
-            ns.WriteByteArray(Encoding.UTF8.GetBytes(fromProcessOutput));
-            ns.WriteByteArray(Encoding.UTF8.GetBytes(toProcessName));
-            ns.WriteByteArray(Encoding.UTF8.GetBytes(toProcessInput));
+            ns.WriteByteArray(Encoding.UTF8.GetBytes(fromVertexName));
+            ns.WriteByteArray(Encoding.UTF8.GetBytes(fromVertexOutput));
+            ns.WriteByteArray(Encoding.UTF8.GetBytes(toVertexName));
+            ns.WriteByteArray(Encoding.UTF8.GetBytes(toVertexInput));
             ns.WriteInt32(killRemote ? 1 : 0);
             CRAErrorCode result = (CRAErrorCode)ns.ReadInt32();
 
@@ -342,10 +342,10 @@ namespace CRA.ClientLibrary
 
                 if (!reverse)
                 {
-                    if (outConnections.TryAdd(fromProcessName + ":" + fromProcessOutput + ":" + toProcessName + ":" + toProcessInput, source))
+                    if (outConnections.TryAdd(fromVertexName + ":" + fromVertexOutput + ":" + toVertexName + ":" + toVertexInput, source))
                     {
                         Task.Run(() =>
-                            EgressToStream(fromProcessName, fromProcessOutput, toProcessName, toProcessInput, reverse, ns, source, _row.Address, _row.Port));
+                            EgressToStream(fromVertexName, fromVertexOutput, toVertexName, toVertexInput, reverse, ns, source, _row.Address, _row.Port));
 
                         return CRAErrorCode.Success;
                     }
@@ -359,10 +359,10 @@ namespace CRA.ClientLibrary
                 }
                 else
                 {
-                    if (inConnections.TryAdd(fromProcessName + ":" + fromProcessOutput + ":" + toProcessName + ":" + toProcessInput, source))
+                    if (inConnections.TryAdd(fromVertexName + ":" + fromVertexOutput + ":" + toVertexName + ":" + toVertexInput, source))
                     {
                         Task.Run(() =>
-                            IngressFromStream(fromProcessName, fromProcessOutput, toProcessName, toProcessInput, reverse, ns, source, _row.Address, _row.Port));
+                            IngressFromStream(fromVertexName, fromVertexOutput, toVertexName, toVertexInput, reverse, ns, source, _row.Address, _row.Port));
                         return CRAErrorCode.Success;
                     }
                     else
@@ -376,7 +376,7 @@ namespace CRA.ClientLibrary
             }
         }
 
-        private bool TryFusedConnect(string otherInstance, string fromProcessName, string fromProcessOutput, string toProcessName, string toProcessInput)
+        private bool TryFusedConnect(string otherInstance, string fromVertexName, string fromVertexOutput, string toVertexName, string toVertexInput)
         {
             if (otherInstance != InstanceName)
                 return false;
@@ -384,17 +384,17 @@ namespace CRA.ClientLibrary
 
             CancellationTokenSource source = new CancellationTokenSource();
 
-            if (_localProcessTable[fromProcessName].OutputEndpoints.ContainsKey(fromProcessOutput) &&
-                _localProcessTable[toProcessName].InputEndpoints.ContainsKey(toProcessInput))
+            if (_localVertexTable[fromVertexName].OutputEndpoints.ContainsKey(fromVertexOutput) &&
+                _localVertexTable[toVertexName].InputEndpoints.ContainsKey(toVertexInput))
             {
-                var fromProcess = _localProcessTable[fromProcessName].OutputEndpoints[fromProcessOutput] as IFusableProcessOutputEndpoint;
-                var toProcess = _localProcessTable[toProcessName].InputEndpoints[toProcessInput] as IProcessInputEndpoint;
+                var fromVertex = _localVertexTable[fromVertexName].OutputEndpoints[fromVertexOutput] as IFusableVertexOutputEndpoint;
+                var toVertex = _localVertexTable[toVertexName].InputEndpoints[toVertexInput] as IVertexInputEndpoint;
 
-                if (fromProcess != null && toProcess != null && fromProcess.CanFuseWith(toProcess, toProcessName, toProcessInput))
+                if (fromVertex != null && toVertex != null && fromVertex.CanFuseWith(toVertex, toVertexName, toVertexInput))
                 {
-                    if (outConnections.TryAdd(fromProcessName + ":" + fromProcessOutput + ":" + toProcessName + ":" + toProcessInput, source))
+                    if (outConnections.TryAdd(fromVertexName + ":" + fromVertexOutput + ":" + toVertexName + ":" + toVertexInput, source))
                     {
-                        Task.Run(() => EgressToProcessInput(fromProcessName, fromProcessOutput, toProcessName, toProcessInput, source));
+                        Task.Run(() => EgressToVertexInput(fromVertexName, fromVertexOutput, toVertexName, toVertexInput, source));
                         return true;
                     }
                     else
@@ -403,17 +403,17 @@ namespace CRA.ClientLibrary
                 else
                     return false;
             }
-            else if (_localProcessTable[fromProcessName].AsyncOutputEndpoints.ContainsKey(fromProcessOutput) &&
-                _localProcessTable[toProcessName].AsyncInputEndpoints.ContainsKey(toProcessInput))
+            else if (_localVertexTable[fromVertexName].AsyncOutputEndpoints.ContainsKey(fromVertexOutput) &&
+                _localVertexTable[toVertexName].AsyncInputEndpoints.ContainsKey(toVertexInput))
             {
-                var fromProcess = _localProcessTable[fromProcessName].AsyncOutputEndpoints[fromProcessOutput] as IAsyncFusableProcessOutputEndpoint;
-                var toProcess = _localProcessTable[toProcessName].AsyncInputEndpoints[toProcessInput] as IAsyncProcessInputEndpoint;
+                var fromVertex = _localVertexTable[fromVertexName].AsyncOutputEndpoints[fromVertexOutput] as IAsyncFusableVertexOutputEndpoint;
+                var toVertex = _localVertexTable[toVertexName].AsyncInputEndpoints[toVertexInput] as IAsyncVertexInputEndpoint;
 
-                if (fromProcess != null && toProcess != null && fromProcess.CanFuseWith(toProcess, toProcessName, toProcessInput))
+                if (fromVertex != null && toVertex != null && fromVertex.CanFuseWith(toVertex, toVertexName, toVertexInput))
                 {
-                    if (outConnections.TryAdd(fromProcessName + ":" + fromProcessOutput + ":" + toProcessName + ":" + toProcessInput, source))
+                    if (outConnections.TryAdd(fromVertexName + ":" + fromVertexOutput + ":" + toVertexName + ":" + toVertexInput, source))
                     {
-                        Task.Run(() => EgressToProcessInput(fromProcessName, fromProcessOutput, toProcessName, toProcessInput, source));
+                        Task.Run(() => EgressToVertexInput(fromVertexName, fromVertexOutput, toVertexName, toVertexInput, source));
                         return true;
                     }
                     else
@@ -430,21 +430,21 @@ namespace CRA.ClientLibrary
             }
         }
 
-        private async Task EgressToStream(string fromProcessName, string fromProcessOutput, string toProcessName, string toProcessInput,
+        private async Task EgressToStream(string fromVertexName, string fromVertexOutput, string toVertexName, string toVertexInput,
             bool reverse, Stream ns, CancellationTokenSource source, string address = null, int port = -1)
         {
             try
             {
-                if (_localProcessTable[fromProcessName].OutputEndpoints.ContainsKey(fromProcessOutput))
+                if (_localVertexTable[fromVertexName].OutputEndpoints.ContainsKey(fromVertexOutput))
                 {
                     await
                         Task.Run(() =>
-                            _localProcessTable[fromProcessName].OutputEndpoints[fromProcessOutput]
-                                .ToStream(ns, toProcessName, toProcessInput, source.Token), source.Token);
+                            _localVertexTable[fromVertexName].OutputEndpoints[fromVertexOutput]
+                                .ToStream(ns, toVertexName, toVertexInput, source.Token), source.Token);
                 }
-                else if (_localProcessTable[fromProcessName].AsyncOutputEndpoints.ContainsKey(fromProcessOutput))
+                else if (_localVertexTable[fromVertexName].AsyncOutputEndpoints.ContainsKey(fromVertexOutput))
                 {
-                    await _localProcessTable[fromProcessName].AsyncOutputEndpoints[fromProcessOutput].ToStreamAsync(ns, toProcessName, toProcessInput, source.Token);
+                    await _localVertexTable[fromVertexName].AsyncOutputEndpoints[fromVertexOutput].ToStreamAsync(ns, toVertexName, toVertexInput, source.Token);
                 }
                 else
                 {
@@ -453,7 +453,7 @@ namespace CRA.ClientLibrary
                 }
 
                 CancellationTokenSource oldSource;
-                if (outConnections.TryRemove(fromProcessName + ":" + fromProcessOutput + ":" + toProcessName + ":" + toProcessInput, out oldSource))
+                if (outConnections.TryRemove(fromVertexName + ":" + fromVertexOutput + ":" + toVertexName + ":" + toVertexInput, out oldSource))
                 {
                     oldSource.Dispose();
 
@@ -473,14 +473,14 @@ namespace CRA.ClientLibrary
 #pragma warning restore CS4014
                     }
 
-                    _craClient.Disconnect(fromProcessName, fromProcessOutput, toProcessName, toProcessInput);
+                    _craClient.Disconnect(fromVertexName, fromVertexOutput, toVertexName, toVertexInput);
                 }
             }
             catch (Exception e)
             {
                 Debug.WriteLine("Exception (" + e.ToString() + ") in outgoing stream - reconnecting");
                 CancellationTokenSource oldSource;
-                if (outConnections.TryRemove(fromProcessName + ":" + fromProcessOutput + ":" + toProcessName + ":" + toProcessInput, out oldSource))
+                if (outConnections.TryRemove(fromVertexName + ":" + fromVertexOutput + ":" + toVertexName + ":" + toVertexInput, out oldSource))
                 {
                     oldSource.Dispose();
                 }
@@ -490,24 +490,24 @@ namespace CRA.ClientLibrary
                 }
 
                 // Retry following while connection not in list
-                RetryRestoreConnection(fromProcessName, fromProcessOutput, toProcessName, toProcessInput, false);
+                RetryRestoreConnection(fromVertexName, fromVertexOutput, toVertexName, toVertexInput, false);
             }
         }
 
-        private async Task EgressToProcessInput(string fromProcessName, string fromProcessOutput, string toProcessName, string toProcessInput,
+        private async Task EgressToVertexInput(string fromVertexName, string fromVertexOutput, string toVertexName, string toVertexInput,
             CancellationTokenSource source)
         {
             try
             {
-                if (_localProcessTable[fromProcessName].OutputEndpoints.ContainsKey(fromProcessOutput))
+                if (_localVertexTable[fromVertexName].OutputEndpoints.ContainsKey(fromVertexOutput))
                 {
-                    var fromProcess = _localProcessTable[fromProcessName].OutputEndpoints[fromProcessOutput] as IFusableProcessOutputEndpoint;
-                    var toProcess = _localProcessTable[toProcessName].InputEndpoints[toProcessInput] as IProcessInputEndpoint;
+                    var fromVertex = _localVertexTable[fromVertexName].OutputEndpoints[fromVertexOutput] as IFusableVertexOutputEndpoint;
+                    var toVertex = _localVertexTable[toVertexName].InputEndpoints[toVertexInput] as IVertexInputEndpoint;
 
-                    if (fromProcess != null && toProcess != null && fromProcess.CanFuseWith(toProcess, toProcessName, toProcessInput))
+                    if (fromVertex != null && toVertex != null && fromVertex.CanFuseWith(toVertex, toVertexName, toVertexInput))
                     {
                         await
-                            Task.Run(() => fromProcess.ToInput(toProcess, toProcessName, toProcessInput, source.Token));
+                            Task.Run(() => fromVertex.ToInput(toVertex, toVertexName, toVertexInput, source.Token));
                     }
                     else
                     {
@@ -515,14 +515,14 @@ namespace CRA.ClientLibrary
                         return;
                     }
                 }
-                else if (_localProcessTable[fromProcessName].AsyncOutputEndpoints.ContainsKey(fromProcessOutput))
+                else if (_localVertexTable[fromVertexName].AsyncOutputEndpoints.ContainsKey(fromVertexOutput))
                 {
-                    var fromProcess = _localProcessTable[fromProcessName].AsyncOutputEndpoints[fromProcessOutput] as IAsyncFusableProcessOutputEndpoint;
-                    var toProcess = _localProcessTable[toProcessName].AsyncInputEndpoints[toProcessInput] as IAsyncProcessInputEndpoint;
+                    var fromVertex = _localVertexTable[fromVertexName].AsyncOutputEndpoints[fromVertexOutput] as IAsyncFusableVertexOutputEndpoint;
+                    var toVertex = _localVertexTable[toVertexName].AsyncInputEndpoints[toVertexInput] as IAsyncVertexInputEndpoint;
 
-                    if (fromProcess != null && toProcess != null && fromProcess.CanFuseWith(toProcess, toProcessName, toProcessInput))
+                    if (fromVertex != null && toVertex != null && fromVertex.CanFuseWith(toVertex, toVertexName, toVertexInput))
                     {
-                        await fromProcess.ToInputAsync(toProcess, fromProcessName, fromProcessOutput, source.Token);
+                        await fromVertex.ToInputAsync(toVertex, fromVertexName, fromVertexOutput, source.Token);
                     }
                     else
                     {
@@ -537,17 +537,17 @@ namespace CRA.ClientLibrary
                 }
 
                 CancellationTokenSource oldSource;
-                if (outConnections.TryRemove(fromProcessName + ":" + fromProcessOutput + ":" + toProcessName + ":" + toProcessInput, out oldSource))
+                if (outConnections.TryRemove(fromVertexName + ":" + fromVertexOutput + ":" + toVertexName + ":" + toVertexInput, out oldSource))
                 {
                     oldSource.Dispose();
-                    _craClient.Disconnect(fromProcessName, fromProcessOutput, toProcessName, toProcessInput);
+                    _craClient.Disconnect(fromVertexName, fromVertexOutput, toVertexName, toVertexInput);
                 }
             }
             catch (Exception e)
             {
                 Debug.WriteLine("Exception (" + e.ToString() + ") in outgoing stream - reconnecting");
                 CancellationTokenSource oldSource;
-                if (outConnections.TryRemove(fromProcessName + ":" + fromProcessOutput + ":" + toProcessName + ":" + toProcessInput, out oldSource))
+                if (outConnections.TryRemove(fromVertexName + ":" + fromVertexOutput + ":" + toVertexName + ":" + toVertexInput, out oldSource))
                 {
                     oldSource.Dispose();
                 }
@@ -557,58 +557,58 @@ namespace CRA.ClientLibrary
                 }
 
                 // Retry following while connection not in list
-                RetryRestoreConnection(fromProcessName, fromProcessOutput, toProcessName, toProcessInput, false);
+                RetryRestoreConnection(fromVertexName, fromVertexOutput, toVertexName, toVertexInput, false);
             }
         }
 
-        private void ConnectProcess_Receiver(object streamObject, bool reverse = false)
+        private void ConnectVertex_Receiver(object streamObject, bool reverse = false)
         {
             var stream = (Stream)streamObject;
 
-            string fromProcessName = Encoding.UTF8.GetString(stream.ReadByteArray());
-            string fromProcessOutput = Encoding.UTF8.GetString(stream.ReadByteArray());
-            string toProcessName = Encoding.UTF8.GetString(stream.ReadByteArray());
-            string toProcessInput = Encoding.UTF8.GetString(stream.ReadByteArray());
+            string fromVertexName = Encoding.UTF8.GetString(stream.ReadByteArray());
+            string fromVertexOutput = Encoding.UTF8.GetString(stream.ReadByteArray());
+            string toVertexName = Encoding.UTF8.GetString(stream.ReadByteArray());
+            string toVertexInput = Encoding.UTF8.GetString(stream.ReadByteArray());
             bool killIfExists = stream.ReadInt32() == 1 ? true : false;
 
             if (!reverse)
             {
-                if (!_localProcessTable.ContainsKey(toProcessName))
+                if (!_localVertexTable.ContainsKey(toVertexName))
                 {
-                    stream.WriteInt32((int)CRAErrorCode.ProcessNotFound);
+                    stream.WriteInt32((int)CRAErrorCode.VertexNotFound);
                     Task.Run(() => TryReuseReceiverStream(stream));
                     return;
                 }
 
-                if (!_localProcessTable[toProcessName].InputEndpoints.ContainsKey(toProcessInput) &&
-                    !_localProcessTable[toProcessName].AsyncInputEndpoints.ContainsKey(toProcessInput)
+                if (!_localVertexTable[toVertexName].InputEndpoints.ContainsKey(toVertexInput) &&
+                    !_localVertexTable[toVertexName].AsyncInputEndpoints.ContainsKey(toVertexInput)
                     )
                 {
-                    stream.WriteInt32((int)CRAErrorCode.ProcessInputNotFound);
+                    stream.WriteInt32((int)CRAErrorCode.VertexInputNotFound);
                     Task.Run(() => TryReuseReceiverStream(stream));
                     return;
                 }
             }
             else
             {
-                if (!_localProcessTable.ContainsKey(fromProcessName))
+                if (!_localVertexTable.ContainsKey(fromVertexName))
                 {
-                    stream.WriteInt32((int)CRAErrorCode.ProcessNotFound);
+                    stream.WriteInt32((int)CRAErrorCode.VertexNotFound);
                     Task.Run(() => TryReuseReceiverStream(stream));
                     return;
                 }
 
-                if (!_localProcessTable[fromProcessName].OutputEndpoints.ContainsKey(fromProcessOutput) &&
-                    !_localProcessTable[fromProcessName].AsyncOutputEndpoints.ContainsKey(fromProcessOutput)
+                if (!_localVertexTable[fromVertexName].OutputEndpoints.ContainsKey(fromVertexOutput) &&
+                    !_localVertexTable[fromVertexName].AsyncOutputEndpoints.ContainsKey(fromVertexOutput)
                     )
                 {
-                    stream.WriteInt32((int)CRAErrorCode.ProcessInputNotFound);
+                    stream.WriteInt32((int)CRAErrorCode.VertexInputNotFound);
                     Task.Run(() => TryReuseReceiverStream(stream));
                     return;
                 }
             }
 
-            int result = Connect_ReceiverSide(fromProcessName, fromProcessOutput, toProcessName, toProcessInput, stream, reverse, killIfExists);
+            int result = Connect_ReceiverSide(fromVertexName, fromVertexOutput, toVertexName, toVertexInput, stream, reverse, killIfExists);
 
             // Do not close and dispose stream because it is being reused for data
             if (result != 0)
@@ -618,11 +618,11 @@ namespace CRA.ClientLibrary
         }
 
 
-        private int Connect_ReceiverSide(string fromProcessName, string fromProcessOutput, string toProcessName, string toProcessInput, Stream stream, bool reverse, bool killIfExists = true)
+        private int Connect_ReceiverSide(string fromVertexName, string fromVertexOutput, string toVertexName, string toVertexInput, Stream stream, bool reverse, bool killIfExists = true)
         {
             CancellationTokenSource oldSource;
             var conn = reverse ? outConnections : inConnections;
-            if (conn.TryGetValue(fromProcessName + ":" + fromProcessOutput + ":" + toProcessName + ":" + toProcessInput, out oldSource))
+            if (conn.TryGetValue(fromVertexName + ":" + fromVertexOutput + ":" + toVertexName + ":" + toVertexInput, out oldSource))
             {
                 if (killIfExists)
                 {
@@ -645,10 +645,10 @@ namespace CRA.ClientLibrary
 
             if (!reverse)
             {
-                if (inConnections.TryAdd(fromProcessName + ":" + fromProcessOutput + ":" + toProcessName + ":" + toProcessInput, source))
+                if (inConnections.TryAdd(fromVertexName + ":" + fromVertexOutput + ":" + toVertexName + ":" + toVertexInput, source))
                 {
                     Task.Run(() =>
-                        IngressFromStream(fromProcessName, fromProcessOutput, toProcessName, toProcessInput, reverse, stream, source));
+                        IngressFromStream(fromVertexName, fromVertexOutput, toVertexName, toVertexInput, reverse, stream, source));
                     return (int)CRAErrorCode.Success;
                 }
                 else
@@ -661,10 +661,10 @@ namespace CRA.ClientLibrary
             }
             else
             {
-                if (outConnections.TryAdd(fromProcessName + ":" + fromProcessOutput + ":" + toProcessName + ":" + toProcessInput, source))
+                if (outConnections.TryAdd(fromVertexName + ":" + fromVertexOutput + ":" + toVertexName + ":" + toVertexInput, source))
                 {
                     Task.Run(() =>
-                        EgressToStream(fromProcessName, fromProcessOutput, toProcessName, toProcessInput, reverse, stream, source));
+                        EgressToStream(fromVertexName, fromVertexOutput, toVertexName, toVertexInput, reverse, stream, source));
                     return (int)CRAErrorCode.Success;
                 }
                 else
@@ -678,19 +678,19 @@ namespace CRA.ClientLibrary
 
         }
 
-        private async Task IngressFromStream(string fromProcessName, string fromProcessOutput, string toProcessName, string toProcessInput, bool reverse, Stream ns, CancellationTokenSource source, string address = null, int port = -1)
+        private async Task IngressFromStream(string fromVertexName, string fromVertexOutput, string toVertexName, string toVertexInput, bool reverse, Stream ns, CancellationTokenSource source, string address = null, int port = -1)
         {
             try
             {
-                if (_localProcessTable[toProcessName].InputEndpoints.ContainsKey(toProcessInput))
+                if (_localVertexTable[toVertexName].InputEndpoints.ContainsKey(toVertexInput))
                 {
                     await Task.Run(
-                        () => _localProcessTable[toProcessName].InputEndpoints[toProcessInput]
-                        .FromStream(ns, fromProcessName, fromProcessOutput, source.Token), source.Token);
+                        () => _localVertexTable[toVertexName].InputEndpoints[toVertexInput]
+                        .FromStream(ns, fromVertexName, fromVertexOutput, source.Token), source.Token);
                 }
-                else if (_localProcessTable[toProcessName].AsyncInputEndpoints.ContainsKey(toProcessInput))
+                else if (_localVertexTable[toVertexName].AsyncInputEndpoints.ContainsKey(toVertexInput))
                 {
-                    await _localProcessTable[toProcessName].AsyncInputEndpoints[toProcessInput].FromStreamAsync(ns, fromProcessName, fromProcessOutput, source.Token);
+                    await _localVertexTable[toVertexName].AsyncInputEndpoints[toVertexInput].FromStreamAsync(ns, fromVertexName, fromVertexOutput, source.Token);
                 }
                 else
                 {
@@ -700,7 +700,7 @@ namespace CRA.ClientLibrary
 
                 // Completed FromStream successfully
                 CancellationTokenSource oldSource;
-                if (inConnections.TryRemove(fromProcessName + ":" + fromProcessOutput + ":" + toProcessName + ":" + toProcessInput, out oldSource))
+                if (inConnections.TryRemove(fromVertexName + ":" + fromVertexOutput + ":" + toVertexName + ":" + toVertexInput, out oldSource))
                 {
                     oldSource.Dispose();
 
@@ -725,7 +725,7 @@ namespace CRA.ClientLibrary
             {
                 Debug.WriteLine("Exception (" + e.ToString() + ") in incoming stream - reconnecting");
                 CancellationTokenSource tokenSource;
-                if (inConnections.TryRemove(fromProcessName + ":" + fromProcessOutput + ":" + toProcessName + ":" + toProcessInput, out tokenSource))
+                if (inConnections.TryRemove(fromVertexName + ":" + fromVertexOutput + ":" + toVertexName + ":" + toVertexInput, out tokenSource))
                 {
                     tokenSource.Dispose();
                 }
@@ -734,57 +734,57 @@ namespace CRA.ClientLibrary
                     Debug.WriteLine("Unexpected: caught exception in FromStream but entry absent in inConnections");
                 }
 
-                RetryRestoreConnection(fromProcessName, fromProcessOutput, toProcessName, toProcessInput, true);
+                RetryRestoreConnection(fromVertexName, fromVertexOutput, toVertexName, toVertexInput, true);
             }
         }
 
-        private void RestoreProcessesAndConnections()
+        private void RestoreVertexesAndConnections()
         {
-            var rows = ProcessTable.GetAllRowsForInstance(_workerInstanceTable, _workerinstanceName);
+            var rows = VertexTable.GetAllRowsForInstance(_workerInstanceTable, _workerinstanceName);
 
             foreach (var _row in rows)
             {
-                if (string.IsNullOrEmpty(_row.ProcessName)) continue;
-                RestoreProcessAndConnections(_row);
+                if (string.IsNullOrEmpty(_row.VertexName)) continue;
+                RestoreVertexAndConnections(_row);
             }
         }
 
-        private async void RestoreProcessAndConnections(ProcessTable _row)
+        private async void RestoreVertexAndConnections(VertexTable _row)
         {
-            await _craClient.LoadProcessAsync(_row.ProcessName, _row.ProcessDefinition, _row.ProcessParameter, _workerinstanceName, _localProcessTable);
+            await _craClient.LoadVertexAsync(_row.VertexName, _row.VertexDefinition, _row.VertexParameter, _workerinstanceName, _localVertexTable);
             RestoreConnections(_row);
         }
 
-        private void RestoreConnections(ProcessTable _row)
+        private void RestoreConnections(VertexTable _row)
         {
             // Decide what to do if connection creation fails
-            var outRows = ConnectionTable.GetAllConnectionsFromProcess(_connectionTable, _row.ProcessName).ToList();
+            var outRows = ConnectionTable.GetAllConnectionsFromVertex(_connectionTable, _row.VertexName).ToList();
             foreach (var row in outRows)
             {
-                Task.Run(() => RetryRestoreConnection(row.FromProcess, row.FromEndpoint, row.ToProcess, row.ToEndpoint, false));
+                Task.Run(() => RetryRestoreConnection(row.FromVertex, row.FromEndpoint, row.ToVertex, row.ToEndpoint, false));
             }
 
-            var inRows = ConnectionTable.GetAllConnectionsToProcess(_connectionTable, _row.ProcessName).ToList();
+            var inRows = ConnectionTable.GetAllConnectionsToVertex(_connectionTable, _row.VertexName).ToList();
             foreach (var row in inRows)
             {
-                Task.Run(() => RetryRestoreConnection(row.FromProcess, row.FromEndpoint, row.ToProcess, row.ToEndpoint, true));
+                Task.Run(() => RetryRestoreConnection(row.FromVertex, row.FromEndpoint, row.ToVertex, row.ToEndpoint, true));
             }
         }
 
-        private void RetryRestoreConnection(string fromProcessName, string fromProcessOutput, string toProcessName, string toProcessInput, bool reverse)
+        private void RetryRestoreConnection(string fromVertexName, string fromVertexOutput, string toVertexName, string toVertexInput, bool reverse)
         {
             var conn = reverse ? inConnections : outConnections;
 
             bool killRemote = false;
-            while (!conn.ContainsKey(fromProcessName + ":" + fromProcessOutput + ":" + toProcessName + ":" + toProcessInput))
+            while (!conn.ContainsKey(fromVertexName + ":" + fromVertexOutput + ":" + toVertexName + ":" + toVertexInput))
             {
-                if (!ConnectionTable.ContainsConnection(_connectionTable, fromProcessName, fromProcessOutput, toProcessName, toProcessInput))
+                if (!ConnectionTable.ContainsConnection(_connectionTable, fromVertexName, fromVertexOutput, toVertexName, toVertexInput))
                     break;
 
-                Debug.WriteLine("Connecting " + fromProcessName + ":" + fromProcessOutput + ":" + toProcessName + ":" + toProcessInput);
+                Debug.WriteLine("Connecting " + fromVertexName + ":" + fromVertexOutput + ":" + toVertexName + ":" + toVertexInput);
                 Debug.WriteLine("Connecting with killRemote set to " + (killRemote ? "true" : "false"));
 
-                var result = Connect_InitiatorSide(fromProcessName, fromProcessOutput, toProcessName, toProcessInput, reverse, false, killRemote);
+                var result = Connect_InitiatorSide(fromVertexName, fromVertexOutput, toVertexName, toVertexInput, reverse, false, killRemote);
 
                 if (result != 0)
                 {

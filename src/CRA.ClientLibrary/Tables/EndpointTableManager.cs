@@ -34,36 +34,36 @@ namespace CRA.ClientLibrary
             _endpointTable.DeleteIfExists();
         }
 
-        internal bool ExistsEndpoint(string processName, string endPoint)
+        internal bool ExistsEndpoint(string vertexName, string endPoint)
         {
             TableQuery<EndpointTable> query = new TableQuery<EndpointTable>()
                 .Where(TableQuery.CombineFilters(
-                            TableQuery.GenerateFilterCondition("PartitionKey", QueryComparisons.Equal, processName),
+                            TableQuery.GenerateFilterCondition("PartitionKey", QueryComparisons.Equal, vertexName),
                             TableOperators.And,
                             TableQuery.GenerateFilterCondition("RowKey", QueryComparisons.Equal, endPoint)));
             return _endpointTable.ExecuteQuery(query).Any();
         }
 
-        internal void AddEndpoint(string processName, string endpointName, bool isInput, bool isAsync)
+        internal void AddEndpoint(string vertexName, string endpointName, bool isInput, bool isAsync)
         {
             // Make the connection information stable
-            var newRow = new EndpointTable(processName, endpointName, isInput, isAsync);
+            var newRow = new EndpointTable(vertexName, endpointName, isInput, isAsync);
             TableOperation insertOperation = TableOperation.InsertOrReplace(newRow);
             _endpointTable.Execute(insertOperation);
         }
 
-        internal void DeleteEndpoint(string processName, string endpointName)
+        internal void DeleteEndpoint(string vertexName, string endpointName)
         {
             // Make the connection information stable
-            var newRow = new DynamicTableEntity(processName, endpointName);
+            var newRow = new DynamicTableEntity(vertexName, endpointName);
             newRow.ETag = "*";
             TableOperation deleteOperation = TableOperation.Delete(newRow);
             _endpointTable.Execute(deleteOperation);
         }
 
-        internal void RemoveEndpoint(string processName, string endpointName)
+        internal void RemoveEndpoint(string vertexName, string endpointName)
         {
-            var op = TableOperation.Retrieve<EndpointTable>(processName, endpointName);
+            var op = TableOperation.Retrieve<EndpointTable>(vertexName, endpointName);
             TableResult retrievedResult = _endpointTable.Execute(op);
 
             // Assign the result to a CustomerEntity.
@@ -83,17 +83,17 @@ namespace CRA.ClientLibrary
             }
         }
 
-        internal List<string> GetInputEndpoints(string processName)
+        internal List<string> GetInputEndpoints(string vertexName)
         {
             TableQuery<EndpointTable> query = new TableQuery<EndpointTable>()
-                .Where(TableQuery.GenerateFilterCondition("PartitionKey", QueryComparisons.Equal, processName));
+                .Where(TableQuery.GenerateFilterCondition("PartitionKey", QueryComparisons.Equal, vertexName));
             return _endpointTable.ExecuteQuery(query).Where(e => e.IsInput).Select(e => e.EndpointName).ToList();
         }
 
-        internal List<string> GetOutputEndpoints(string processName)
+        internal List<string> GetOutputEndpoints(string vertexName)
         {
             TableQuery<EndpointTable> query = new TableQuery<EndpointTable>()
-                .Where(TableQuery.GenerateFilterCondition("PartitionKey", QueryComparisons.Equal, processName));
+                .Where(TableQuery.GenerateFilterCondition("PartitionKey", QueryComparisons.Equal, vertexName));
             return _endpointTable.ExecuteQuery(query).Where(e => !e.IsInput).Select(e => e.EndpointName).ToList();
         }
 
@@ -124,7 +124,7 @@ namespace CRA.ClientLibrary
         /// <param name="_table"></param>
         private static void DeleteContents(CloudTable table)
         {
-            Action<IEnumerable<DynamicTableEntity>> processor = entities =>
+            Action<IEnumerable<DynamicTableEntity>> vertexor = entities =>
             {
                 var batches = new Dictionary<string, TableBatchOperation>();
 
@@ -155,22 +155,22 @@ namespace CRA.ClientLibrary
                 }
             };
 
-            ProcessEntities(table, processor);
+            VertexEntities(table, vertexor);
         }
 
         /// <summary>
-        /// Process all entities in a cloud table using the given processor lambda.
+        /// Vertex all entities in a cloud table using the given vertexor lambda.
         /// </summary>
         /// <param name="table"></param>
-        /// <param name="processor"></param>
-        private static void ProcessEntities(CloudTable table, Action<IEnumerable<DynamicTableEntity>> processor)
+        /// <param name="vertexor"></param>
+        private static void VertexEntities(CloudTable table, Action<IEnumerable<DynamicTableEntity>> vertexor)
         {
             TableQuerySegment<DynamicTableEntity> segment = null;
 
             while (segment == null || segment.ContinuationToken != null)
             {
                 segment = table.ExecuteQuerySegmented(new TableQuery().Take(100), segment == null ? null : segment.ContinuationToken);
-                processor(segment.Results);
+                vertexor(segment.Results);
             }
         }
     }

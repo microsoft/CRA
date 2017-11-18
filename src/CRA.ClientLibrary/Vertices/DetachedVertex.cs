@@ -9,7 +9,7 @@ using System.Text;
 namespace CRA.ClientLibrary
 {
     /// <summary>
-    /// All connections to/from this detached process
+    /// All connections to/from this detached vertex
     /// </summary>
     public class ConnectionData
     {
@@ -34,7 +34,7 @@ namespace CRA.ClientLibrary
     }
 
     /// <summary>
-    /// Endpoint information for process
+    /// Endpoint information for vertex
     /// </summary>
     public class EndpointData
     {
@@ -59,9 +59,9 @@ namespace CRA.ClientLibrary
     }
 
     /// <summary>
-    /// Process proxy for applications using CRA sideways
+    /// Vertex proxy for applications using CRA sideways
     /// </summary>
-    public class DetachedProcess : IDisposable
+    public class DetachedVertex : IDisposable
     {
         /// <summary>
         /// Connection data
@@ -74,19 +74,19 @@ namespace CRA.ClientLibrary
         public EndpointData EndpointData { get; set; }
 
         private CRAClientLibrary _clientLibrary;
-        private string _processName;
+        private string _vertexName;
         private string _instanceName;
         private bool _isEphemeralInstance;
 
         /// <summary>
         /// 
         /// </summary>
-        /// <param name="processName"></param>
+        /// <param name="vertexName"></param>
         /// <param name="instanceName"></param>
         /// <param name="clientLibrary"></param>
-        public DetachedProcess(string processName, string instanceName, CRAClientLibrary clientLibrary)
+        public DetachedVertex(string vertexName, string instanceName, CRAClientLibrary clientLibrary)
         {
-            _processName = processName;
+            _vertexName = vertexName;
             _clientLibrary = clientLibrary;
 
             if (instanceName == "")
@@ -96,7 +96,7 @@ namespace CRA.ClientLibrary
                 _clientLibrary.RegisterInstance(_instanceName, "", 0);
             }
 
-            _clientLibrary._processTableManager.RegisterProcess(_processName, _instanceName);
+            _clientLibrary._vertexTableManager.RegisterVertex(_vertexName, _instanceName);
 
             EndpointData = new EndpointData();
             ConnectionData = new ConnectionData();
@@ -108,7 +108,7 @@ namespace CRA.ClientLibrary
         /// <param name="endpointName">Endpoint name</param>
         public void AddInputEndpoint(string endpointName)
         {
-            _clientLibrary.AddEndpoint(_processName, endpointName, true, false);
+            _clientLibrary.AddEndpoint(_vertexName, endpointName, true, false);
             EndpointData.InputEndpoints.TryAdd(endpointName, true);
         }
 
@@ -118,7 +118,7 @@ namespace CRA.ClientLibrary
         /// <param name="endpointName">Endpoint name</param>
         public void AddOutputEndpoint(string endpointName)
         {
-            _clientLibrary.AddEndpoint(_processName, endpointName, false, false);
+            _clientLibrary.AddEndpoint(_vertexName, endpointName, false, false);
             EndpointData.OutputEndpoints.TryAdd(endpointName, true);
         }
 
@@ -126,16 +126,16 @@ namespace CRA.ClientLibrary
         /// Create connection stream from remote output endpoint to local input endpoint
         /// </summary>
         /// <param name="localInputEndpointName"></param>
-        /// <param name="remoteProcess"></param>
+        /// <param name="remoteVertex"></param>
         /// <param name="remoteOutputEndpoint"></param>
         /// <returns></returns>
-        public Stream FromRemoteOutputEndpointStream(string localInputEndpointName, string remoteProcess, string remoteOutputEndpoint)
+        public Stream FromRemoteOutputEndpointStream(string localInputEndpointName, string remoteVertex, string remoteOutputEndpoint)
         {
             AddInputEndpoint(localInputEndpointName);
 
-            _clientLibrary.AddConnectionInfo(remoteProcess, remoteOutputEndpoint, _processName, localInputEndpointName);
-            var stream = Connect_InitiatorSide(remoteProcess, remoteOutputEndpoint, _processName, localInputEndpointName, true);
-            var conn = new ConnectionInfo(remoteProcess, remoteOutputEndpoint, _processName, localInputEndpointName);
+            _clientLibrary.AddConnectionInfo(remoteVertex, remoteOutputEndpoint, _vertexName, localInputEndpointName);
+            var stream = Connect_InitiatorSide(remoteVertex, remoteOutputEndpoint, _vertexName, localInputEndpointName, true);
+            var conn = new ConnectionInfo(remoteVertex, remoteOutputEndpoint, _vertexName, localInputEndpointName);
             ConnectionData.InputConnections.AddOrUpdate(conn, stream, (c, s1) => { s1?.Dispose(); return stream; });
             return stream;
         }
@@ -145,58 +145,58 @@ namespace CRA.ClientLibrary
         /// Create connection stream from local output endpoint to remote input endpoint
         /// </summary>
         /// <param name="localOutputEndpointName"></param>
-        /// <param name="remoteProcess"></param>
+        /// <param name="remoteVertex"></param>
         /// <param name="remoteInputEndpoint"></param>
         /// <returns></returns>
-        public Stream ToRemoteInputEndpointStream(string localOutputEndpointName, string remoteProcess, string remoteInputEndpoint)
+        public Stream ToRemoteInputEndpointStream(string localOutputEndpointName, string remoteVertex, string remoteInputEndpoint)
         {
             AddOutputEndpoint(localOutputEndpointName);
 
-            _clientLibrary.AddConnectionInfo(_processName, localOutputEndpointName, remoteProcess, remoteInputEndpoint);
-            var stream = Connect_InitiatorSide(_processName, localOutputEndpointName, remoteProcess, remoteInputEndpoint, false);
-            var conn = new ConnectionInfo(_processName, localOutputEndpointName, remoteProcess, remoteInputEndpoint);
+            _clientLibrary.AddConnectionInfo(_vertexName, localOutputEndpointName, remoteVertex, remoteInputEndpoint);
+            var stream = Connect_InitiatorSide(_vertexName, localOutputEndpointName, remoteVertex, remoteInputEndpoint, false);
+            var conn = new ConnectionInfo(_vertexName, localOutputEndpointName, remoteVertex, remoteInputEndpoint);
             ConnectionData.OutputConnections.AddOrUpdate(conn, stream, (c, s1) => { s1?.Dispose(); return stream; });
             return stream;
         }
 
         /// <summary>
-        /// Restore information about endpoints of this detached process
+        /// Restore information about endpoints of this detached vertex
         /// </summary>
         /// <returns></returns>
         public void RestoreEndpointData()
         {
-            foreach (var endpt in _clientLibrary.GetInputEndpoints(_processName))
+            foreach (var endpt in _clientLibrary.GetInputEndpoints(_vertexName))
             {
                 EndpointData.InputEndpoints.TryAdd(endpt, true);
             }
 
-            foreach (var endpt in _clientLibrary.GetOutputEndpoints(_processName))
+            foreach (var endpt in _clientLibrary.GetOutputEndpoints(_vertexName))
             {
                 EndpointData.OutputEndpoints.TryAdd(endpt, true);
             }
         }
 
         /// <summary>
-        /// Restore all connections from/to this process, in the CRA connection graph
+        /// Restore all connections from/to this vertex, in the CRA connection graph
         /// </summary>
         /// <returns></returns>
         public void RestoreAllConnections()
         {
-            foreach (var outConn in _clientLibrary.GetConnectionsFromProcess(_processName))
+            foreach (var outConn in _clientLibrary.GetConnectionsFromVertex(_vertexName))
             {
-                var stream = ToRemoteInputEndpointStream(outConn.FromEndpoint, outConn.ToProcess, outConn.ToEndpoint);
+                var stream = ToRemoteInputEndpointStream(outConn.FromEndpoint, outConn.ToVertex, outConn.ToEndpoint);
                 ConnectionData.OutputConnections.AddOrUpdate(outConn, stream, (c, s1) => { s1?.Dispose(); return stream; });
             }
 
-            foreach (var inConn in _clientLibrary.GetConnectionsToProcess(_processName))
+            foreach (var inConn in _clientLibrary.GetConnectionsToVertex(_vertexName))
             {
-                var stream = FromRemoteOutputEndpointStream(inConn.ToEndpoint, inConn.FromProcess, inConn.FromEndpoint);
+                var stream = FromRemoteOutputEndpointStream(inConn.ToEndpoint, inConn.FromVertex, inConn.FromEndpoint);
                 ConnectionData.OutputConnections.AddOrUpdate(inConn, stream, (c, s1) => { s1?.Dispose(); return stream; });
             }
         }
 
         /// <summary>
-        /// Restore a process/instance pair
+        /// Restore a vertex/instance pair
         /// </summary>
         public void Restore()
         {
@@ -206,7 +206,7 @@ namespace CRA.ClientLibrary
 
 
         /// <summary>
-        /// Restore all connections from/to this process that are set to 'null' locally, in the CRA connection graph
+        /// Restore all connections from/to this vertex that are set to 'null' locally, in the CRA connection graph
         /// </summary>
         /// <returns></returns>
         public ConnectionData RestoreNullConnections()
@@ -215,7 +215,7 @@ namespace CRA.ClientLibrary
             {
                 if (outConn.Value == null)
                 {
-                    var stream = ToRemoteInputEndpointStream(outConn.Key.FromEndpoint, outConn.Key.ToProcess, outConn.Key.ToEndpoint);
+                    var stream = ToRemoteInputEndpointStream(outConn.Key.FromEndpoint, outConn.Key.ToVertex, outConn.Key.ToEndpoint);
                     ConnectionData.OutputConnections[outConn.Key] = stream;
                 }
             }
@@ -224,7 +224,7 @@ namespace CRA.ClientLibrary
             {
                 if (inConn.Value == null)
                 {
-                    var stream = FromRemoteOutputEndpointStream(inConn.Key.ToEndpoint, inConn.Key.FromProcess, inConn.Key.FromEndpoint);
+                    var stream = FromRemoteOutputEndpointStream(inConn.Key.ToEndpoint, inConn.Key.FromVertex, inConn.Key.FromEndpoint);
                     ConnectionData.InputConnections[inConn.Key] = stream;
                 }
             }
@@ -233,7 +233,7 @@ namespace CRA.ClientLibrary
 
 
         /// <summary>
-        /// Dispose the detached process
+        /// Dispose the detached vertex
         /// </summary>
         public void Dispose()
         {
@@ -251,16 +251,16 @@ namespace CRA.ClientLibrary
                     _clientLibrary.DeleteInstance(_instanceName);
                 }
 
-                _clientLibrary.DeleteProcess(_processName);
+                _clientLibrary.DeleteVertex(_vertexName);
 
                 foreach (var endpt in EndpointData.InputEndpoints.Keys)
                 {
-                    _clientLibrary.DeleteEndpoint(_processName, endpt);
+                    _clientLibrary.DeleteEndpoint(_vertexName, endpt);
                 }
 
                 foreach (var endpt in EndpointData.OutputEndpoints.Keys)
                 {
-                    _clientLibrary.DeleteEndpoint(_processName, endpt);
+                    _clientLibrary.DeleteEndpoint(_vertexName, endpt);
                 }
 
                 EndpointData.InputEndpoints.Clear();
@@ -268,7 +268,7 @@ namespace CRA.ClientLibrary
 
                 foreach (var kvp in ConnectionData.InputConnections)
                 {
-                    _clientLibrary.DeleteConnectionInfo(kvp.Key.FromProcess, kvp.Key.FromEndpoint, kvp.Key.ToProcess, kvp.Key.ToEndpoint);
+                    _clientLibrary.DeleteConnectionInfo(kvp.Key.FromVertex, kvp.Key.FromEndpoint, kvp.Key.ToVertex, kvp.Key.ToEndpoint);
 
                     if (kvp.Value != null)
                     {
@@ -278,7 +278,7 @@ namespace CRA.ClientLibrary
 
                 foreach (var kvp in ConnectionData.OutputConnections)
                 {
-                    _clientLibrary.DeleteConnectionInfo(kvp.Key.FromProcess, kvp.Key.FromEndpoint, kvp.Key.ToProcess, kvp.Key.ToEndpoint);
+                    _clientLibrary.DeleteConnectionInfo(kvp.Key.FromVertex, kvp.Key.FromEndpoint, kvp.Key.ToVertex, kvp.Key.ToEndpoint);
                     if (kvp.Value != null)
                     {
                         kvp.Value.Dispose();
@@ -299,16 +299,16 @@ namespace CRA.ClientLibrary
               .Select(s => s[random.Next(s.Length)]).ToArray());
         }
 
-        private Stream Connect_InitiatorSide(string fromProcessName, string fromProcessOutput, string toProcessName, string toProcessInput, bool reverse)
+        private Stream Connect_InitiatorSide(string fromVertexName, string fromVertexOutput, string toVertexName, string toVertexInput, bool reverse)
         {
             bool killRemote = true; // we have no way of receiving connections
 
-            var _processTableManager = _clientLibrary._processTableManager;
+            var _vertexTableManager = _clientLibrary._vertexTableManager;
 
             // Need to get the latest address & port
-            var row = reverse ? _processTableManager.GetRowForActiveProcess(fromProcessName) : _processTableManager.GetRowForActiveProcess(toProcessName);
+            var row = reverse ? _vertexTableManager.GetRowForActiveVertex(fromVertexName) : _vertexTableManager.GetRowForActiveVertex(toVertexName);
 
-            var _row = _processTableManager.GetRowForInstance(row.InstanceName);
+            var _row = _vertexTableManager.GetRowForInstance(row.InstanceName);
 
             // Send request to CRA instance
             NetworkStream ns = null;
@@ -332,10 +332,10 @@ namespace CRA.ClientLibrary
             else
                 ns.WriteInt32((int)CRATaskMessageType.CONNECT_PROCESS_RECEIVER_REVERSE);
 
-            ns.WriteByteArray(Encoding.UTF8.GetBytes(fromProcessName));
-            ns.WriteByteArray(Encoding.UTF8.GetBytes(fromProcessOutput));
-            ns.WriteByteArray(Encoding.UTF8.GetBytes(toProcessName));
-            ns.WriteByteArray(Encoding.UTF8.GetBytes(toProcessInput));
+            ns.WriteByteArray(Encoding.UTF8.GetBytes(fromVertexName));
+            ns.WriteByteArray(Encoding.UTF8.GetBytes(fromVertexOutput));
+            ns.WriteByteArray(Encoding.UTF8.GetBytes(toVertexName));
+            ns.WriteByteArray(Encoding.UTF8.GetBytes(toVertexInput));
             ns.WriteInt32(killRemote ? 1 : 0);
             CRAErrorCode result = (CRAErrorCode)ns.ReadInt32();
 

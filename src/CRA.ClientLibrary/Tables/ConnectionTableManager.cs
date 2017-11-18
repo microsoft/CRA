@@ -26,18 +26,18 @@ namespace CRA.ClientLibrary
         }
 
 
-        internal void AddConnection(string fromProcess, string fromOutput, string toConnection, string toInput)
+        internal void AddConnection(string fromVertex, string fromOutput, string toConnection, string toInput)
         {
             // Make the connection information stable
-            var newRow = new ConnectionTable(fromProcess, fromOutput, toConnection, toInput);
+            var newRow = new ConnectionTable(fromVertex, fromOutput, toConnection, toInput);
             TableOperation insertOperation = TableOperation.InsertOrReplace(newRow);
             _connectionTable.Execute(insertOperation);
         }
 
-        internal void DeleteConnection(string fromProcess, string fromOutput, string toConnection, string toInput)
+        internal void DeleteConnection(string fromVertex, string fromOutput, string toConnection, string toInput)
         {
             // Make the connection information stable
-            var newRow = new ConnectionTable(fromProcess, fromOutput, toConnection, toInput);
+            var newRow = new ConnectionTable(fromVertex, fromOutput, toConnection, toInput);
             newRow.ETag = "*";
             TableOperation retrieveOperation = TableOperation.Retrieve<ConnectionTable>(newRow.PartitionKey, newRow.RowKey);
             TableResult retrievedResult = _connectionTable.Execute(retrieveOperation);
@@ -49,22 +49,22 @@ namespace CRA.ClientLibrary
             }
         }
 
-        internal List<ConnectionInfo> GetConnectionsFromProcess(string processName)
+        internal List<ConnectionInfo> GetConnectionsFromVertex(string vertexName)
         {
             TableQuery<ConnectionTable> query = new TableQuery<ConnectionTable>()
-                .Where(TableQuery.GenerateFilterCondition("PartitionKey", QueryComparisons.Equal, processName));
+                .Where(TableQuery.GenerateFilterCondition("PartitionKey", QueryComparisons.Equal, vertexName));
 
             return _connectionTable
                 .ExecuteQuery(query)
-                .Select(e => new ConnectionInfo(e.FromProcess, e.FromEndpoint, e.ToProcess, e.ToEndpoint))
+                .Select(e => new ConnectionInfo(e.FromVertex, e.FromEndpoint, e.ToVertex, e.ToEndpoint))
                 .ToList();
         }
 
-        internal List<ConnectionInfo> GetConnectionsToProcess(string processName)
+        internal List<ConnectionInfo> GetConnectionsToVertex(string vertexName)
         {
             return
-                ConnectionTable.GetAllConnectionsToProcess(_connectionTable, processName)
-                    .Select(e => new ConnectionInfo(e.FromProcess, e.FromEndpoint, e.ToProcess, e.ToEndpoint))
+                ConnectionTable.GetAllConnectionsToVertex(_connectionTable, vertexName)
+                    .Select(e => new ConnectionInfo(e.FromVertex, e.FromEndpoint, e.ToVertex, e.ToEndpoint))
                     .ToList();
         }
 

@@ -27,10 +27,10 @@ namespace CRA.ClientLibrary
         CloudBlobClient _blobClient;
         CloudTableClient _tableClient;
 
-        CloudTable _processTable;
+        CloudTable _vertexTable;
         CloudTable _connectionTable;
 
-        internal ProcessTableManager _processTableManager;
+        internal VertexTableManager _vertexTableManager;
         EndpointTableManager _endpointTableManager;
         ConnectionTableManager _connectionTableManager;
 
@@ -82,67 +82,67 @@ namespace CRA.ClientLibrary
             _blobClient = _storageAccount.CreateCloudBlobClient();
             _tableClient = _storageAccount.CreateCloudTableClient();
 
-            _processTableManager = new ProcessTableManager(_storageConnectionString);
+            _vertexTableManager = new VertexTableManager(_storageConnectionString);
             _endpointTableManager = new EndpointTableManager(_storageConnectionString);
             _connectionTableManager = new ConnectionTableManager(_storageConnectionString);
 
-            _processTable = CreateTableIfNotExists("processtableforcra");
+            _vertexTable = CreateTableIfNotExists("vertextableforcra");
             _connectionTable = CreateTableIfNotExists("connectiontableforcra");
         }
 
         /// <summary>
-        /// Define a process type and register with CRA.
+        /// Define a vertex type and register with CRA.
         /// </summary>
-        /// <param name="processDefinition">Name of the process type</param>
-        /// <param name="creator">Lambda that describes how to instantiate the process, taking in an object as parameter</param>
-        public CRAErrorCode DefineProcess(string processDefinition, Expression<Func<IProcess>> creator)
+        /// <param name="vertexDefinition">Name of the vertex type</param>
+        /// <param name="creator">Lambda that describes how to instantiate the vertex, taking in an object as parameter</param>
+        public CRAErrorCode DefineVertex(string vertexDefinition, Expression<Func<IVertex>> creator)
         {
             CloudBlobContainer container = _blobClient.GetContainerReference("cra");
             container.CreateIfNotExists();
-            var blockBlob = container.GetBlockBlobReference(processDefinition + "/binaries");
+            var blockBlob = container.GetBlockBlobReference(vertexDefinition + "/binaries");
             CloudBlobStream blobStream = blockBlob.OpenWrite();
             AssemblyUtils.WriteAssembliesToStream(blobStream);
             blobStream.Close();
 
             // Add metadata
-            var newRow = new ProcessTable("", processDefinition, processDefinition, "", 0, creator, null, true);
+            var newRow = new VertexTable("", vertexDefinition, vertexDefinition, "", 0, creator, null, true);
             TableOperation insertOperation = TableOperation.InsertOrReplace(newRow);
-            _processTable.Execute(insertOperation);
+            _vertexTable.Execute(insertOperation);
 
             return CRAErrorCode.Success;
         }
 
         /// <summary>
-        /// Make this process the current "active".
+        /// Make this vertex the current "active".
         /// </summary>
-        /// <param name="processName"></param>
+        /// <param name="vertexName"></param>
         /// <param name="instanceName"></param>
-        public void ActivateProcess(string processName, string instanceName)
+        public void ActivateVertex(string vertexName, string instanceName)
         {
-            _processTableManager.ActivateProcessOnInstance(processName, instanceName);
+            _vertexTableManager.ActivateVertexOnInstance(vertexName, instanceName);
         }
 
         /// <summary>
-        /// Make this process the current "inactive".
+        /// Make this vertex the current "inactive".
         /// </summary>
-        /// <param name="processName"></param>
+        /// <param name="vertexName"></param>
         /// <param name="instanceName"></param>
-        public void DeactivateProcess(string processName, string instanceName)
+        public void DeactivateVertex(string vertexName, string instanceName)
         {
-            _processTableManager.DeactivateProcessOnInstance(processName, instanceName);
+            _vertexTableManager.DeactivateVertexOnInstance(vertexName, instanceName);
         }
 
         /// <summary>
-        /// Make this process the current "active" on local worker.
+        /// Make this vertex the current "active" on local worker.
         /// </summary>
-        /// <param name="processName"></param>
+        /// <param name="vertexName"></param>
         /// <param name="instanceName"></param>
-        public void ActivateProcess(string processName)
+        public void ActivateVertex(string vertexName)
         {
             if (_localWorker != null)
-                _processTableManager.ActivateProcessOnInstance(processName, _localWorker.InstanceName);
+                _vertexTableManager.ActivateVertexOnInstance(vertexName, _localWorker.InstanceName);
             else
-                throw new Exception("No local worker found to activate process on");
+                throw new Exception("No local worker found to activate vertex on");
         }
 
         /// <summary>
@@ -151,7 +151,7 @@ namespace CRA.ClientLibrary
         public void Reset()
         {
             _connectionTable.DeleteIfExists();
-            _processTable.DeleteIfExists();
+            _vertexTable.DeleteIfExists();
             _endpointTableManager.DeleteTable();
         }
 
@@ -161,7 +161,7 @@ namespace CRA.ClientLibrary
         /// <param name="_table"></param>
         private static void DeleteContents(CloudTable table)
         {
-            Action<IEnumerable<DynamicTableEntity>> processor = entities =>
+            Action<IEnumerable<DynamicTableEntity>> vertexor = entities =>
             {
                 var batches = new Dictionary<string, TableBatchOperation>();
 
@@ -192,22 +192,22 @@ namespace CRA.ClientLibrary
                 }
             };
 
-            ProcessEntities(table, processor);
+            VertexEntities(table, vertexor);
         }
 
         /// <summary>
-        /// Process all entities in a cloud table using the given processor lambda.
+        /// Vertex all entities in a cloud table using the given vertexor lambda.
         /// </summary>
         /// <param name="table"></param>
-        /// <param name="processor"></param>
-        private static void ProcessEntities(CloudTable table, Action<IEnumerable<DynamicTableEntity>> processor)
+        /// <param name="vertexor"></param>
+        private static void VertexEntities(CloudTable table, Action<IEnumerable<DynamicTableEntity>> vertexor)
         {
             TableQuerySegment<DynamicTableEntity> segment = null;
 
             while (segment == null || segment.ContinuationToken != null)
             {
                 segment = table.ExecuteQuerySegmented(new TableQuery().Take(100), segment == null ? null : segment.ContinuationToken);
-                processor(segment.Results);
+                vertexor(segment.Results);
             }
         }
 
@@ -221,42 +221,42 @@ namespace CRA.ClientLibrary
         }
 
         /// <summary>
-        /// Instantiate a process on a CRA instance.
+        /// Instantiate a vertex on a CRA instance.
         /// </summary>
-        /// <param name="instanceName">Name of the CRA instance on which process is instantiated</param>
-        /// <param name="processName">Name of the process (particular instance)</param>
-        /// <param name="processDefinition">Definition of the process (type)</param>
-        /// <param name="processParameter">Parameters to be passed to the process in its constructor (serializable object)</param>
+        /// <param name="instanceName">Name of the CRA instance on which vertex is instantiated</param>
+        /// <param name="vertexName">Name of the vertex (particular instance)</param>
+        /// <param name="vertexDefinition">Definition of the vertex (type)</param>
+        /// <param name="vertexParameter">Parameters to be passed to the vertex in its constructor (serializable object)</param>
         /// <returns>Status of the command</returns>
-        public CRAErrorCode InstantiateProcess(string instanceName, string processName, string processDefinition, object processParameter)
+        public CRAErrorCode InstantiateVertex(string instanceName, string vertexName, string vertexDefinition, object vertexParameter)
         {
-            var procDefRow = ProcessTable.GetRowForProcessDefinition(_processTable, processDefinition);
+            var procDefRow = VertexTable.GetRowForVertexDefinition(_vertexTable, vertexDefinition);
 
-            // Serialize and write the process parameters to a blob
+            // Serialize and write the vertex parameters to a blob
             CloudBlobContainer container = _blobClient.GetContainerReference("cra");
             container.CreateIfNotExists();
-            var blockBlob = container.GetBlockBlobReference(processDefinition + "/" + processName);
+            var blockBlob = container.GetBlockBlobReference(vertexDefinition + "/" + vertexName);
             CloudBlobStream blobStream = blockBlob.OpenWrite();
             byte[] parameterBytes = Encoding.UTF8.GetBytes(
-                        SerializationHelper.SerializeObject(processParameter));
+                        SerializationHelper.SerializeObject(vertexParameter));
             blobStream.WriteByteArray(parameterBytes);
             blobStream.Close();
 
             // Add metadata
-            var newRow = new ProcessTable(instanceName, processName, processDefinition, "", 0,
-                procDefRow.ProcessCreateAction,
-                processName,
+            var newRow = new VertexTable(instanceName, vertexName, vertexDefinition, "", 0,
+                procDefRow.VertexCreateAction,
+                vertexName,
                 false);
             TableOperation insertOperation = TableOperation.InsertOrReplace(newRow);
-            _processTable.Execute(insertOperation);
+            _vertexTable.Execute(insertOperation);
 
             CRAErrorCode result = CRAErrorCode.Success;
 
             // Send request to CRA instance
-            ProcessTable instanceRow;
+            VertexTable instanceRow;
             try
             {
-                instanceRow = ProcessTable.GetRowForInstance(_processTable, instanceName);
+                instanceRow = VertexTable.GetRowForInstance(_vertexTable, instanceName);
 
                 // Get a stream connection from the pool if available
                 NetworkStream stream;
@@ -269,13 +269,13 @@ namespace CRA.ClientLibrary
                 }
 
                 stream.WriteInt32((int)CRATaskMessageType.LOAD_PROCESS);
-                stream.WriteByteArray(Encoding.UTF8.GetBytes(processName));
-                stream.WriteByteArray(Encoding.UTF8.GetBytes(processDefinition));
-                stream.WriteByteArray(Encoding.UTF8.GetBytes(newRow.ProcessParameter));
+                stream.WriteByteArray(Encoding.UTF8.GetBytes(vertexName));
+                stream.WriteByteArray(Encoding.UTF8.GetBytes(vertexDefinition));
+                stream.WriteByteArray(Encoding.UTF8.GetBytes(newRow.VertexParameter));
                 result = (CRAErrorCode)stream.ReadInt32();
                 if (result != 0)
                 {
-                    Console.WriteLine("Process was logically loaded. However, we received an error code from the hosting CRA instance: " + result);
+                    Console.WriteLine("Vertex was logically loaded. However, we received an error code from the hosting CRA instance: " + result);
                 }
 
                 // Add/Return stream connection to the pool
@@ -283,30 +283,30 @@ namespace CRA.ClientLibrary
             }
             catch
             {
-                Console.WriteLine("The CRA instance appears to be down. Restart it and this process will be instantiated automatically");
+                Console.WriteLine("The CRA instance appears to be down. Restart it and this vertex will be instantiated automatically");
             }
             return result;
         }
 
         /// <summary>
-        /// Register caller as a process with given name, dummy temp instance
+        /// Register caller as a vertex with given name, dummy temp instance
         /// </summary>
-        /// <param name="processName"></param>
+        /// <param name="vertexName"></param>
         /// <returns></returns>
-        public DetachedProcess RegisterAsProcess(string processName)
+        public DetachedVertex RegisterAsVertex(string vertexName)
         {
-            return new DetachedProcess(processName, "", this);
+            return new DetachedVertex(vertexName, "", this);
         }
 
         /// <summary>
-        /// Register caller as a process with given name, given CRA instance name
+        /// Register caller as a vertex with given name, given CRA instance name
         /// </summary>
-        /// <param name="processName"></param>
+        /// <param name="vertexName"></param>
         /// <param name="instanceName"></param>
         /// <returns></returns>
-        public DetachedProcess RegisterAsProcess(string processName, string instanceName)
+        public DetachedVertex RegisterAsVertex(string vertexName, string instanceName)
         {
-            return new DetachedProcess(processName, instanceName, this);
+            return new DetachedVertex(vertexName, instanceName, this);
         }
 
         /// <summary>
@@ -317,7 +317,7 @@ namespace CRA.ClientLibrary
         /// <param name="port"></param>
         public void RegisterInstance(string instanceName, string address, int port)
         {
-            _processTableManager.RegisterInstance(instanceName, address, port);
+            _vertexTableManager.RegisterInstance(instanceName, address, port);
         }
 
         /// <summary>
@@ -326,57 +326,57 @@ namespace CRA.ClientLibrary
         /// <param name="instanceName"></param>
         public void DeleteInstance(string instanceName)
         {
-            _processTableManager.DeleteInstance(instanceName);
+            _vertexTableManager.DeleteInstance(instanceName);
         }
 
         /// <summary>
-        /// Delete process with given name
+        /// Delete vertex with given name
         /// </summary>
-        /// <param name="processName"></param>
+        /// <param name="vertexName"></param>
         /// <param name="instanceName"></param>
-        public void DeleteProcess(string processName)
+        public void DeleteVertex(string vertexName)
         {
-            foreach (var endpt in GetInputEndpoints(processName))
+            foreach (var endpt in GetInputEndpoints(vertexName))
             {
-                DeleteEndpoint(processName, endpt);
+                DeleteEndpoint(vertexName, endpt);
             }
-            foreach (var endpt in GetOutputEndpoints(processName))
+            foreach (var endpt in GetOutputEndpoints(vertexName))
             {
-                DeleteEndpoint(processName, endpt);
+                DeleteEndpoint(vertexName, endpt);
             }
 
-            foreach (var conn in GetConnectionsFromProcess(processName))
+            foreach (var conn in GetConnectionsFromVertex(vertexName))
             {
                 DeleteConnectionInfo(conn);
             }
-            foreach (var conn in GetConnectionsToProcess(processName))
+            foreach (var conn in GetConnectionsToVertex(vertexName))
             {
                 DeleteConnectionInfo(conn);
             }
 
-            var query = new TableQuery<ProcessTable>()
-                   .Where(TableQuery.GenerateFilterCondition("RowKey", QueryComparisons.Equal, processName));
+            var query = new TableQuery<VertexTable>()
+                   .Where(TableQuery.GenerateFilterCondition("RowKey", QueryComparisons.Equal, vertexName));
 
-            foreach (var item in _processTable.ExecuteQuery(query))
+            foreach (var item in _vertexTable.ExecuteQuery(query))
             {
                 var oper = TableOperation.Delete(item);
-                _processTable.Execute(oper);
+                _vertexTable.Execute(oper);
             }
         }
 
         /// <summary>
-        /// Delete process definition with given name
+        /// Delete vertex definition with given name
         /// </summary>
-        /// <param name="processDefinition"></param>
-        public void DeleteProcessDefinition(string processDefinition)
+        /// <param name="vertexDefinition"></param>
+        public void DeleteVertexDefinition(string vertexDefinition)
         {
-            var entity = new DynamicTableEntity("", processDefinition);
+            var entity = new DynamicTableEntity("", vertexDefinition);
             entity.ETag = "*";
             TableOperation deleteOperation = TableOperation.Delete(entity);
-            _processTable.Execute(deleteOperation);
+            _vertexTable.Execute(deleteOperation);
             CloudBlobContainer container = _blobClient.GetContainerReference("cra");
             container.CreateIfNotExists();
-            var blockBlob = container.GetBlockBlobReference(processDefinition + "/binaries");
+            var blockBlob = container.GetBlockBlobReference(vertexDefinition + "/binaries");
             blockBlob.DeleteIfExists();
         }
 
@@ -384,134 +384,134 @@ namespace CRA.ClientLibrary
         /// <summary>
         /// Add endpoint to the appropriate CRA metadata table
         /// </summary>
-        /// <param name="processName"></param>
+        /// <param name="vertexName"></param>
         /// <param name="endpointName"></param>
         /// <param name="isInput"></param>
         /// <param name="isAsync"></param>
-        public void AddEndpoint(string processName, string endpointName, bool isInput, bool isAsync)
+        public void AddEndpoint(string vertexName, string endpointName, bool isInput, bool isAsync)
         {
-            _endpointTableManager.AddEndpoint(processName, endpointName, isInput, isAsync);
+            _endpointTableManager.AddEndpoint(vertexName, endpointName, isInput, isAsync);
         }
 
         /// <summary>
         /// Delete endpoint
         /// </summary>
-        /// <param name="processName"></param>
+        /// <param name="vertexName"></param>
         /// <param name="endpointName"></param>
-        public void DeleteEndpoint(string processName, string endpointName)
+        public void DeleteEndpoint(string vertexName, string endpointName)
         {
-            _endpointTableManager.DeleteEndpoint(processName, endpointName);
+            _endpointTableManager.DeleteEndpoint(vertexName, endpointName);
         }
 
         /// <summary>
-        /// Load a process on the local instance
+        /// Load a vertex on the local instance
         /// </summary>
-        /// <param name="processName"></param>
-        /// <param name="processDefinition"></param>
-        /// <param name="processParameter"></param>
+        /// <param name="vertexName"></param>
+        /// <param name="vertexDefinition"></param>
+        /// <param name="vertexParameter"></param>
         /// <param name="instanceName"></param>
         /// <param name="table"></param>
         /// <returns></returns>
-        public async Task<IProcess> LoadProcessAsync(string processName, string processDefinition, string processParameter, string instanceName, ConcurrentDictionary<string, IProcess> table)
+        public async Task<IVertex> LoadVertexAsync(string vertexName, string vertexDefinition, string vertexParameter, string instanceName, ConcurrentDictionary<string, IVertex> table)
         {
-            // Deactivate process
-            _processTableManager.DeactivateProcessOnInstance(processName, instanceName);
+            // Deactivate vertex
+            _vertexTableManager.DeactivateVertexOnInstance(vertexName, instanceName);
 
             CloudBlobContainer container = _blobClient.GetContainerReference("cra");
             container.CreateIfNotExists();
-            var blockBlob = container.GetBlockBlobReference(processDefinition + "/binaries");
+            var blockBlob = container.GetBlockBlobReference(vertexDefinition + "/binaries");
             Stream blobStream = blockBlob.OpenRead();
             AssemblyUtils.LoadAssembliesFromStream(blobStream);
             AssemblyUtils.DumpAssemblies();
             blobStream.Close();
 
-            var row = ProcessTable.GetRowForProcessDefinition(_processTable, processDefinition);
+            var row = VertexTable.GetRowForVertexDefinition(_vertexTable, vertexDefinition);
 
             // CREATE THE PROCESS
-            var process = row.GetProcessCreateAction()();
+            var vertex = row.GetVertexCreateAction()();
 
             // LATCH CALLBACKS TO POPULATE ENDPOINT TABLE
-            process.OnAddInputEndpoint((name, endpt) => _endpointTableManager.AddEndpoint(processName, name, true, false));
-            process.OnAddOutputEndpoint((name, endpt) => _endpointTableManager.AddEndpoint(processName, name, false, false));
-            process.OnAddAsyncInputEndpoint((name, endpt) => _endpointTableManager.AddEndpoint(processName, name, true, true));
-            process.OnAddAsyncOutputEndpoint((name, endpt) => _endpointTableManager.AddEndpoint(processName, name, false, true));
+            vertex.OnAddInputEndpoint((name, endpt) => _endpointTableManager.AddEndpoint(vertexName, name, true, false));
+            vertex.OnAddOutputEndpoint((name, endpt) => _endpointTableManager.AddEndpoint(vertexName, name, false, false));
+            vertex.OnAddAsyncInputEndpoint((name, endpt) => _endpointTableManager.AddEndpoint(vertexName, name, true, true));
+            vertex.OnAddAsyncOutputEndpoint((name, endpt) => _endpointTableManager.AddEndpoint(vertexName, name, false, true));
 
             //ADD TO TABLE
             if (table != null)
             {
-                table.AddOrUpdate(processName, process, (procName, oldProc) => { oldProc.Dispose(); return process; });
+                table.AddOrUpdate(vertexName, vertex, (procName, oldProc) => { oldProc.Dispose(); return vertex; });
 
-                process.OnDispose(() =>
+                vertex.OnDispose(() =>
                 {
-                    // Delete all endpoints of the process
-                    foreach (var key in process.InputEndpoints)
+                    // Delete all endpoints of the vertex
+                    foreach (var key in vertex.InputEndpoints)
                     {
-                        _endpointTableManager.DeleteEndpoint(processName, key.Key);
+                        _endpointTableManager.DeleteEndpoint(vertexName, key.Key);
                     }
-                    foreach (var key in process.AsyncInputEndpoints)
+                    foreach (var key in vertex.AsyncInputEndpoints)
                     {
-                        _endpointTableManager.DeleteEndpoint(processName, key.Key);
+                        _endpointTableManager.DeleteEndpoint(vertexName, key.Key);
                     }
-                    foreach (var key in process.OutputEndpoints)
+                    foreach (var key in vertex.OutputEndpoints)
                     {
-                        _endpointTableManager.DeleteEndpoint(processName, key.Key);
+                        _endpointTableManager.DeleteEndpoint(vertexName, key.Key);
                     }
-                    foreach (var key in process.AsyncOutputEndpoints)
+                    foreach (var key in vertex.AsyncOutputEndpoints)
                     {
-                        _endpointTableManager.DeleteEndpoint(processName, key.Key);
+                        _endpointTableManager.DeleteEndpoint(vertexName, key.Key);
                     }
 
-                    IProcess old;
-                    if (!table.TryRemove(processName, out old))
+                    IVertex old;
+                    if (!table.TryRemove(vertexName, out old))
                     {
-                        Console.WriteLine("Unable to remove process on disposal");
+                        Console.WriteLine("Unable to remove vertex on disposal");
                     }
-                    var entity = new DynamicTableEntity(instanceName, processName);
+                    var entity = new DynamicTableEntity(instanceName, vertexName);
                     entity.ETag = "*";
                     TableOperation deleteOperation = TableOperation.Delete(entity);
-                    _processTable.Execute(deleteOperation);
+                    _vertexTable.Execute(deleteOperation);
                 });
             }
 
             // INITIALIZE
-            if ((ProcessBase)process != null)
+            if ((VertexBase)vertex != null)
             {
-                ((ProcessBase)process).ProcessName = processName;
-                ((ProcessBase)process).ClientLibrary = this;
+                ((VertexBase)vertex).VertexName = vertexName;
+                ((VertexBase)vertex).ClientLibrary = this;
             }
 
-            var parametersBlob = container.GetBlockBlobReference(processDefinition + "/" + processName);
+            var parametersBlob = container.GetBlockBlobReference(vertexDefinition + "/" + vertexName);
             Stream parametersStream = parametersBlob.OpenRead();
             byte[] parametersBytes = parametersStream.ReadByteArray();
             string parameterString = Encoding.UTF8.GetString(parametersBytes);
             parametersStream.Close();
 
             var par = SerializationHelper.DeserializeObject(parameterString);
-            process.Initialize(par);
-            await process.InitializeAsync(par);
+            vertex.Initialize(par);
+            await vertex.InitializeAsync(par);
 
-            // Activate process
-            ActivateProcess(processName, instanceName);
+            // Activate vertex
+            ActivateVertex(vertexName, instanceName);
 
-            return process;
+            return vertex;
         }
 
         /// <summary>
-        /// Load all processes for the given instance name, returns only when all
-        /// processes have been initialized and activated.
+        /// Load all vertexes for the given instance name, returns only when all
+        /// vertexes have been initialized and activated.
         /// </summary>
         /// <param name="thisInstanceName"></param>
         /// <returns></returns>
-        public ConcurrentDictionary<string, IProcess> LoadAllProcesses(string thisInstanceName)
+        public ConcurrentDictionary<string, IVertex> LoadAllVertexes(string thisInstanceName)
         {
-            ConcurrentDictionary<string, IProcess> result = new ConcurrentDictionary<string, IProcess>();
-            var rows = ProcessTable.GetAllRowsForInstance(_processTable, thisInstanceName);
+            ConcurrentDictionary<string, IVertex> result = new ConcurrentDictionary<string, IVertex>();
+            var rows = VertexTable.GetAllRowsForInstance(_vertexTable, thisInstanceName);
 
             List<Task> t = new List<Task>();
             foreach (var row in rows)
             {
-                if (row.ProcessName == "") continue;
-                t.Add(LoadProcessAsync(row.ProcessName, row.ProcessDefinition, row.ProcessParameter, thisInstanceName, result));
+                if (row.VertexName == "") continue;
+                t.Add(LoadVertexAsync(row.VertexName, row.VertexDefinition, row.VertexParameter, thisInstanceName, result));
             }
             Task.WaitAll(t.ToArray());
 
@@ -521,26 +521,26 @@ namespace CRA.ClientLibrary
         /// <summary>
         /// Add connection info to metadata table
         /// </summary>
-        /// <param name="fromProcessName"></param>
+        /// <param name="fromVertexName"></param>
         /// <param name="fromEndpoint"></param>
-        /// <param name="toProcessName"></param>
+        /// <param name="toVertexName"></param>
         /// <param name="toEndpoint"></param>
-        public void AddConnectionInfo(string fromProcessName, string fromEndpoint, string toProcessName, string toEndpoint)
+        public void AddConnectionInfo(string fromVertexName, string fromEndpoint, string toVertexName, string toEndpoint)
         {
-            _connectionTableManager.AddConnection(fromProcessName, fromEndpoint, toProcessName, toEndpoint);
+            _connectionTableManager.AddConnection(fromVertexName, fromEndpoint, toVertexName, toEndpoint);
         }
 
 
         /// <summary>
         /// Delete connection info from metadata table
         /// </summary>
-        /// <param name="fromProcessName"></param>
+        /// <param name="fromVertexName"></param>
         /// <param name="fromEndpoint"></param>
-        /// <param name="toProcessName"></param>
+        /// <param name="toVertexName"></param>
         /// <param name="toEndpoint"></param>
-        public void DeleteConnectionInfo(string fromProcessName, string fromEndpoint, string toProcessName, string toEndpoint)
+        public void DeleteConnectionInfo(string fromVertexName, string fromEndpoint, string toVertexName, string toEndpoint)
         {
-            _connectionTableManager.DeleteConnection(fromProcessName, fromEndpoint, toProcessName, toEndpoint);
+            _connectionTableManager.DeleteConnection(fromVertexName, fromEndpoint, toVertexName, toEndpoint);
         }
 
         /// <summary>
@@ -549,61 +549,61 @@ namespace CRA.ClientLibrary
         /// <param name="connInfo">Connection info as a struct</param>
         public void DeleteConnectionInfo(ConnectionInfo connInfo)
         {
-            _connectionTableManager.DeleteConnection(connInfo.FromProcess, connInfo.FromEndpoint, connInfo.ToProcess, connInfo.ToEndpoint);
+            _connectionTableManager.DeleteConnection(connInfo.FromVertex, connInfo.FromEndpoint, connInfo.ToVertex, connInfo.ToEndpoint);
         }
 
         /// <summary>
-        /// Connect one CRA process to another, via pre-defined endpoints. We contact the "from" process
+        /// Connect one CRA vertex to another, via pre-defined endpoints. We contact the "from" vertex
         /// to initiate the creation of the link.
         /// </summary>
-        /// <param name="fromProcessName">Name of the process from which connection is being made</param>
-        /// <param name="fromEndpoint">Name of the endpoint on the fromProcess, from which connection is being made</param>
-        /// <param name="toProcessName">Name of the process to which connection is being made</param>
-        /// <param name="toEndpoint">Name of the endpoint on the toProcess, to which connection is being made</param>
+        /// <param name="fromVertexName">Name of the vertex from which connection is being made</param>
+        /// <param name="fromEndpoint">Name of the endpoint on the fromVertex, from which connection is being made</param>
+        /// <param name="toVertexName">Name of the vertex to which connection is being made</param>
+        /// <param name="toEndpoint">Name of the endpoint on the toVertex, to which connection is being made</param>
         /// <returns>Status of the Connect operation</returns>
-        public CRAErrorCode Connect(string fromProcessName, string fromEndpoint, string toProcessName, string toEndpoint)
+        public CRAErrorCode Connect(string fromVertexName, string fromEndpoint, string toVertexName, string toEndpoint)
         {
-            return Connect(fromProcessName, fromEndpoint, toProcessName, toEndpoint, ConnectionInitiator.FromSide);
+            return Connect(fromVertexName, fromEndpoint, toVertexName, toEndpoint, ConnectionInitiator.FromSide);
         }
 
         /// <summary>
-        /// Connect one CRA process to another, via pre-defined endpoints. We contact the "from" process
+        /// Connect one CRA vertex to another, via pre-defined endpoints. We contact the "from" vertex
         /// to initiate the creation of the link.
         /// </summary>
-        /// <param name="fromProcessName">Name of the process from which connection is being made</param>
-        /// <param name="fromEndpoint">Name of the endpoint on the fromProcess, from which connection is being made</param>
-        /// <param name="toProcessName">Name of the process to which connection is being made</param>
-        /// <param name="toEndpoint">Name of the endpoint on the toProcess, to which connection is being made</param>
-        /// <param name="direction">Which process initiates the connection</param>
+        /// <param name="fromVertexName">Name of the vertex from which connection is being made</param>
+        /// <param name="fromEndpoint">Name of the endpoint on the fromVertex, from which connection is being made</param>
+        /// <param name="toVertexName">Name of the vertex to which connection is being made</param>
+        /// <param name="toEndpoint">Name of the endpoint on the toVertex, to which connection is being made</param>
+        /// <param name="direction">Which vertex initiates the connection</param>
         /// <returns>Status of the Connect operation</returns>
-        public CRAErrorCode Connect(string fromProcessName, string fromEndpoint, string toProcessName, string toEndpoint, ConnectionInitiator direction)
+        public CRAErrorCode Connect(string fromVertexName, string fromEndpoint, string toVertexName, string toEndpoint, ConnectionInitiator direction)
         {
-            // Tell from process to establish connection
+            // Tell from vertex to establish connection
             // Send request to CRA instance
 
-            // Check that process and endpoints are valid and existing
-            if (!_processTableManager.ExistsProcess(fromProcessName) || !_processTableManager.ExistsProcess(toProcessName))
+            // Check that vertex and endpoints are valid and existing
+            if (!_vertexTableManager.ExistsVertex(fromVertexName) || !_vertexTableManager.ExistsVertex(toVertexName))
             {
-                return CRAErrorCode.ProcessNotFound;
+                return CRAErrorCode.VertexNotFound;
             }
 
             // Make the connection information stable
-            _connectionTableManager.AddConnection(fromProcessName, fromEndpoint, toProcessName, toEndpoint);
+            _connectionTableManager.AddConnection(fromVertexName, fromEndpoint, toVertexName, toEndpoint);
 
             // We now try best-effort to tell the CRA instance of this connection
             CRAErrorCode result = CRAErrorCode.Success;
 
-            ProcessTable _row;
+            VertexTable _row;
             try
             {
-                // Get instance for source process
+                // Get instance for source vertex
                 _row = direction == ConnectionInitiator.FromSide ?
-                                        ProcessTable.GetRowForProcess(_processTable, fromProcessName) :
-                                        ProcessTable.GetRowForProcess(_processTable, toProcessName);
+                                        VertexTable.GetRowForVertex(_vertexTable, fromVertexName) :
+                                        VertexTable.GetRowForVertex(_vertexTable, toVertexName);
             }
             catch
             {
-                Console.WriteLine("Unable to find active instance with process. On process activation, the connection should be completed automatically.");
+                Console.WriteLine("Unable to find active instance with vertex. On vertex activation, the connection should be completed automatically.");
                 return result;
             }
 
@@ -613,16 +613,16 @@ namespace CRA.ClientLibrary
                 {
                     if (_localWorker.InstanceName == _row.InstanceName)
                     {
-                        return _localWorker.Connect_InitiatorSide(fromProcessName, fromEndpoint,
-                                toProcessName, toEndpoint, direction == ConnectionInitiator.ToSide);
+                        return _localWorker.Connect_InitiatorSide(fromVertexName, fromEndpoint,
+                                toVertexName, toEndpoint, direction == ConnectionInitiator.ToSide);
                     }
                 }
 
 
                 // Send request to CRA instance
                 TcpClient client = null;
-                // Get address and port for instance, using row with process = ""
-                var row = ProcessTable.GetRowForInstance(_processTable, _row.InstanceName);
+                // Get address and port for instance, using row with vertex = ""
+                var row = VertexTable.GetRowForInstance(_vertexTable, _row.InstanceName);
 
                 // Get a stream connection from the pool if available
                 NetworkStream stream;
@@ -639,9 +639,9 @@ namespace CRA.ClientLibrary
                 else
                     stream.WriteInt32((int)CRATaskMessageType.CONNECT_PROCESS_INITIATOR_REVERSE);
 
-                stream.WriteByteArray(Encoding.UTF8.GetBytes(fromProcessName));
+                stream.WriteByteArray(Encoding.UTF8.GetBytes(fromVertexName));
                 stream.WriteByteArray(Encoding.UTF8.GetBytes(fromEndpoint));
-                stream.WriteByteArray(Encoding.UTF8.GetBytes(toProcessName));
+                stream.WriteByteArray(Encoding.UTF8.GetBytes(toVertexName));
                 stream.WriteByteArray(Encoding.UTF8.GetBytes(toEndpoint));
 
                 result = (CRAErrorCode)stream.ReadInt32();
@@ -665,71 +665,71 @@ namespace CRA.ClientLibrary
 
         public string GetDefaultInstanceName()
         {
-            return _processTableManager.GetRowForDefaultInstance().InstanceName;
+            return _vertexTableManager.GetRowForDefaultInstance().InstanceName;
         }
 
         /// <summary>
-        /// Get a list of all output endpoint names for a given process
+        /// Get a list of all output endpoint names for a given vertex
         /// </summary>
-        /// <param name="processName"></param>
+        /// <param name="vertexName"></param>
         /// <returns></returns>
-        public IEnumerable<string> GetOutputEndpoints(string processName)
+        public IEnumerable<string> GetOutputEndpoints(string vertexName)
         {
-            return _endpointTableManager.GetOutputEndpoints(processName);
+            return _endpointTableManager.GetOutputEndpoints(vertexName);
         }
 
         /// <summary>
-        /// Get a list of all input endpoint names for a given process
+        /// Get a list of all input endpoint names for a given vertex
         /// </summary>
-        /// <param name="processName"></param>
+        /// <param name="vertexName"></param>
         /// <returns></returns>
-        public IEnumerable<string> GetInputEndpoints(string processName)
+        public IEnumerable<string> GetInputEndpoints(string vertexName)
         {
-            return _endpointTableManager.GetInputEndpoints(processName);
+            return _endpointTableManager.GetInputEndpoints(vertexName);
         }
 
         /// <summary>
-        /// Get all outgoing connection from a given process
+        /// Get all outgoing connection from a given vertex
         /// </summary>
-        /// <param name="processName"></param>
+        /// <param name="vertexName"></param>
         /// <returns></returns>
-        public IEnumerable<ConnectionInfo> GetConnectionsFromProcess(string processName)
+        public IEnumerable<ConnectionInfo> GetConnectionsFromVertex(string vertexName)
         {
-            return _connectionTableManager.GetConnectionsFromProcess(processName);
+            return _connectionTableManager.GetConnectionsFromVertex(vertexName);
         }
 
         /// <summary>
-        /// Get all incoming connections to a given process
+        /// Get all incoming connections to a given vertex
         /// </summary>
-        /// <param name="processName"></param>
+        /// <param name="vertexName"></param>
         /// <returns></returns>
-        public IEnumerable<ConnectionInfo> GetConnectionsToProcess(string processName)
+        public IEnumerable<ConnectionInfo> GetConnectionsToVertex(string vertexName)
         {
-            return _connectionTableManager.GetConnectionsToProcess(processName);
+            return _connectionTableManager.GetConnectionsToVertex(vertexName);
         }
 
 
         /// <summary>
-        /// Gets a list of all processes registered with CRA
+        /// Gets a list of all vertexes registered with CRA
         /// </summary>
         /// <returns></returns>
-        public IEnumerable<string> ProcessNames
+        public IEnumerable<string> VertexNames
         {
             get
             {
-                return _processTableManager.GetProcessNames();
+                return _vertexTableManager.GetVertexNames();
             }
         }
 
         /// <summary>
-        /// Gets a list of all process definitions registered with CRA
+        /// Gets a list of all vertex definitions registered with CRA
         /// </summary>
         /// <returns></returns>
-        public IEnumerable<string> ProcessDefinitions
+        public IEnumerable<string> VertexDefinitions
         {
             get
             {
-                return _processTableManager.GetProcessDefinitions();
+                return _vertexTableManager.GetVertexDefinitions();
             }
         }
 
@@ -741,7 +741,7 @@ namespace CRA.ClientLibrary
         {
             get
             {
-                return _processTableManager.GetInstanceNames();
+                return _vertexTableManager.GetInstanceNames();
             }
         }
 
@@ -760,13 +760,13 @@ namespace CRA.ClientLibrary
         /// <summary>
         /// Disconnect a CRA connection
         /// </summary>
-        /// <param name="fromProcessName"></param>
-        /// <param name="fromProcessOutput"></param>
-        /// <param name="toProcessName"></param>
-        /// <param name="toProcessInput"></param>
-        public void Disconnect(string fromProcessName, string fromProcessOutput, string toProcessName, string toProcessInput)
+        /// <param name="fromVertexName"></param>
+        /// <param name="fromVertexOutput"></param>
+        /// <param name="toVertexName"></param>
+        /// <param name="toVertexInput"></param>
+        public void Disconnect(string fromVertexName, string fromVertexOutput, string toVertexName, string toVertexInput)
         {
-            _connectionTableManager.DeleteConnection(fromProcessName, fromProcessOutput, toProcessName, toProcessInput);
+            _connectionTableManager.DeleteConnection(fromVertexName, fromVertexOutput, toVertexName, toVertexInput);
         }
     }
 }

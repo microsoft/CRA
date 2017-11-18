@@ -204,7 +204,7 @@ namespace CRA.ClientLibrary.DataProcessing
                 {
                     if (tasks[i].Transforms != null)
                     {
-                        int lastProcessedTransformIndex = 0;
+                        int lastVertexedTransformIndex = 0;
                         for (int j = 0; j < tasks[i].Transforms.Length; j++)
                         {
                             var currentInput = tasks[i].TransformsInputs[j].InputId1;
@@ -229,18 +229,18 @@ namespace CRA.ClientLibrary.DataProcessing
                                     if (tasks[inputTaskIndex].OperationType != OperatorType.Move && tasks[i].OperationType != OperatorType.Move)
                                         UpdateOperatorsSecondaryInput(operatorsIds[inputTaskIndex], operatorsIds[i], currentSecondaryInput);
                                     else if (tasks[inputTaskIndex].OperationType != OperatorType.Move && tasks[i].OperationType == OperatorType.Move)
-                                        UpdateOperatorsSecondaryInput(operatorsIds[inputTaskIndex], ((ShuffleTask)tasks[i]).MapperProcessName, currentSecondaryInput);
+                                        UpdateOperatorsSecondaryInput(operatorsIds[inputTaskIndex], ((ShuffleTask)tasks[i]).MapperVertexName, currentSecondaryInput);
                                     else if (tasks[inputTaskIndex].OperationType == OperatorType.Move && tasks[i].OperationType != OperatorType.Move)
-                                        UpdateOperatorsSecondaryInput(((ShuffleTask)tasks[inputTaskIndex]).ReducerProcessName, operatorsIds[i], currentSecondaryInput);
+                                        UpdateOperatorsSecondaryInput(((ShuffleTask)tasks[inputTaskIndex]).ReducerVertexName, operatorsIds[i], currentSecondaryInput);
                                     else
-                                        UpdateOperatorsSecondaryInput(((ShuffleTask)tasks[inputTaskIndex]).ReducerProcessName, ((ShuffleTask)tasks[i]).MapperProcessName, currentSecondaryInput);
+                                        UpdateOperatorsSecondaryInput(((ShuffleTask)tasks[inputTaskIndex]).ReducerVertexName, ((ShuffleTask)tasks[i]).MapperVertexName, currentSecondaryInput);
                                 }
 
-                                lastProcessedTransformIndex++;
+                                lastVertexedTransformIndex++;
                             }
                         }
 
-                        for (int k = lastProcessedTransformIndex; k < tasks[i].Transforms.Length; k++)
+                        for (int k = lastVertexedTransformIndex; k < tasks[i].Transforms.Length; k++)
                         {
                             tmpTransforms[i].Add(tasks[i].Transforms[k]);
                             tmpTransformsOperations[i].Add(tasks[i].TransformsOperations[k]);
@@ -323,11 +323,11 @@ namespace CRA.ClientLibrary.DataProcessing
                         if (tasks[i].OperationType != OperatorType.Move && tasks[i + 1].OperationType != OperatorType.Move)
                             UpdateOperatorsSecondaryInputs(operatorsIds[i], operatorsIds[i + 1]);
                         else if (tasks[i].OperationType != OperatorType.Move && tasks[i + 1].OperationType == OperatorType.Move)
-                            UpdateOperatorsSecondaryInputs(operatorsIds[i], ((ShuffleTask)tasks[i + 1]).MapperProcessName);
+                            UpdateOperatorsSecondaryInputs(operatorsIds[i], ((ShuffleTask)tasks[i + 1]).MapperVertexName);
                         else if (tasks[i].OperationType == OperatorType.Move && tasks[i + 1].OperationType != OperatorType.Move)
-                            UpdateOperatorsSecondaryInputs(((ShuffleTask)tasks[i]).ReducerProcessName, operatorsIds[i + 1]);
+                            UpdateOperatorsSecondaryInputs(((ShuffleTask)tasks[i]).ReducerVertexName, operatorsIds[i + 1]);
                         else
-                            UpdateOperatorsSecondaryInputs(((ShuffleTask)tasks[i]).ReducerProcessName, ((ShuffleTask)tasks[i + 1]).MapperProcessName);
+                            UpdateOperatorsSecondaryInputs(((ShuffleTask)tasks[i]).ReducerVertexName, ((ShuffleTask)tasks[i + 1]).MapperVertexName);
                     }
                 }
                 _operatorsTasks = new List<TaskBase>(tasks);

@@ -9,13 +9,13 @@ namespace ConnectionPair
         {
             var client = new CRAClientLibrary();
 
-            client.DefineProcess("connectionpairprocess", () => new ConnectionPairProcess());
+            client.DefineVertex("connectionpairvertex", () => new ConnectionPairVertex());
 
-            client.InstantiateProcess("crainst01", "process1", "connectionpairprocess", null);
-            client.InstantiateProcess("crainst02", "process2", "connectionpairprocess", null);
+            client.InstantiateVertex("crainst01", "vertex1", "connectionpairvertex", null);
+            client.InstantiateVertex("crainst02", "vertex2", "connectionpairvertex", null);
 
-            client.Connect("process1", "output", "process2", "input");
-            client.Connect("process2", "output", "process1", "input");
+            client.Connect("vertex1", "output", "vertex2", "input");
+            client.Connect("vertex2", "output", "vertex1", "input");
 
             Console.ReadLine();
         }

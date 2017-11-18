@@ -6,14 +6,14 @@ using CRA.ClientLibrary;
 
 namespace FusableConnectionPair
 {
-    public class MyAsyncFusableInput : IAsyncProcessInputEndpoint
+    public class MyAsyncFusableInput : IAsyncVertexInputEndpoint
     {
         bool _running = true;
-        IProcess _process;
+        IVertex _vertex;
 
-        public MyAsyncFusableInput(IProcess process)
+        public MyAsyncFusableInput(IVertex vertex)
         {
-            _process = process;
+            _vertex = vertex;
         }
 
         public void Dispose()
@@ -31,9 +31,9 @@ namespace FusableConnectionPair
             }
         }
 
-        public async Task FromStreamAsync(Stream stream, string otherProcess, string otherEndpoint, CancellationToken token)
+        public async Task FromStreamAsync(Stream stream, string otherVertex, string otherEndpoint, CancellationToken token)
         {
-            Console.WriteLine("Receiving data from process: " + otherProcess + ", endpoint: " + otherEndpoint);
+            Console.WriteLine("Receiving data from vertex: " + otherVertex + ", endpoint: " + otherEndpoint);
 
             for (int i = 0; i < int.MaxValue; i++)
             {

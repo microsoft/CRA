@@ -8,33 +8,33 @@ namespace CRA.ClientLibrary
     /// <summary>
     /// Interface for async output endpoints in CRA
     /// </summary>
-    public interface IAsyncProcessOutputEndpoint : IDisposable
+    public interface IAsyncVertexOutputEndpoint : IDisposable
     {
         /// <summary>
         /// Async version of ToStream
         /// </summary>
         /// <param name="stream"></param>
-        /// <param name="otherProcess"></param>
+        /// <param name="otherVertex"></param>
         /// <param name="otherEndpoint"></param>
         /// <param name="token"></param>
         /// <returns></returns>
-        Task ToStreamAsync(Stream stream, string otherProcess, string otherEndpoint, CancellationToken token);
+        Task ToStreamAsync(Stream stream, string otherVertex, string otherEndpoint, CancellationToken token);
     }
 
 
     /// <summary>
     /// Interface for async output endpoints in CRA with fusable output
     /// </summary>
-    public interface IAsyncFusableProcessOutputEndpoint : IAsyncProcessOutputEndpoint
+    public interface IAsyncFusableVertexOutputEndpoint : IAsyncVertexOutputEndpoint
     {
         /// <summary>
         /// Can this output endpoint fuse with the specified input endpoint?
         /// </summary>
         /// <param name="endpoint"></param>
-        /// <param name="otherProcess"></param>
+        /// <param name="otherVertex"></param>
         /// <param name="otherEndpoint"></param>
         /// <returns></returns>
-        bool CanFuseWith(IAsyncProcessInputEndpoint endpoint, string otherProcess, string otherEndpoint);
+        bool CanFuseWith(IAsyncVertexInputEndpoint endpoint, string otherVertex, string otherEndpoint);
 
         /// <summary>
         /// Async version of ToInput
@@ -42,6 +42,6 @@ namespace CRA.ClientLibrary
         /// <param name="endpoint"></param>
         /// <param name="token"></param>
         /// <returns></returns>
-        Task ToInputAsync(IAsyncProcessInputEndpoint endpoint, string otherProcess, string otherEndpoint, CancellationToken token);
+        Task ToInputAsync(IAsyncVertexInputEndpoint endpoint, string otherVertex, string otherEndpoint, CancellationToken token);
     }
 }

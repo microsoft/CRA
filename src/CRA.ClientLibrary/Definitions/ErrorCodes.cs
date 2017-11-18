@@ -10,25 +10,25 @@
         /// </summary>
         Success,
         /// <summary>
-        /// Process not found
+        /// Vertex not found
         /// </summary>
-        ProcessNotFound,
+        VertexNotFound,
         /// <summary>
-        /// ActiveProcess not found
+        /// ActiveVertex not found
         /// </summary>
-        ActiveProcessNotFound,
+        ActiveVertexNotFound,
         /// <summary>
-        /// Process output endpoint not found
+        /// Vertex output endpoint not found
         /// </summary>
-        ProcessOutputNotFound,
+        VertexOutputNotFound,
         /// <summary>
-        /// Process input endpoint not found
+        /// Vertex input endpoint not found
         /// </summary>
-        ProcessInputNotFound,
+        VertexInputNotFound,
         /// <summary>
-        /// Process already exists
+        /// Vertex already exists
         /// </summary>
-        ProcessAlreadyExists,
+        VertexAlreadyExists,
         /// <summary>
         /// Recovering
         /// </summary>
@@ -38,16 +38,16 @@
         /// </summary>
         ConnectionAdditionRace,
         /// <summary>
-        /// Process endpoint (input or output) not found
+        /// Vertex endpoint (input or output) not found
         /// </summary>
-        ProcessEndpointNotFound,
+        VertexEndpointNotFound,
         /// <summary>
         /// Failed to establish a connection
         /// </summary>
         ConnectionEstablishFailed,
         /// <summary>
-        /// Failed to match endpoints between fromProcesses and toProcesses
+        /// Failed to match endpoints between fromVertexes and toVertexes
         /// </summary>
-        ProcessesEndpointsNotMatched
+        VertexesEndpointsNotMatched
     };
 }

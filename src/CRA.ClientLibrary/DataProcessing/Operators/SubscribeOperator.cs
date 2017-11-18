@@ -27,11 +27,11 @@ namespace CRA.ClientLibrary.DataProcessing
 
         internal override void InitializeOperator()
         {
-            IProcess thisOperator = this;
+            IVertex thisOperator = this;
             if (_inputsIds != null)
                 for (int i = 0; i < _inputsIds.Length; i++)
                 {
-                    var fromTuple = _toFromConnections[new Tuple<string, string>(ProcessName, _inputsIds[i])];
+                    var fromTuple = _toFromConnections[new Tuple<string, string>(VertexName, _inputsIds[i])];
                     if (fromTuple.Item3)
                         AddAsyncInputEndpoint(_inputsIds[i], new OperatorFusableInput(ref thisOperator, i));
                     else

@@ -4,16 +4,16 @@ using System.Runtime.Serialization;
 namespace CRA.ClientLibrary
 {
     /// <summary>
-    /// Describes a connection between two process/endpoint pairs
+    /// Describes a connection between two vertex/endpoint pairs
     /// </summary>
     [Serializable, DataContract]
     public class ConnectionInfo
     {
         /// <summary>
-        /// Connection is from this process
+        /// Connection is from this vertex
         /// </summary>
         [DataMember]
-        public string FromProcess { get; set; }
+        public string FromVertex { get; set; }
         /// <summary>
         /// Connection is from this output endpoint
         /// </summary>
@@ -22,11 +22,11 @@ namespace CRA.ClientLibrary
 
         public string FromEndpoint { get; set; }
         /// <summary>
-        /// Connection is to this process
+        /// Connection is to this vertex
         /// </summary>
 
         [DataMember]
-        public string ToProcess { get; set; }
+        public string ToVertex { get; set; }
 
         /// <summary>
         /// Connection is to this input endpoint
@@ -38,15 +38,15 @@ namespace CRA.ClientLibrary
         /// <summary>
         /// Constructor
         /// </summary>
-        /// <param name="fromProcess"></param>
+        /// <param name="fromVertex"></param>
         /// <param name="fromEndpoint"></param>
-        /// <param name="toProcess"></param>
+        /// <param name="toVertex"></param>
         /// <param name="toEndpoint"></param>
-        public ConnectionInfo(string fromProcess, string fromEndpoint, string toProcess, string toEndpoint)
+        public ConnectionInfo(string fromVertex, string fromEndpoint, string toVertex, string toEndpoint)
         {
-            this.FromProcess = fromProcess;
+            this.FromVertex = fromVertex;
             this.FromEndpoint = fromEndpoint;
-            this.ToProcess = toProcess;
+            this.ToVertex = toVertex;
             this.ToEndpoint = toEndpoint;
         }
 
@@ -56,7 +56,7 @@ namespace CRA.ClientLibrary
         /// <returns></returns>
         public override string ToString()
         {
-            return new { FromProcess = FromProcess, FromEndpoint = FromEndpoint, ToProcess = ToProcess, ToEndpoint = ToEndpoint }.ToString();
+            return new { FromVertex = FromVertex, FromEndpoint = FromEndpoint, ToVertex = ToVertex, ToEndpoint = ToEndpoint }.ToString();
         }
 
         /// <summary>
@@ -70,15 +70,15 @@ namespace CRA.ClientLibrary
             if (otherConnectionInfo == null) return false;
 
             return
-                (FromProcess == otherConnectionInfo.FromProcess) &&
-                (ToProcess == otherConnectionInfo.ToProcess) &&
+                (FromVertex == otherConnectionInfo.FromVertex) &&
+                (ToVertex == otherConnectionInfo.ToVertex) &&
                 (FromEndpoint == otherConnectionInfo.FromEndpoint) &&
                 (ToEndpoint == otherConnectionInfo.ToEndpoint);
         }
 
         public override int GetHashCode()
         {
-            return FromProcess.GetHashCode() ^ FromEndpoint.GetHashCode() ^ ToProcess.GetHashCode() ^ ToEndpoint.GetHashCode();
+            return FromVertex.GetHashCode() ^ FromEndpoint.GetHashCode() ^ ToVertex.GetHashCode() ^ ToEndpoint.GetHashCode();
         }
     }
 
@@ -88,7 +88,7 @@ namespace CRA.ClientLibrary
         [DataMember]
         public bool IsOnSameCRAInstance { get; set; }
 
-        public ConnectionInfoWithLocality(string fromProcess, string fromEndpoint, string toProcess, string toEndpoint, bool isOnSameCRAInstance) : base(fromProcess, fromEndpoint, toProcess, toEndpoint)
+        public ConnectionInfoWithLocality(string fromVertex, string fromEndpoint, string toVertex, string toEndpoint, bool isOnSameCRAInstance) : base(fromVertex, fromEndpoint, toVertex, toEndpoint)
         {
             IsOnSameCRAInstance = isOnSameCRAInstance;
         }

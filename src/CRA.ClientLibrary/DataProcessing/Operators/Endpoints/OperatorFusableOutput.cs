@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 
 namespace CRA.ClientLibrary.DataProcessing
 {
-    public class OperatorFusableOutput : IAsyncFusableProcessOutputEndpoint
+    public class OperatorFusableOutput : IAsyncFusableVertexOutputEndpoint
     {
         protected OperatorBase _operator;
         protected int _thisId;
@@ -13,9 +13,9 @@ namespace CRA.ClientLibrary.DataProcessing
 
         public OperatorFusableInput InputEndpoint { get { return _inputEndpoint; } } 
 
-        public OperatorFusableOutput(ref IProcess process, int thisId)
+        public OperatorFusableOutput(ref IVertex vertex, int thisId)
         {
-            _operator = (OperatorBase)process;
+            _operator = (OperatorBase)vertex;
             _thisId = thisId;
         }
 
@@ -33,18 +33,18 @@ namespace CRA.ClientLibrary.DataProcessing
             }
         }
 
-        public async Task ToStreamAsync(Stream stream, string otherProcess, string otherEndpoint, CancellationToken token)
+        public async Task ToStreamAsync(Stream stream, string otherVertex, string otherEndpoint, CancellationToken token)
         {
             throw new NotImplementedException();
         }
 
-        public bool CanFuseWith(IAsyncProcessInputEndpoint endpoint, string otherProcess, string otherEndpoint)
+        public bool CanFuseWith(IAsyncVertexInputEndpoint endpoint, string otherVertex, string otherEndpoint)
         {
             if (endpoint as OperatorFusableInput != null) return true;
             return false;
         }
 
-        public async Task ToInputAsync(IAsyncProcessInputEndpoint inputEndpoint, string otherProcess, string otherEndpoint, CancellationToken token)
+        public async Task ToInputAsync(IAsyncVertexInputEndpoint inputEndpoint, string otherVertex, string otherEndpoint, CancellationToken token)
         {
             _inputEndpoint = inputEndpoint as OperatorFusableInput;
             bool isAdded = await _inputEndpoint.AddOperatorFusableInput();

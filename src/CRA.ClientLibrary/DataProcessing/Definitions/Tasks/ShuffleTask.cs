@@ -6,10 +6,10 @@ namespace CRA.ClientLibrary.DataProcessing
     public class ShuffleTask : TaskBase
     {
         [DataMember]
-        internal string MapperProcessName { get; set; }
+        internal string MapperVertexName { get; set; }
 
         [DataMember]
-        internal string ReducerProcessName { get; set; }
+        internal string ReducerVertexName { get; set; }
 
         [DataMember]
         internal string[] ShuffleTransforms { get; set; }

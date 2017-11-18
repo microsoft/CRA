@@ -67,7 +67,7 @@ namespace CRA.ClientLibrary.DataProcessing
             }
             catch (Exception e)
             {
-                Console.WriteLine("Error: the CRA process failed to apply a splitter transform for an error of type " + e.GetType() + ": " + e.ToString());
+                Console.WriteLine("Error: the CRA vertex failed to apply a splitter transform for an error of type " + e.GetType() + ": " + e.ToString());
             }
 
             return null;
@@ -93,7 +93,7 @@ namespace CRA.ClientLibrary.DataProcessing
             }
             catch (Exception e)
             {
-                Console.WriteLine("Error: The CRA process failed to apply a mergere transform for an error of type " + e.GetType() + " : " + e.ToString());
+                Console.WriteLine("Error: The CRA vertex failed to apply a mergere transform for an error of type " + e.GetType() + " : " + e.ToString());
             }
 
             return null;

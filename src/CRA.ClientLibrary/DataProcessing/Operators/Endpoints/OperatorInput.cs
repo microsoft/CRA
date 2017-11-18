@@ -5,15 +5,15 @@ using System.Threading.Tasks;
 
 namespace CRA.ClientLibrary.DataProcessing
 {
-    public class OperatorInput : IAsyncProcessInputEndpoint
+    public class OperatorInput : IAsyncVertexInputEndpoint
     {
         protected OperatorBase _operator;
         protected int _thisId;
         private bool _isSecondaryInput = false;
 
-        public OperatorInput(ref IProcess process, int thisId, bool isSecondaryInput = false)
+        public OperatorInput(ref IVertex vertex, int thisId, bool isSecondaryInput = false)
         {
-            _operator = (OperatorBase)process;
+            _operator = (OperatorBase)vertex;
             _thisId = thisId;
             _isSecondaryInput = isSecondaryInput;
         }
@@ -32,7 +32,7 @@ namespace CRA.ClientLibrary.DataProcessing
             }
         }
 
-        public async Task FromStreamAsync(Stream stream, string otherProcess, string otherEndpoint, CancellationToken token)
+        public async Task FromStreamAsync(Stream stream, string otherVertex, string otherEndpoint, CancellationToken token)
         {
             IEndpointContent streamEndpoint = new StreamEndpoint(stream);
             if (_isSecondaryInput)

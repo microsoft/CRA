@@ -6,14 +6,14 @@ using CRA.ClientLibrary;
 
 namespace ConnectionPair
 {
-    public class MyAsyncOutput : IAsyncProcessOutputEndpoint
+    public class MyAsyncOutput : IAsyncVertexOutputEndpoint
     {
         bool _running = true;
-        IProcess _process;
+        IVertex _vertex;
 
-        public MyAsyncOutput(IProcess process)
+        public MyAsyncOutput(IVertex vertex)
         {
-            _process = process;
+            _vertex = vertex;
         }
 
         public void Dispose()
@@ -31,9 +31,9 @@ namespace ConnectionPair
             }
         }
 
-        public async Task ToStreamAsync(Stream stream, string otherProcess, string otherEndpoint, CancellationToken token)
+        public async Task ToStreamAsync(Stream stream, string otherVertex, string otherEndpoint, CancellationToken token)
         {
-            Console.WriteLine("Sending data to process: " + otherProcess + ", endpoint: " + otherEndpoint);
+            Console.WriteLine("Sending data to vertex: " + otherVertex + ", endpoint: " + otherEndpoint);
 
             for (int i = 0; i < int.MaxValue; i += 1)
             {

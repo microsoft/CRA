@@ -22,7 +22,7 @@ namespace CRA.ClientLibrary.DataProcessing
 
         private bool _isDeployed = false;
         private CRAClientLibrary _craClient = null;
-        private DetachedProcess _clientTerminal = null;
+        private DetachedVertex _clientTerminal = null;
 
         public OperatorType OperationType { get { return _operationType; } }
 
@@ -103,11 +103,11 @@ namespace CRA.ClientLibrary.DataProcessing
             OperatorTransforms shuffleInputTransforms = new OperatorTransforms();
             (_input1 as IDeployable).Deploy(ref shuffleTask, ref topology, ref shuffleInputTransforms);
             shuffleTask.PrepareTaskTransformations(shuffleInputTransforms);
-            (shuffleTask as ShuffleTask).MapperProcessName = "shufflemapper" + Guid.NewGuid().ToString();
-            (shuffleTask as ShuffleTask).ReducerProcessName = typeof(ShuffleOperator).Name.ToLower() + Guid.NewGuid().ToString();
+            (shuffleTask as ShuffleTask).MapperVertexName = "shufflemapper" + Guid.NewGuid().ToString();
+            (shuffleTask as ShuffleTask).ReducerVertexName = typeof(ShuffleOperator).Name.ToLower() + Guid.NewGuid().ToString();
             shuffleTask.InputIds.SetInputId1(shuffleTask.NextInputIds.InputId1);
             shuffleTask.InputIds.SetInputId2(shuffleTask.NextInputIds.InputId2);
-            shuffleTask.OutputId = (shuffleTask as ShuffleTask).ReducerProcessName;
+            shuffleTask.OutputId = (shuffleTask as ShuffleTask).ReducerVertexName;
             OperatorTransforms shuffleTransforms = new OperatorTransforms();
             shuffleTransforms.AddTransform(SerializationHelper.Serialize(_splitter),
                     OperatorType.MoveSplit.ToString(),
@@ -123,20 +123,20 @@ namespace CRA.ClientLibrary.DataProcessing
                     shuffleTask.InputIds);
             ((ShuffleTask)shuffleTask).PrepareShuffleTransformations(shuffleTransforms);
 
-            topology.AddShuffleOperator((shuffleTask as ShuffleTask).MapperProcessName, (shuffleTask as ShuffleTask).ReducerProcessName, shuffleTask as ShuffleTask);
-            topology.AddOperatorInput((shuffleTask as ShuffleTask).MapperProcessName, shuffleTask.InputIds.InputId1);
-            topology.AddOperatorSecondaryInput((shuffleTask as ShuffleTask).MapperProcessName, shuffleTask.InputIds.InputId2);
-            topology.AddOperatorOutput(shuffleTask.InputIds.InputId1, (shuffleTask as ShuffleTask).MapperProcessName);
-            topology.AddOperatorOutput(shuffleTask.InputIds.InputId2, (shuffleTask as ShuffleTask).MapperProcessName);
+            topology.AddShuffleOperator((shuffleTask as ShuffleTask).MapperVertexName, (shuffleTask as ShuffleTask).ReducerVertexName, shuffleTask as ShuffleTask);
+            topology.AddOperatorInput((shuffleTask as ShuffleTask).MapperVertexName, shuffleTask.InputIds.InputId1);
+            topology.AddOperatorSecondaryInput((shuffleTask as ShuffleTask).MapperVertexName, shuffleTask.InputIds.InputId2);
+            topology.AddOperatorOutput(shuffleTask.InputIds.InputId1, (shuffleTask as ShuffleTask).MapperVertexName);
+            topology.AddOperatorOutput(shuffleTask.InputIds.InputId2, (shuffleTask as ShuffleTask).MapperVertexName);
 
             if (shuffleTask.Transforms != null)
             {
                 foreach (OperatorInputs inputs in shuffleTask.TransformsInputs)
                 {
-                    topology.AddOperatorInput((shuffleTask as ShuffleTask).MapperProcessName, inputs.InputId1);
-                    topology.AddOperatorSecondaryInput((shuffleTask as ShuffleTask).MapperProcessName, inputs.InputId2);
-                    topology.AddOperatorOutput(inputs.InputId1, (shuffleTask as ShuffleTask).MapperProcessName);
-                    topology.AddOperatorOutput(inputs.InputId2, (shuffleTask as ShuffleTask).MapperProcessName);
+                    topology.AddOperatorInput((shuffleTask as ShuffleTask).MapperVertexName, inputs.InputId1);
+                    topology.AddOperatorSecondaryInput((shuffleTask as ShuffleTask).MapperVertexName, inputs.InputId2);
+                    topology.AddOperatorOutput(inputs.InputId1, (shuffleTask as ShuffleTask).MapperVertexName);
+                    topology.AddOperatorOutput(inputs.InputId2, (shuffleTask as ShuffleTask).MapperVertexName);
                 }
             }
 
@@ -247,10 +247,10 @@ namespace CRA.ClientLibrary.DataProcessing
 
                 ClientTerminalTask clientTerminalTask = new ClientTerminalTask();
                 clientTerminalTask.InputIds.SetInputId1(subscribeTask.OutputId);
-                clientTerminalTask.OutputId = typeof(DetachedProcess).Name.ToLower() + Guid.NewGuid().ToString();
+                clientTerminalTask.OutputId = typeof(DetachedVertex).Name.ToLower() + Guid.NewGuid().ToString();
 
                 _craClient = new CRAClientLibrary();
-                _clientTerminal = _craClient.RegisterAsProcess(clientTerminalTask.OutputId);
+                _clientTerminal = _craClient.RegisterAsVertex(clientTerminalTask.OutputId);
                 toplogy.AddOperatorBase(clientTerminalTask.OutputId, clientTerminalTask);
                 toplogy.AddOperatorInput(clientTerminalTask.OutputId, clientTerminalTask.InputIds.InputId1);
                 toplogy.AddOperatorInput(clientTerminalTask.OutputId, clientTerminalTask.InputIds.InputId2);

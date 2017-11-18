@@ -7,16 +7,16 @@ using System.Diagnostics;
 
 namespace BandwidthTest
 {
-    public class MyAsyncInput : IAsyncProcessInputEndpoint
+    public class MyAsyncInput : IAsyncVertexInputEndpoint
     {
         bool _running = true;
-        IProcess _process;
+        IVertex _vertex;
         int _chunkSize;
         byte[] _dataset;
 
-        public MyAsyncInput(IProcess process, int chunkSize)
+        public MyAsyncInput(IVertex vertex, int chunkSize)
         {
-            _process = process;
+            _vertex = vertex;
             _chunkSize = chunkSize;
             _dataset = new byte[chunkSize];
         }
@@ -36,9 +36,9 @@ namespace BandwidthTest
             }
         }
 
-        public async Task FromStreamAsync(Stream stream, string otherProcess, string otherEndpoint, CancellationToken token)
+        public async Task FromStreamAsync(Stream stream, string otherVertex, string otherEndpoint, CancellationToken token)
         {
-            Console.WriteLine("Receiving data from process: " + otherProcess + ", endpoint: " + otherEndpoint);
+            Console.WriteLine("Receiving data from vertex: " + otherVertex + ", endpoint: " + otherEndpoint);
             int bwCheckPeriod = 1000 * 1024 * 1024 / _chunkSize;
 
             Stopwatch sw = new Stopwatch();
@@ -49,7 +49,7 @@ namespace BandwidthTest
                 await stream.ReadAllRequiredBytesAsync(_dataset, 0, _chunkSize);
                 if ((i > 0) && (i % bwCheckPeriod == 0))
                 {
-                    Console.WriteLine("Incoming bandwidth from process {0}, endpoint {1} = {2} MBps", otherProcess, otherEndpoint, _chunkSize * (double)bwCheckPeriod / (1000 * (double)sw.ElapsedMilliseconds));
+                    Console.WriteLine("Incoming bandwidth from vertex {0}, endpoint {1} = {2} MBps", otherVertex, otherEndpoint, _chunkSize * (double)bwCheckPeriod / (1000 * (double)sw.ElapsedMilliseconds));
                     sw.Restart();
                 }
                 if (!_running) break;

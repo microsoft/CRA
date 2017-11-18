@@ -2,17 +2,17 @@
 
 namespace BandwidthTest
 {
-    public class BandwidthTestProcess : ProcessBase
+    public class BandwidthTestVertex : VertexBase
     {
         private int _chunkSize;
 
-        public BandwidthTestProcess() : base()
+        public BandwidthTestVertex() : base()
         {
         }
 
-        public override void Initialize(object processParameter)
+        public override void Initialize(object vertexParameter)
         {
-            _chunkSize = (int)processParameter;
+            _chunkSize = (int)vertexParameter;
             AddAsyncInputEndpoint("input1", new MyAsyncInput(this, _chunkSize));
             AddAsyncOutputEndpoint("output1", new MyAsyncOutput(this, _chunkSize));
             AddAsyncInputEndpoint("input2", new MyAsyncInput(this, _chunkSize));
@@ -46,7 +46,7 @@ namespace BandwidthTest
             AddAsyncInputEndpoint("input16", new MyAsyncInput(this, _chunkSize));
             AddAsyncOutputEndpoint("output16", new MyAsyncOutput(this, _chunkSize));
 
-            base.Initialize(processParameter);
+            base.Initialize(vertexParameter);
         }
     }
 }

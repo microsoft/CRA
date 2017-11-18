@@ -4,7 +4,7 @@ using System.Linq.Expressions;
 
 namespace CRA.ClientLibrary.DataProcessing
 {
-    public class DatasetBase<TKey, TPayload> : ProcessBase, IDataset<TKey, TPayload>
+    public class DatasetBase<TKey, TPayload> : VertexBase, IDataset<TKey, TPayload>
     {
 
         public DatasetBase() { }

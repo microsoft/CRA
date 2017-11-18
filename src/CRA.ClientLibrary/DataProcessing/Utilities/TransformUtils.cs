@@ -78,7 +78,7 @@ namespace CRA.ClientLibrary.DataProcessing
             }
             catch (Exception e)
             {
-                Console.WriteLine("Error: The CRA process failed to apply an unary transformer for an error of type " + e.GetType() + ": " + e.ToString());
+                Console.WriteLine("Error: The CRA vertex failed to apply an unary transformer for an error of type " + e.GetType() + ": " + e.ToString());
             }
 
             return null;
@@ -101,7 +101,7 @@ namespace CRA.ClientLibrary.DataProcessing
             }
             catch (Exception e)
             {
-                Console.WriteLine("Error: The CRA process failed to apply a binary transformer for an error of type " + e.GetType() + ": " + e.ToString());
+                Console.WriteLine("Error: The CRA vertex failed to apply a binary transformer for an error of type " + e.GetType() + ": " + e.ToString());
             }
 
             return null;

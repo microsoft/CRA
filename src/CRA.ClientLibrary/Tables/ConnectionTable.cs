@@ -11,41 +11,41 @@ namespace CRA.ClientLibrary
     public class ConnectionTable : TableEntity
     {
         /// <summary>
-        /// Name of the from process
+        /// Name of the from vertex
         /// </summary>
-        public string FromProcess { get { return this.PartitionKey; } }
+        public string FromVertex { get { return this.PartitionKey; } }
 
         /// <summary>
         /// Other data related to connection
         /// </summary>
-        public string EndpointToProcessEndpoint { get { return this.RowKey; } }
+        public string EndpointToVertexEndpoint { get { return this.RowKey; } }
 
         /// <summary>
         /// From endpoint
         /// </summary>
-        public string FromEndpoint { get { return EndpointToProcessEndpoint.Split(':')[0]; } }
+        public string FromEndpoint { get { return EndpointToVertexEndpoint.Split(':')[0]; } }
 
         /// <summary>
-        /// To process
+        /// To vertex
         /// </summary>
-        public string ToProcess { get { return EndpointToProcessEndpoint.Split(':')[1]; } }
+        public string ToVertex { get { return EndpointToVertexEndpoint.Split(':')[1]; } }
 
         /// <summary>
         /// To endpoint
         /// </summary>
-        public string ToEndpoint { get { return EndpointToProcessEndpoint.Split(':')[2]; } }
+        public string ToEndpoint { get { return EndpointToVertexEndpoint.Split(':')[2]; } }
 
         /// <summary>
         /// Connection table
         /// </summary>
-        /// <param name="fromProcess"></param>
+        /// <param name="fromVertex"></param>
         /// <param name="fromEndpoint"></param>
-        /// <param name="toProcess"></param>
+        /// <param name="toVertex"></param>
         /// <param name="toEndpoint"></param>
-        public ConnectionTable(string fromProcess, string fromEndpoint, string toProcess, string toEndpoint)
+        public ConnectionTable(string fromVertex, string fromEndpoint, string toVertex, string toEndpoint)
         {
-            this.PartitionKey = fromProcess;
-            this.RowKey = fromEndpoint + ":" + toProcess + ":" + toEndpoint;
+            this.PartitionKey = fromVertex;
+            this.RowKey = fromEndpoint + ":" + toVertex + ":" + toEndpoint;
         }
 
         /// <summary>
@@ -59,7 +59,7 @@ namespace CRA.ClientLibrary
         /// <returns></returns>
         public override string ToString()
         {
-            return string.Format(CultureInfo.CurrentCulture, "FromProcess '{0}', FromEndpoint '{1}', ToProcess '{2}', ToEndpoint '{3}'", FromProcess, FromEndpoint, ToProcess, ToEndpoint);
+            return string.Format(CultureInfo.CurrentCulture, "FromVertex '{0}', FromEndpoint '{1}', ToVertex '{2}', ToEndpoint '{3}'", FromVertex, FromEndpoint, ToVertex, ToEndpoint);
         }
 
         /// <summary>
@@ -103,19 +103,19 @@ namespace CRA.ClientLibrary
             return GetAll(instanceTable).Count();
         }
 
-        internal static IEnumerable<ConnectionTable> GetAllConnectionsFromProcess(CloudTable instanceTable, string fromProcess)
+        internal static IEnumerable<ConnectionTable> GetAllConnectionsFromVertex(CloudTable instanceTable, string fromVertex)
         {
-            return GetAll(instanceTable).Where(gn => fromProcess == gn.PartitionKey);
+            return GetAll(instanceTable).Where(gn => fromVertex == gn.PartitionKey);
         }
 
-        internal static IEnumerable<ConnectionTable> GetAllConnectionsToProcess(CloudTable instanceTable, string toProcess)
+        internal static IEnumerable<ConnectionTable> GetAllConnectionsToVertex(CloudTable instanceTable, string toVertex)
         {
-            return GetAll(instanceTable).Where(gn => toProcess == gn.ToProcess);
+            return GetAll(instanceTable).Where(gn => toVertex == gn.ToVertex);
         }
 
-        internal static bool ContainsConnection(CloudTable instanceTable, string fromProcess, string fromEndpoint, string toProcess, string toEndpoint)
+        internal static bool ContainsConnection(CloudTable instanceTable, string fromVertex, string fromEndpoint, string toVertex, string toEndpoint)
         {
-            return ContainsRow(instanceTable, new ConnectionTable(fromProcess, fromEndpoint, toProcess, toEndpoint));
+            return ContainsRow(instanceTable, new ConnectionTable(fromVertex, fromEndpoint, toVertex, toEndpoint));
         }
 
         internal static bool ContainsRow(CloudTable instanceTable, ConnectionTable entity)

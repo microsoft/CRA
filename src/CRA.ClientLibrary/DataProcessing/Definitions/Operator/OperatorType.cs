@@ -14,27 +14,27 @@
         /// </summary>
         BinaryTransform,
         /// <summary>
-        /// Moves data between two CRA sharded processes
+        /// Moves data between two CRA sharded vertexes
         /// </summary>
         Move,
         /// <summary>
-        /// Splitting phase of the move operation between two CRA sharded processes
+        /// Splitting phase of the move operation between two CRA sharded vertexes
         /// </summary>
         MoveSplit,
         /// <summary>
-        /// Merging phase of the move operation between two CRA sharded processes
+        /// Merging phase of the move operation between two CRA sharded vertexes
         /// </summary>
         MoveMerge,
         /// <summary>
-        /// Produces data to be used as an input by other sharded CRA processes
+        /// Produces data to be used as an input by other sharded CRA vertexes
         /// </summary>
         Produce,
         /// <summary>
-        /// Subscribes an observer to the output data from other CRA sharded processes to be used as an output
+        /// Subscribes an observer to the output data from other CRA sharded vertexes to be used as an output
         /// </summary>
         Subscribe,
         /// <summary>
-        /// Connects the client to the other CRA sharded processes
+        /// Connects the client to the other CRA sharded vertexes
         /// </summary>
         ClientTerminal,
         /// <summary>

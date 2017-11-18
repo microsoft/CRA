@@ -2,17 +2,17 @@
 
 namespace ConnectionPair
 {
-    public class ConnectionPairProcess : ProcessBase
+    public class ConnectionPairVertex : VertexBase
     {
-        public ConnectionPairProcess() : base()
+        public ConnectionPairVertex() : base()
         {
         }
 
-        public override void Initialize(object processParameter)
+        public override void Initialize(object vertexParameter)
         {
             AddAsyncInputEndpoint("input", new MyAsyncInput(this));
             AddAsyncOutputEndpoint("output", new MyAsyncOutput(this));
-            base.Initialize(processParameter);
+            base.Initialize(vertexParameter);
         }
     }
 }

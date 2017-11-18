@@ -5,31 +5,31 @@ using System.Threading.Tasks;
 namespace CRA.ClientLibrary
 {
     /// <summary>
-    /// Base class for Process abstraction
+    /// Base class for Vertex abstraction
     /// </summary>
-    public abstract class ProcessBase : IProcess
+    public abstract class VertexBase : IVertex
     {
-        private string _processName;
+        private string _vertexName;
 
-        // Sync input and output endpoints of a process
-        private ConcurrentDictionary<string, IProcessInputEndpoint> _inputEndpoints = new ConcurrentDictionary<string, IProcessInputEndpoint>();
-        private ConcurrentDictionary<string, IProcessOutputEndpoint> _outputEndpoints = new ConcurrentDictionary<string, IProcessOutputEndpoint>();
-        private Action<string, IProcessInputEndpoint> onAddInputEndpoint;
-        private Action<string, IProcessOutputEndpoint> onAddOutputEndpoint;
+        // Sync input and output endpoints of a vertex
+        private ConcurrentDictionary<string, IVertexInputEndpoint> _inputEndpoints = new ConcurrentDictionary<string, IVertexInputEndpoint>();
+        private ConcurrentDictionary<string, IVertexOutputEndpoint> _outputEndpoints = new ConcurrentDictionary<string, IVertexOutputEndpoint>();
+        private Action<string, IVertexInputEndpoint> onAddInputEndpoint;
+        private Action<string, IVertexOutputEndpoint> onAddOutputEndpoint;
         private Action onDispose;
 
-        // Async input and output endpoints of a process
-        private ConcurrentDictionary<string, IAsyncProcessInputEndpoint> _asyncInputEndpoints = new ConcurrentDictionary<string, IAsyncProcessInputEndpoint>();
-        private ConcurrentDictionary<string, IAsyncProcessOutputEndpoint> _asyncOutputEndpoints = new ConcurrentDictionary<string, IAsyncProcessOutputEndpoint>();
-        private Action<string, IAsyncProcessInputEndpoint> onAddAsyncInputEndpoint;
-        private Action<string, IAsyncProcessOutputEndpoint> onAddAsyncOutputEndpoint;
+        // Async input and output endpoints of a vertex
+        private ConcurrentDictionary<string, IAsyncVertexInputEndpoint> _asyncInputEndpoints = new ConcurrentDictionary<string, IAsyncVertexInputEndpoint>();
+        private ConcurrentDictionary<string, IAsyncVertexOutputEndpoint> _asyncOutputEndpoints = new ConcurrentDictionary<string, IAsyncVertexOutputEndpoint>();
+        private Action<string, IAsyncVertexInputEndpoint> onAddAsyncInputEndpoint;
+        private Action<string, IAsyncVertexOutputEndpoint> onAddAsyncOutputEndpoint;
 
         private CRAClientLibrary _clientLibrary;
 
         /// <summary>
         /// Constructor
         /// </summary>
-        protected ProcessBase()
+        protected VertexBase()
         {
             onAddInputEndpoint = (key, proc) => _inputEndpoints.AddOrUpdate(key, proc, (str, pr) => proc);
             onAddOutputEndpoint = (key, proc) => _outputEndpoints.AddOrUpdate(key, proc, (str, pr) => proc);
@@ -56,9 +56,9 @@ namespace CRA.ClientLibrary
         }
 
         /// <summary>
-        /// Dictionary of output endpoints for the process
+        /// Dictionary of output endpoints for the vertex
         /// </summary>
-        public ConcurrentDictionary<string, IProcessOutputEndpoint> OutputEndpoints
+        public ConcurrentDictionary<string, IVertexOutputEndpoint> OutputEndpoints
         {
             get
             {
@@ -67,9 +67,9 @@ namespace CRA.ClientLibrary
         }
 
         /// <summary>
-        /// Dictionary of input endpoints for the process
+        /// Dictionary of input endpoints for the vertex
         /// </summary>
-        public ConcurrentDictionary<string, IProcessInputEndpoint> InputEndpoints
+        public ConcurrentDictionary<string, IVertexInputEndpoint> InputEndpoints
         {
             get
             {
@@ -78,9 +78,9 @@ namespace CRA.ClientLibrary
         }
 
         /// <summary>
-        /// Dictionary of async output endpoints for the process
+        /// Dictionary of async output endpoints for the vertex
         /// </summary>
-        public ConcurrentDictionary<string, IAsyncProcessOutputEndpoint> AsyncOutputEndpoints
+        public ConcurrentDictionary<string, IAsyncVertexOutputEndpoint> AsyncOutputEndpoints
         {
             get
             {
@@ -89,9 +89,9 @@ namespace CRA.ClientLibrary
         }
 
         /// <summary>
-        /// Dictionary of async input endpoints for the process
+        /// Dictionary of async input endpoints for the vertex
         /// </summary>
-        public ConcurrentDictionary<string, IAsyncProcessInputEndpoint> AsyncInputEndpoints
+        public ConcurrentDictionary<string, IAsyncVertexInputEndpoint> AsyncInputEndpoints
         {
             get
             {
@@ -101,25 +101,25 @@ namespace CRA.ClientLibrary
 
 
         /// <summary>
-        /// Connect local output endpoint (ToStream) to remote process' input endpoint (FromStream)
+        /// Connect local output endpoint (ToStream) to remote vertex's input endpoint (FromStream)
         /// </summary>
         /// <param name="localOutputEndpoint">Local output endpoint</param>
-        /// <param name="remoteProcess">Remote process name</param>
+        /// <param name="remoteVertex">Remote vertex name</param>
         /// <param name="remoteInputEndpoint">Remote input endpoint</param>
-        public void ConnectLocalOutputEndpoint(string localOutputEndpoint, string remoteProcess, string remoteInputEndpoint)
+        public void ConnectLocalOutputEndpoint(string localOutputEndpoint, string remoteVertex, string remoteInputEndpoint)
         {
-            _clientLibrary.Connect(_processName, localOutputEndpoint, remoteProcess, remoteInputEndpoint);
+            _clientLibrary.Connect(_vertexName, localOutputEndpoint, remoteVertex, remoteInputEndpoint);
         }
 
         /// <summary>
-        /// Connect local input endpoint (FromStream) to remote process' output endpoint (ToStream)
+        /// Connect local input endpoint (FromStream) to remote vertex' output endpoint (ToStream)
         /// </summary>
         /// <param name="localInputEndpoint">Local input endpoint</param>
-        /// <param name="remoteProcess">Remote process name</param>
+        /// <param name="remoteVertex">Remote vertex name</param>
         /// <param name="remoteOutputEndpoint">Remote output endpoint</param>
-        public void ConnectLocalInputEndpoint(string localInputEndpoint, string remoteProcess, string remoteOutputEndpoint)
+        public void ConnectLocalInputEndpoint(string localInputEndpoint, string remoteVertex, string remoteOutputEndpoint)
         {
-            _clientLibrary.Connect(remoteProcess, remoteOutputEndpoint, _processName, localInputEndpoint, ConnectionInitiator.ToSide);
+            _clientLibrary.Connect(remoteVertex, remoteOutputEndpoint, _vertexName, localInputEndpoint, ConnectionInitiator.ToSide);
         }
 
 
@@ -127,7 +127,7 @@ namespace CRA.ClientLibrary
         /// Add callback for when input endpoint is added
         /// </summary>
         /// <param name="addInputCallback"></param>
-        public void OnAddInputEndpoint(Action<string, IProcessInputEndpoint> addInputCallback)
+        public void OnAddInputEndpoint(Action<string, IVertexInputEndpoint> addInputCallback)
         {
             lock (this)
             {
@@ -144,7 +144,7 @@ namespace CRA.ClientLibrary
         /// Add callback for when output endpoint is added
         /// </summary>
         /// <param name="addOutputCallback"></param>
-        public void OnAddOutputEndpoint(Action<string, IProcessOutputEndpoint> addOutputCallback)
+        public void OnAddOutputEndpoint(Action<string, IVertexOutputEndpoint> addOutputCallback)
         {
             lock (this)
             {
@@ -161,7 +161,7 @@ namespace CRA.ClientLibrary
         /// Add callback for when async input endpoint is added
         /// </summary>
         /// <param name="addInputCallback"></param>
-        public void OnAddAsyncInputEndpoint(Action<string, IAsyncProcessInputEndpoint> addInputCallback)
+        public void OnAddAsyncInputEndpoint(Action<string, IAsyncVertexInputEndpoint> addInputCallback)
         {
             lock (this)
             {
@@ -178,7 +178,7 @@ namespace CRA.ClientLibrary
         /// Add callback for when async output endpoint is added
         /// </summary>
         /// <param name="addOutputCallback"></param>
-        public void OnAddAsyncOutputEndpoint(Action<string, IAsyncProcessOutputEndpoint> addOutputCallback)
+        public void OnAddAsyncOutputEndpoint(Action<string, IAsyncVertexOutputEndpoint> addOutputCallback)
         {
             lock (this)
             {
@@ -192,19 +192,19 @@ namespace CRA.ClientLibrary
         }
 
         /// <summary>
-        /// Get the name of the process
+        /// Get the name of the vertex
         /// </summary>
         /// <returns></returns>
-        public string ProcessName
+        public string VertexName
         {
             get
             {
-                return _processName;
+                return _vertexName;
             }
 
             set
             {
-                _processName = value;
+                _vertexName = value;
             }
         }
 
@@ -224,11 +224,11 @@ namespace CRA.ClientLibrary
         }
 
         /// <summary>
-        /// Process implementor uses this to add input endpoint
+        /// Vertex implementor uses this to add input endpoint
         /// </summary>
         /// <param name="key"></param>
         /// <param name="input"></param>
-        protected virtual void AddInputEndpoint(string key, IProcessInputEndpoint input)
+        protected virtual void AddInputEndpoint(string key, IVertexInputEndpoint input)
         {
             lock (this)
             {
@@ -237,11 +237,11 @@ namespace CRA.ClientLibrary
         }
 
         /// <summary>
-        /// Process implementor uses this to add output endpoint
+        /// Vertex implementor uses this to add output endpoint
         /// </summary>
         /// <param name="key"></param>
         /// <param name="input"></param>
-        protected virtual void AddOutputEndpoint(string key, IProcessOutputEndpoint input)
+        protected virtual void AddOutputEndpoint(string key, IVertexOutputEndpoint input)
         {
             lock (this)
             {
@@ -250,11 +250,11 @@ namespace CRA.ClientLibrary
         }
 
         /// <summary>
-        /// Process implementor uses this to add async input endpoint
+        /// Vertex implementor uses this to add async input endpoint
         /// </summary>
         /// <param name="key"></param>
         /// <param name="input"></param>
-        protected virtual void AddAsyncInputEndpoint(string key, IAsyncProcessInputEndpoint input)
+        protected virtual void AddAsyncInputEndpoint(string key, IAsyncVertexInputEndpoint input)
         {
             lock (this)
             {
@@ -263,11 +263,11 @@ namespace CRA.ClientLibrary
         }
 
         /// <summary>
-        /// Process implementor uses this to add async output endpoint
+        /// Vertex implementor uses this to add async output endpoint
         /// </summary>
         /// <param name="key"></param>
         /// <param name="input"></param>
-        protected virtual void AddAsyncOutputEndpoint(string key, IAsyncProcessOutputEndpoint input)
+        protected virtual void AddAsyncOutputEndpoint(string key, IAsyncVertexOutputEndpoint input)
         {
             lock (this)
             {
@@ -277,24 +277,24 @@ namespace CRA.ClientLibrary
 
 
         /// <summary>
-        /// Initialize process
+        /// Initialize vertex
         /// </summary>
-        /// <param name="processParameter"></param>
-        public virtual void Initialize(object processParameter)
+        /// <param name="vertexParameter"></param>
+        public virtual void Initialize(object vertexParameter)
         {
         }
 
         /// <summary>
-        /// Initialize process
+        /// Initialize vertex
         /// </summary>
-        /// <param name="processParameter"></param>
-        public virtual Task InitializeAsync(object processParameter)
+        /// <param name="vertexParameter"></param>
+        public virtual Task InitializeAsync(object vertexParameter)
         {
             return Task.FromResult(true);
         }
 
         /// <summary>
-        /// Dispose the process
+        /// Dispose the vertex
         /// </summary>
         public virtual void Dispose()
         {

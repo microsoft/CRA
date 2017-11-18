@@ -6,7 +6,7 @@ using System.Threading;
 
 namespace CRA.ClientLibrary.DataProcessing
 {
-    public abstract class OperatorBase : ProcessBase
+    public abstract class OperatorBase : VertexBase
     {
         protected int _thisId;
         protected TaskBase _task;
@@ -42,38 +42,38 @@ namespace CRA.ClientLibrary.DataProcessing
             _craClient = new CRAClientLibrary();
         }
 
-        public override void Initialize(object processParameter)
+        public override void Initialize(object vertexParameter)
         {
-            PrepareOperatorParameter(processParameter);
+            PrepareOperatorParameter(vertexParameter);
             PrepareAllConnectionsMap();
             PrepareOperatorInput();
             PrepareOperatorOutput();
             
             InitializeOperator();
-            base.Initialize(processParameter);
+            base.Initialize(vertexParameter);
         }
 
-        private void PrepareOperatorParameter(object processParameter)
+        private void PrepareOperatorParameter(object vertexParameter)
         {
-            if (processParameter is Tuple<int, ProduceTask>)
+            if (vertexParameter is Tuple<int, ProduceTask>)
             {
-                _thisId = ((Tuple<int, ProduceTask>)processParameter).Item1;
-                _task = ((Tuple<int, ProduceTask>)processParameter).Item2;
+                _thisId = ((Tuple<int, ProduceTask>)vertexParameter).Item1;
+                _task = ((Tuple<int, ProduceTask>)vertexParameter).Item2;
             }
-            else if (processParameter is Tuple<int, SubscribeTask>)
+            else if (vertexParameter is Tuple<int, SubscribeTask>)
             {
-                _thisId = ((Tuple<int, SubscribeTask>)processParameter).Item1;
-                _task = ((Tuple<int, SubscribeTask>)processParameter).Item2;
+                _thisId = ((Tuple<int, SubscribeTask>)vertexParameter).Item1;
+                _task = ((Tuple<int, SubscribeTask>)vertexParameter).Item2;
             }
-            else if (processParameter is Tuple<int, ShuffleTask>)
+            else if (vertexParameter is Tuple<int, ShuffleTask>)
             {
-                _thisId = ((Tuple<int, ShuffleTask>)processParameter).Item1;
-                _task = ((Tuple<int, ShuffleTask>)processParameter).Item2;
+                _thisId = ((Tuple<int, ShuffleTask>)vertexParameter).Item1;
+                _task = ((Tuple<int, ShuffleTask>)vertexParameter).Item2;
             }
-            else if (processParameter is Tuple<int, TaskBase>)
+            else if (vertexParameter is Tuple<int, TaskBase>)
             {
-                _thisId = ((Tuple<int, TaskBase>)processParameter).Item1;
-                _task = ((Tuple<int, TaskBase>)processParameter).Item2;
+                _thisId = ((Tuple<int, TaskBase>)vertexParameter).Item1;
+                _task = ((Tuple<int, TaskBase>)vertexParameter).Item2;
             }
             else
                 throw new InvalidCastException("Unsupported deployment task in CRA");
@@ -84,18 +84,18 @@ namespace CRA.ClientLibrary.DataProcessing
             _fromToConnections = new ConcurrentDictionary<Tuple<string, string>, Tuple<string, string, bool>>();
             _toFromConnections = new ConcurrentDictionary<Tuple<string, string>, Tuple<string, string, bool>>();
 
-            var connectionsMap = _task.ProcessesConnectionsMap;
+            var connectionsMap = _task.VertexesConnectionsMap;
             foreach (var connectionsListKey in connectionsMap.Keys)
             {
                 var connectionsList = connectionsMap[connectionsListKey];
                 foreach (var connection in connectionsList)
                 {
-                    var fromTuple = new Tuple<string, string>(connection.FromProcess, connection.FromEndpoint);
-                    var toTuple = new Tuple<string, string, bool>(connection.ToProcess, connection.ToEndpoint, connection.IsOnSameCRAInstance);
+                    var fromTuple = new Tuple<string, string>(connection.FromVertex, connection.FromEndpoint);
+                    var toTuple = new Tuple<string, string, bool>(connection.ToVertex, connection.ToEndpoint, connection.IsOnSameCRAInstance);
                     _fromToConnections.AddOrUpdate(fromTuple, toTuple, (key, value) => toTuple);
 
-                    fromTuple = new Tuple<string, string>(connection.ToProcess, connection.ToEndpoint);
-                    toTuple = new Tuple<string, string, bool>(connection.FromProcess, connection.FromEndpoint, connection.IsOnSameCRAInstance);
+                    fromTuple = new Tuple<string, string>(connection.ToVertex, connection.ToEndpoint);
+                    toTuple = new Tuple<string, string, bool>(connection.FromVertex, connection.FromEndpoint, connection.IsOnSameCRAInstance);
                     _toFromConnections.AddOrUpdate(fromTuple, toTuple, (key, value) => toTuple);
                 }
             }

@@ -57,22 +57,22 @@ namespace CRA.ClientLibrary.DataProcessing
                 {
                     ShuffleTask shuffleTask = (ShuffleTask)tasks[i];
                     shuffleTask.SecondaryEndpointsDescriptor = new OperatorEndpointsDescriptor();
-                    shuffleTask.SecondaryEndpointsDescriptor.FromInputs = topology.OperatorsEndpointsDescriptors[shuffleTask.ReducerProcessName].FromInputs;
-                    topology.OperatorsEndpointsDescriptors[shuffleTask.ReducerProcessName].FromInputs = new ConcurrentDictionary<string, int>();
-                    int shardsCount = client.CountProcessShards(shuffleTask.DeployDescriptor.InstancesMap());
-                    topology.UpdateShuffleInputs(shuffleTask.MapperProcessName, shuffleTask.ReducerProcessName, shardsCount);
-                    topology.UpdateShuffleOperatorTask(shuffleTask.ReducerProcessName, shuffleTask);
+                    shuffleTask.SecondaryEndpointsDescriptor.FromInputs = topology.OperatorsEndpointsDescriptors[shuffleTask.ReducerVertexName].FromInputs;
+                    topology.OperatorsEndpointsDescriptors[shuffleTask.ReducerVertexName].FromInputs = new ConcurrentDictionary<string, int>();
+                    int shardsCount = client.CountVertexShards(shuffleTask.DeployDescriptor.InstancesMap());
+                    topology.UpdateShuffleInputs(shuffleTask.MapperVertexName, shuffleTask.ReducerVertexName, shardsCount);
+                    topology.UpdateShuffleOperatorTask(shuffleTask.ReducerVertexName, shuffleTask);
                 }
             }
 
             var tasksDictionary = PrepareTasksDictionary(tasks);
-            var connectionsMap = PrepareProcessesConnectionsMap(client, tasks, tasksIds, tasksDictionary, topology);
+            var connectionsMap = PrepareVertexesConnectionsMap(client, tasks, tasksIds, tasksDictionary, topology);
 
             bool isSuccessful = true;
             for (int i = 0; i < tasks.Length; i++)
             {
                 tasks[i].EndpointsDescriptor = topology.OperatorsEndpointsDescriptors[tasksIds[i]];
-                tasks[i].ProcessesConnectionsMap = connectionsMap;
+                tasks[i].VertexesConnectionsMap = connectionsMap;
                 if (tasks[i].OperationType == OperatorType.Produce)
                     isSuccessful = DeployProduceTask(client, (ProduceTask)tasks[i]);
                 else if (tasks[i].OperationType == OperatorType.Subscribe)
@@ -92,7 +92,7 @@ namespace CRA.ClientLibrary.DataProcessing
             for (int i = 0; i < tasks.Length; i++)
             {
                 if (tasks[i].OperationType == OperatorType.Move)
-                    dictionary.Add(((ShuffleTask)tasks[i]).ReducerProcessName, tasks[i]);
+                    dictionary.Add(((ShuffleTask)tasks[i]).ReducerVertexName, tasks[i]);
                 else
                     dictionary.Add(tasks[i].OutputId, tasks[i]);
             }
@@ -100,14 +100,14 @@ namespace CRA.ClientLibrary.DataProcessing
             return dictionary;
         }
 
-        private static ConcurrentDictionary<string, List<ConnectionInfoWithLocality>> PrepareProcessesConnectionsMap(
+        private static ConcurrentDictionary<string, List<ConnectionInfoWithLocality>> PrepareVertexesConnectionsMap(
                         CRAClientLibrary client, TaskBase[] tasks, string[] tasksIds, Dictionary<string, TaskBase> tasksDictionary, OperatorsToplogy topology)
         {
-            ConcurrentDictionary<string, List<ConnectionInfoWithLocality>> processesConnectionsMap = new ConcurrentDictionary<string, List<ConnectionInfoWithLocality>>();
+            ConcurrentDictionary<string, List<ConnectionInfoWithLocality>> vertexesConnectionsMap = new ConcurrentDictionary<string, List<ConnectionInfoWithLocality>>();
 
             for (int i = 0; i < tasks.Length; i++)
             {
-                int shardsCount = client.CountProcessShards(tasks[i].DeployDescriptor.InstancesMap());
+                int shardsCount = client.CountVertexShards(tasks[i].DeployDescriptor.InstancesMap());
 
                 tasks[i].EndpointsDescriptor = topology.OperatorsEndpointsDescriptors[tasksIds[i]];
                 if (tasks[i].OperationType == OperatorType.Move)
@@ -117,8 +117,8 @@ namespace CRA.ClientLibrary.DataProcessing
                     {
                         var flatFromToConnections = PrepareFlatConnectionsMap(client, shardsCount,
                                     fromInputId, topology.OperatorsEndpointsDescriptors[fromInputId], tasksDictionary[fromInputId].DeployDescriptor.InstancesMap(),
-                                    shuffleTask.ReducerProcessName, shuffleTask.EndpointsDescriptor, shuffleTask.DeployDescriptor.InstancesMap());
-                        processesConnectionsMap.AddOrUpdate(fromInputId + shuffleTask.OutputId, 
+                                    shuffleTask.ReducerVertexName, shuffleTask.EndpointsDescriptor, shuffleTask.DeployDescriptor.InstancesMap());
+                        vertexesConnectionsMap.AddOrUpdate(fromInputId + shuffleTask.OutputId, 
                                                 flatFromToConnections, (key, value) => flatFromToConnections);
                     }
 
@@ -126,8 +126,8 @@ namespace CRA.ClientLibrary.DataProcessing
                     var newFromInputId = fromInput.Substring(0, fromInput.Length - 1);
                     var shuffleFromToConnections = PrepareShuffleConnectionsMap(client, shardsCount,
                                                     newFromInputId, topology.OperatorsEndpointsDescriptors[newFromInputId], tasksDictionary[newFromInputId].DeployDescriptor.InstancesMap(),
-                                                    shuffleTask.ReducerProcessName, shuffleTask.EndpointsDescriptor, shuffleTask.DeployDescriptor.InstancesMap());
-                    processesConnectionsMap.AddOrUpdate(newFromInputId + shuffleTask.ReducerProcessName, 
+                                                    shuffleTask.ReducerVertexName, shuffleTask.EndpointsDescriptor, shuffleTask.DeployDescriptor.InstancesMap());
+                    vertexesConnectionsMap.AddOrUpdate(newFromInputId + shuffleTask.ReducerVertexName, 
                                             shuffleFromToConnections, (key, value) => shuffleFromToConnections);
                 }
                 else
@@ -137,19 +137,19 @@ namespace CRA.ClientLibrary.DataProcessing
                         var flatFromToConnections = PrepareFlatConnectionsMap(client, shardsCount,
                                     fromInputId, topology.OperatorsEndpointsDescriptors[fromInputId], tasksDictionary[fromInputId].DeployDescriptor.InstancesMap(),
                                     tasks[i].OutputId, tasks[i].EndpointsDescriptor, tasks[i].DeployDescriptor.InstancesMap());
-                        processesConnectionsMap.AddOrUpdate(fromInputId + tasks[i].OutputId,
+                        vertexesConnectionsMap.AddOrUpdate(fromInputId + tasks[i].OutputId,
                                                 flatFromToConnections, (key, value) => flatFromToConnections);
                     }
                 }
             }
-            return processesConnectionsMap;
+            return vertexesConnectionsMap;
         }
 
         public static bool DeployProduceTask(CRAClientLibrary client, ProduceTask task)
         {
             try { 
-                client.DefineProcess(typeof(ProducerOperator).Name.ToLower(), () => new ProducerOperator());
-                CRAErrorCode status = client.InstantiateShardedProcess(task.OutputId, typeof(ProducerOperator).Name.ToLower(),
+                client.DefineVertex(typeof(ProducerOperator).Name.ToLower(), () => new ProducerOperator());
+                CRAErrorCode status = client.InstantiateShardedVertex(task.OutputId, typeof(ProducerOperator).Name.ToLower(),
                                                                 task, task.DeployDescriptor.InstancesMap());
                 if (status == CRAErrorCode.Success)
                     return true;
@@ -167,13 +167,13 @@ namespace CRA.ClientLibrary.DataProcessing
         {
             try
             {
-                client.DefineProcess(typeof(SubscribeOperator).Name.ToLower(), () => new SubscribeOperator());
-                CRAErrorCode status =  client.InstantiateShardedProcess(task.OutputId, typeof(SubscribeOperator).Name.ToLower(),
+                client.DefineVertex(typeof(SubscribeOperator).Name.ToLower(), () => new SubscribeOperator());
+                CRAErrorCode status =  client.InstantiateShardedVertex(task.OutputId, typeof(SubscribeOperator).Name.ToLower(),
                                             task, task.DeployDescriptor.InstancesMap());
                 if (status == CRAErrorCode.Success)
                 {
                     foreach (string fromInputId in task.EndpointsDescriptor.FromInputs.Keys)
-                        client.ConnectShardedProcesses(task.ProcessesConnectionsMap[fromInputId  + task.OutputId]);
+                        client.ConnectShardedVertexes(task.VertexesConnectionsMap[fromInputId  + task.OutputId]);
 
                     return true;
                 }
@@ -191,17 +191,17 @@ namespace CRA.ClientLibrary.DataProcessing
         {
             try
             {
-                client.DefineProcess(typeof(ShuffleOperator).Name.ToLower(), () => new ShuffleOperator());
-                CRAErrorCode status =  client.InstantiateShardedProcess(task.ReducerProcessName, typeof(ShuffleOperator).Name.ToLower(),
+                client.DefineVertex(typeof(ShuffleOperator).Name.ToLower(), () => new ShuffleOperator());
+                CRAErrorCode status =  client.InstantiateShardedVertex(task.ReducerVertexName, typeof(ShuffleOperator).Name.ToLower(),
                                                 task, task.DeployDescriptor.InstancesMap());
                 if (status == CRAErrorCode.Success)
                 {
                     foreach (string fromInputId in task.SecondaryEndpointsDescriptor.FromInputs.Keys)
-                        client.ConnectShardedProcesses(task.ProcessesConnectionsMap[fromInputId + task.OutputId]);
+                        client.ConnectShardedVertexes(task.VertexesConnectionsMap[fromInputId + task.OutputId]);
 
                     var fromInput = task.EndpointsDescriptor.FromInputs.First().Key;
                     var newFromInputId = fromInput.Substring(0, fromInput.Length - 1);
-                    client.ConnectShardedProcesses(task.ProcessesConnectionsMap[newFromInputId + task.ReducerProcessName]);
+                    client.ConnectShardedVertexes(task.VertexesConnectionsMap[newFromInputId + task.ReducerVertexName]);
 
                     return true;
                 }
@@ -216,7 +216,7 @@ namespace CRA.ClientLibrary.DataProcessing
         }
 
         public static bool DeployClientTerminal(CRAClientLibrary client, ClientTerminalTask task,
-                                                                ref DetachedProcess clientTerminal, OperatorsToplogy topology)
+                                                                ref DetachedVertex clientTerminal, OperatorsToplogy topology)
         {
             try
             {
@@ -225,7 +225,7 @@ namespace CRA.ClientLibrary.DataProcessing
                     string[] inputEndpoints = OperatorUtils.PrepareInputEndpointsIdsForOperator(fromInputId, task.EndpointsDescriptor);
                     string[] outputEndpoints = OperatorUtils.PrepareOutputEndpointsIdsForOperator(
                                     task.OutputId, topology.OperatorsEndpointsDescriptors[fromInputId]);
-                    int shardsCount = client.CountProcessShards(task.DeployDescriptor.InstancesMap());
+                    int shardsCount = client.CountVertexShards(task.DeployDescriptor.InstancesMap());
                     for (int i = 0; i < shardsCount; i++)
                         for (int j = 0; j < inputEndpoints.Length; j++)
                             clientTerminal.FromRemoteOutputEndpointStream(inputEndpoints[j] + i, fromInputId + "$" + i, outputEndpoints[j]);
@@ -234,53 +234,53 @@ namespace CRA.ClientLibrary.DataProcessing
             }
             catch (Exception e)
             {
-                Console.WriteLine("Error in deploying a CRA client terminal process. Please, double check your task configurations: " + e.ToString());
+                Console.WriteLine("Error in deploying a CRA client terminal vertex. Please, double check your task configurations: " + e.ToString());
                 return false;
             }
         }
 
         private static List<ConnectionInfoWithLocality> PrepareFlatConnectionsMap(CRAClientLibrary client, int shardsCount, 
-                            string fromProcess, OperatorEndpointsDescriptor fromProcessDescriptor, ConcurrentDictionary<string, int> fromProcessShards,
-                            string toProcess, OperatorEndpointsDescriptor toProcessDescriptor, ConcurrentDictionary<string, int> toProcessShards)
+                            string fromVertex, OperatorEndpointsDescriptor fromVertexDescriptor, ConcurrentDictionary<string, int> fromVertexShards,
+                            string toVertex, OperatorEndpointsDescriptor toVertexDescriptor, ConcurrentDictionary<string, int> toVertexShards)
         {
             List<ConnectionInfoWithLocality> fromToConnections = new List<ConnectionInfoWithLocality>();
             string[] outputs = OperatorUtils.PrepareOutputEndpointsIdsForOperator(
-                                                            toProcess, fromProcessDescriptor);
+                                                            toVertex, fromVertexDescriptor);
             string[] inputs = OperatorUtils.PrepareInputEndpointsIdsForOperator(
-                                                            fromProcess, toProcessDescriptor);
+                                                            fromVertex, toVertexDescriptor);
             for (int i = 0; i < shardsCount; i++)
             {
-                string currentFromProcess = fromProcess + "$" + i;
-                string currentToProcess = toProcess + "$" + i;
-                bool hasSameCRAInstances = client.AreTwoProcessessOnSameCRAInstance(currentFromProcess, fromProcessShards, currentToProcess, toProcessShards);
+                string currentFromVertex = fromVertex + "$" + i;
+                string currentToVertex = toVertex + "$" + i;
+                bool hasSameCRAInstances = client.AreTwoVertexessOnSameCRAInstance(currentFromVertex, fromVertexShards, currentToVertex, toVertexShards);
                 for (int j = 0; j < outputs.Length; j++)
                 {
-                    var fromProcessTuple = new Tuple<string, string>(currentFromProcess, outputs[j]);
-                    var toProcessTuple = new Tuple<string, string>(currentToProcess, inputs[j]);
-                    fromToConnections.Add(new ConnectionInfoWithLocality(currentFromProcess, outputs[j], currentToProcess, inputs[j], hasSameCRAInstances));
+                    var fromVertexTuple = new Tuple<string, string>(currentFromVertex, outputs[j]);
+                    var toVertexTuple = new Tuple<string, string>(currentToVertex, inputs[j]);
+                    fromToConnections.Add(new ConnectionInfoWithLocality(currentFromVertex, outputs[j], currentToVertex, inputs[j], hasSameCRAInstances));
                 }
             }
             return fromToConnections;
         }
 
         private static List<ConnectionInfoWithLocality> PrepareShuffleConnectionsMap(CRAClientLibrary client, int shardsCount, 
-                            string fromProcess, OperatorEndpointsDescriptor fromProcessDescriptor, ConcurrentDictionary<string, int> fromProcessShards,
-                            string toProcess, OperatorEndpointsDescriptor toProcessDescriptor, ConcurrentDictionary<string, int> toProcessShards)
+                            string fromVertex, OperatorEndpointsDescriptor fromVertexDescriptor, ConcurrentDictionary<string, int> fromVertexShards,
+                            string toVertex, OperatorEndpointsDescriptor toVertexDescriptor, ConcurrentDictionary<string, int> toVertexShards)
         {
            List<ConnectionInfoWithLocality> fromToConnections = new List<ConnectionInfoWithLocality>();
             for (int i = 0; i < shardsCount; i++)
             {
                 for (int j = 0; j < shardsCount; j++)
                 {
-                    string currentFromProcess = fromProcess + "$" + i;
-                    string currentToProcess = toProcess + "$" + j;
+                    string currentFromVertex = fromVertex + "$" + i;
+                    string currentToVertex = toVertex + "$" + j;
                     string[] currentOutputs = OperatorUtils.PrepareOutputEndpointsIdsForOperator(
-                                                                toProcess + j, fromProcessDescriptor);
+                                                                toVertex + j, fromVertexDescriptor);
                     string[] currentInputs = OperatorUtils.PrepareInputEndpointsIdsForOperator(
-                                                                fromProcess + i, toProcessDescriptor);
-                    bool hasSameCRAInstances = client.AreTwoProcessessOnSameCRAInstance(currentFromProcess, fromProcessShards, currentToProcess, toProcessShards);
+                                                                fromVertex + i, toVertexDescriptor);
+                    bool hasSameCRAInstances = client.AreTwoVertexessOnSameCRAInstance(currentFromVertex, fromVertexShards, currentToVertex, toVertexShards);
                     for (int k = 0; k < currentOutputs.Length; k++)
-                        fromToConnections.Add(new ConnectionInfoWithLocality(currentFromProcess, currentOutputs[k], currentToProcess, currentInputs[k], hasSameCRAInstances));
+                        fromToConnections.Add(new ConnectionInfoWithLocality(currentFromVertex, currentOutputs[k], currentToVertex, currentInputs[k], hasSameCRAInstances));
                 }
             }
 

@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 
 namespace CRA.ClientLibrary.DataProcessing
 {
-    public class OperatorFusableInput : IAsyncProcessInputEndpoint
+    public class OperatorFusableInput : IAsyncVertexInputEndpoint
     {
         protected OperatorBase _operator;
         protected int _thisId;
@@ -15,9 +15,9 @@ namespace CRA.ClientLibrary.DataProcessing
 
         public ObjectEndpoint EndpointContent { get; set; }
 
-        public OperatorFusableInput(ref IProcess process, int thisId, bool isSecondaryInput = false)
+        public OperatorFusableInput(ref IVertex vertex, int thisId, bool isSecondaryInput = false)
         {
-            _operator = (OperatorBase)process;
+            _operator = (OperatorBase)vertex;
             _thisId = thisId;
             _isSecondaryInput = isSecondaryInput;
         }
@@ -36,7 +36,7 @@ namespace CRA.ClientLibrary.DataProcessing
             }
         }
 
-        public async Task FromStreamAsync(Stream stream, string otherProcess, string otherEndpoint, CancellationToken token)
+        public async Task FromStreamAsync(Stream stream, string otherVertex, string otherEndpoint, CancellationToken token)
         {
             throw new NotImplementedException();
         }

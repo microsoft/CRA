@@ -6,16 +6,16 @@ using CRA.ClientLibrary;
 
 namespace BandwidthTest
 {
-    public class MyAsyncOutput : IAsyncProcessOutputEndpoint
+    public class MyAsyncOutput : IAsyncVertexOutputEndpoint
     {
         bool _running = true;
-        IProcess _process;
+        IVertex _vertex;
         byte[] _dataset;
         int _chunkSize;
 
-        public MyAsyncOutput(IProcess process, int chunkSize)
+        public MyAsyncOutput(IVertex vertex, int chunkSize)
         {
-            _process = process;
+            _vertex = vertex;
             _chunkSize = chunkSize;
             _dataset = new byte[chunkSize];
             Random r = new Random();
@@ -37,9 +37,9 @@ namespace BandwidthTest
             }
         }
 
-        public async Task ToStreamAsync(Stream stream, string otherProcess, string otherEndpoint, CancellationToken token)
+        public async Task ToStreamAsync(Stream stream, string otherVertex, string otherEndpoint, CancellationToken token)
         {
-            Console.WriteLine("Sending data to process: " + otherProcess + ", endpoint: " + otherEndpoint);
+            Console.WriteLine("Sending data to vertex: " + otherVertex + ", endpoint: " + otherEndpoint);
             for (int i = 0; i < int.MaxValue; i += 1)
             {
                 await stream.WriteAsync(_dataset, 0, _chunkSize);

@@ -8,16 +8,16 @@ namespace CRA.ClientLibrary
     /// <summary>
     /// Interface for async input endpoints in CRA
     /// </summary>
-    public interface IAsyncProcessInputEndpoint : IDisposable
+    public interface IAsyncVertexInputEndpoint : IDisposable
     {
         /// <summary>
         /// Async version of FromStream
         /// </summary>
         /// <param name="stream"></param>
-        /// <param name="otherProcess"></param>
+        /// <param name="otherVertex"></param>
         /// <param name="otherEndpoint"></param>
         /// <param name="token"></param>
         /// <returns></returns>
-        Task FromStreamAsync(Stream stream, string otherProcess, string otherEndpoint, CancellationToken token);
+        Task FromStreamAsync(Stream stream, string otherVertex, string otherEndpoint, CancellationToken token);
     }
 }

@@ -6,14 +6,14 @@ using CRA.ClientLibrary;
 
 namespace FusableConnectionPair
 {
-    public class MyAsyncFusableOutput : IAsyncFusableProcessOutputEndpoint
+    public class MyAsyncFusableOutput : IAsyncFusableVertexOutputEndpoint
     {
         bool _running = true;
-        IProcess _process;
+        IVertex _vertex;
 
-        public MyAsyncFusableOutput(IProcess process)
+        public MyAsyncFusableOutput(IVertex vertex)
         {
-            _process = process;
+            _vertex = vertex;
         }
 
         public void Dispose()
@@ -31,9 +31,9 @@ namespace FusableConnectionPair
             }
         }
 
-        public async Task ToStreamAsync(Stream stream, string otherProcess, string otherEndpoint, CancellationToken token)
+        public async Task ToStreamAsync(Stream stream, string otherVertex, string otherEndpoint, CancellationToken token)
         {
-            Console.WriteLine("Sending data to process: " + otherProcess + ", endpoint: " + otherEndpoint);
+            Console.WriteLine("Sending data to vertex: " + otherVertex + ", endpoint: " + otherEndpoint);
 
             for (int i = 0; i < int.MaxValue; i += 1)
             {
@@ -54,15 +54,15 @@ namespace FusableConnectionPair
             }
         }
 
-        public bool CanFuseWith(IAsyncProcessInputEndpoint endpoint, string otherProcess, string otherEndpoint)
+        public bool CanFuseWith(IAsyncVertexInputEndpoint endpoint, string otherVertex, string otherEndpoint)
         {
             if (endpoint as MyAsyncFusableInput != null) return true;
             return false;
         }
 
-        public async Task ToInputAsync(IAsyncProcessInputEndpoint endpoint, string otherProcess, string otherEndpoint, CancellationToken token)
+        public async Task ToInputAsync(IAsyncVertexInputEndpoint endpoint, string otherVertex, string otherEndpoint, CancellationToken token)
         {
-            Console.WriteLine("Sending data to fused process: " + otherProcess + ", endpoint: " + otherEndpoint);
+            Console.WriteLine("Sending data to fused vertex: " + otherVertex + ", endpoint: " + otherEndpoint);
 
             MyAsyncFusableInput otherInstance = endpoint as MyAsyncFusableInput;
 

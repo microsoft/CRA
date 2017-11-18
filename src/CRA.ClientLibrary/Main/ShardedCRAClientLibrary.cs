@@ -15,37 +15,37 @@ namespace CRA.ClientLibrary
     public partial class CRAClientLibrary
     {
         /// <summary>
-        /// Instantiate a sharded process on a set of CRA instances.
+        /// Instantiate a sharded vertex on a set of CRA instances.
         /// </summary>
-        /// <param name="processName">Name of the sharded process (particular instance)</param>
-        /// <param name="processDefinition">Definition of the process (type)</param>
-        /// <param name="processParameter">Parameters to be passed to each process of the sharded process in its constructor (serializable object)</param>
-        /// <param name="processShards"> A map that holds the number of processes from a sharded process needs to be instantiated for each CRA instance </param>
+        /// <param name="vertexName">Name of the sharded vertex (particular instance)</param>
+        /// <param name="vertexDefinition">Definition of the vertex (type)</param>
+        /// <param name="vertexParameter">Parameters to be passed to each vertex of the sharded vertex in its constructor (serializable object)</param>
+        /// <param name="vertexShards"> A map that holds the number of vertexes from a sharded vertex needs to be instantiated for each CRA instance </param>
         /// <returns>Status of the command</returns>
-        public CRAErrorCode InstantiateShardedProcess<ProcessParameterType>(string processName, string processDefinition, ProcessParameterType processParameter, ConcurrentDictionary<string, int> processShards)
+        public CRAErrorCode InstantiateShardedVertex<VertexParameterType>(string vertexName, string vertexDefinition, VertexParameterType vertexParameter, ConcurrentDictionary<string, int> vertexShards)
         {
-            int processesCount = CountProcessShards(processShards);
-            Task<CRAErrorCode>[] tasks = new Task<CRAErrorCode>[processesCount];
+            int vertexesCount = CountVertexShards(vertexShards);
+            Task<CRAErrorCode>[] tasks = new Task<CRAErrorCode>[vertexesCount];
             int currentCount = 0;
-            foreach (var key in processShards.Keys)
+            foreach (var key in vertexShards.Keys)
             {
-                for (int i = currentCount; i < currentCount + processShards[key]; i++)
+                for (int i = currentCount; i < currentCount + vertexShards[key]; i++)
                 {
                     int threadIndex = i; string currInstanceName = key;
-                    tasks[threadIndex] = InstantiateProcessAsync(currInstanceName, processName + "$" + threadIndex,
-                                                                        processDefinition, new Tuple<int, ProcessParameterType>(threadIndex, processParameter));
+                    tasks[threadIndex] = InstantiateVertexAsync(currInstanceName, vertexName + "$" + threadIndex,
+                                                                        vertexDefinition, new Tuple<int, VertexParameterType>(threadIndex, vertexParameter));
                 }
-                currentCount += processShards[key];
+                currentCount += vertexShards[key];
             }
             CRAErrorCode[] results = Task.WhenAll(tasks).Result;
 
-            // Check for the status of instantiated processes
+            // Check for the status of instantiated vertexes
             CRAErrorCode result = CRAErrorCode.ConnectionEstablishFailed;
             for (int i = 0; i < results.Length; i++)
             {
                 if (results[i] != CRAErrorCode.Success)
                 {
-                    Console.WriteLine("We received an error code " + results[i] + " from one CRA instance while instantiating the process " + processName + "$" + i + " in the sharded process");
+                    Console.WriteLine("We received an error code " + results[i] + " from one CRA instance while instantiating the vertex " + vertexName + "$" + i + " in the sharded vertex");
                     result = results[i];
                 }
                 else
@@ -53,104 +53,104 @@ namespace CRA.ClientLibrary
             }
 
             if (result != CRAErrorCode.Success)
-                Console.WriteLine("All CRA instances appear to be down. Restart them and this sharded process will be automatically instantiated");
+                Console.WriteLine("All CRA instances appear to be down. Restart them and this sharded vertex will be automatically instantiated");
 
             return result;
         }
 
-        internal Task<CRAErrorCode> InstantiateProcessAsync(string instanceName, string processName, string processDefinition, object processParameter)
+        internal Task<CRAErrorCode> InstantiateVertexAsync(string instanceName, string vertexName, string vertexDefinition, object vertexParameter)
         {
             return Task.Factory.StartNew(
-                () => { return InstantiateProcess(instanceName, processName, processDefinition, processParameter); });
+                () => { return InstantiateVertex(instanceName, vertexName, vertexDefinition, vertexParameter); });
         }
 
-        internal int CountProcessShards(ConcurrentDictionary<string, int> processesPerInstanceMap)
+        internal int CountVertexShards(ConcurrentDictionary<string, int> vertexesPerInstanceMap)
         {
             int count = 0;
-            foreach (var key in processesPerInstanceMap.Keys)
+            foreach (var key in vertexesPerInstanceMap.Keys)
             {
-                count += processesPerInstanceMap[key];
+                count += vertexesPerInstanceMap[key];
             }
             return count;
         }
-        public bool AreTwoProcessessOnSameCRAInstance(string fromProcessName, ConcurrentDictionary<string, int> fromProcessShards, string toProcessName, ConcurrentDictionary<string, int> toProcessShards)
+        public bool AreTwoVertexessOnSameCRAInstance(string fromVertexName, ConcurrentDictionary<string, int> fromVertexShards, string toVertexName, ConcurrentDictionary<string, int> toVertexShards)
         {
-            string fromProcessInstance = null;
-            string fromProcessId = fromProcessName.Substring(fromProcessName.Length - 2);
-            int fromProcessesCount = CountProcessShards(fromProcessShards);
+            string fromVertexInstance = null;
+            string fromVertexId = fromVertexName.Substring(fromVertexName.Length - 2);
+            int fromVertexesCount = CountVertexShards(fromVertexShards);
             int currentCount = 0;
-            foreach (var key in fromProcessShards.Keys)
+            foreach (var key in fromVertexShards.Keys)
             {
-                for (int i = currentCount; i < currentCount + fromProcessShards[key]; i++)
+                for (int i = currentCount; i < currentCount + fromVertexShards[key]; i++)
                 {
-                    if (fromProcessId.Equals("$" + i))
+                    if (fromVertexId.Equals("$" + i))
                     {
-                        fromProcessInstance = key;
+                        fromVertexInstance = key;
                         break;
                     }
                 }
 
-                if (fromProcessInstance != null)
+                if (fromVertexInstance != null)
                     break;
 
-                currentCount += fromProcessShards[key];
+                currentCount += fromVertexShards[key];
             }
 
-            string toProcessInstance = null;
-            string toProcessId = toProcessName.Substring(toProcessName.Length - 2);
-            int toProcessesCount = CountProcessShards(toProcessShards);
+            string toVertexInstance = null;
+            string toVertexId = toVertexName.Substring(toVertexName.Length - 2);
+            int toVertexesCount = CountVertexShards(toVertexShards);
             currentCount = 0;
-            foreach (var key in toProcessShards.Keys)
+            foreach (var key in toVertexShards.Keys)
             {
-                for (int i = currentCount; i < currentCount + toProcessShards[key]; i++)
+                for (int i = currentCount; i < currentCount + toVertexShards[key]; i++)
                 {
-                    if (toProcessId.Equals("$" + i))
+                    if (toVertexId.Equals("$" + i))
                     {
-                        toProcessInstance = key;
+                        toVertexInstance = key;
                         break;
                     }
                 }
 
-                if (toProcessInstance != null)
+                if (toVertexInstance != null)
                     break;
 
-                currentCount += toProcessShards[key];
+                currentCount += toVertexShards[key];
             }
 
-            return (fromProcessInstance != null) && (toProcessInstance != null) && (fromProcessInstance.Equals(toProcessInstance));
+            return (fromVertexInstance != null) && (toVertexInstance != null) && (fromVertexInstance.Equals(toVertexInstance));
         }
 
         /// <summary>
-        /// Delete all processes in a sharded process from a set of CRA instances
+        /// Delete all vertexes in a sharded vertex from a set of CRA instances
         /// </summary>
-        /// <param name="processName"></param>
+        /// <param name="vertexName"></param>
         /// <param name="instancesNames"></param>
-        public void DeleteShardedProcessFromInstances(string processName, string[] instancesNames)
+        public void DeleteShardedVertexFromInstances(string vertexName, string[] instancesNames)
         {
             Task[] tasks = new Task[instancesNames.Length];
             for (int i = 0; i < tasks.Length; i++)
             {
                 int threadIndex = i;
-                tasks[threadIndex] = DeleteProcessesFromInstanceAsync(processName, instancesNames[threadIndex]);
+                tasks[threadIndex] = DeleteVertexesFromInstanceAsync(vertexName, instancesNames[threadIndex]);
             }
             Task.WhenAll(tasks);
         }
 
-        internal Task DeleteProcessesFromInstanceAsync(string processName, string instanceName)
+        internal Task DeleteVertexesFromInstanceAsync(string vertexName, string instanceName)
         {
             return Task.Factory.StartNew(
-                () => { DeleteProcessesFromInstance(processName, instanceName); });
+                () => { DeleteVertexesFromInstance(vertexName, instanceName); });
         }
 
-        private void DeleteProcessesFromInstance(string processName, string instanceName)
+        private void DeleteVertexesFromInstance(string vertexName, string instanceName)
         {
-            Expression<Func<DynamicTableEntity, bool>> processesFilter = (e => e.PartitionKey == instanceName && e.RowKey.StartsWith(processName + "$"));
-            FilterAndDeleteEntitiesInBatches(_processTable, processesFilter);
+            Expression<Func<DynamicTableEntity, bool>> vertexesFilter = (e => e.PartitionKey == instanceName && e.RowKey.StartsWith(vertexName + "$"));
+            FilterAndDeleteEntitiesInBatches(_vertexTable, vertexesFilter);
         }
 
         private void FilterAndDeleteEntitiesInBatches(CloudTable table, Expression<Func<DynamicTableEntity, bool>> filter)
         {
-            Action<IEnumerable<DynamicTableEntity>> deleteProcessor = entities =>
+            Action<IEnumerable<DynamicTableEntity>> deleteVertexor = entities =>
             {
                 var batches = new Dictionary<string, TableBatchOperation>();
                 foreach (var entity in entities)
@@ -179,11 +179,11 @@ namespace CRA.ClientLibrary
                 }
             };
 
-            FilterAndProcessEntitiesInSegments(table, deleteProcessor, filter);
+            FilterAndVertexEntitiesInSegments(table, deleteVertexor, filter);
         }
 
 
-        private void FilterAndProcessEntitiesInSegments(CloudTable table, Action<IEnumerable<DynamicTableEntity>> operationExecutor, Expression<Func<DynamicTableEntity, bool>> filter)
+        private void FilterAndVertexEntitiesInSegments(CloudTable table, Action<IEnumerable<DynamicTableEntity>> operationExecutor, Expression<Func<DynamicTableEntity, bool>> filter)
         {
             TableQuerySegment<DynamicTableEntity> segment = null;
             while (segment == null || segment.ContinuationToken != null)
@@ -203,28 +203,28 @@ namespace CRA.ClientLibrary
         }
 
         /// <summary>
-        /// Delete an endpoint from all processes in a sharded process
+        /// Delete an endpoint from all vertexes in a sharded vertex
         /// </summary>
-        /// <param name="processName"></param>
+        /// <param name="vertexName"></param>
         /// <param name="endpointName"></param>
-        public void DeleteEndpointFromShardedProcess(string processName, string endpointName)
+        public void DeleteEndpointFromShardedVertex(string vertexName, string endpointName)
         {
-            DeleteEndpointsFromAllProcesses(processName, endpointName);
+            DeleteEndpointsFromAllVertexes(vertexName, endpointName);
         }
 
-        private void DeleteEndpointsFromAllProcesses(string processName, string endpointName)
+        private void DeleteEndpointsFromAllVertexes(string vertexName, string endpointName)
         {
-            Expression<Func<DynamicTableEntity, bool>> filters = (e => e.PartitionKey.StartsWith(processName + "$") && e.RowKey == endpointName);
+            Expression<Func<DynamicTableEntity, bool>> filters = (e => e.PartitionKey.StartsWith(vertexName + "$") && e.RowKey == endpointName);
             FilterAndDeleteEntitiesInBatches(_endpointTableManager.EndpointTable, filters);
         }
 
         /// <summary>
-        /// Connect a set of (fromProcess, outputEndpoint) pairs to another set of (toProcess, inputEndpoint) pairs. We contact the "from" process
+        /// Connect a set of (fromVertex, outputEndpoint) pairs to another set of (toVertex, inputEndpoint) pairs. We contact the "from" vertex
         /// to initiate the creation of the link.
         /// </summary>
         /// <param name="fromToConnections"></param>
         /// <returns></returns>
-        public CRAErrorCode ConnectShardedProcesses(List<ConnectionInfoWithLocality> fromToConnections)
+        public CRAErrorCode ConnectShardedVertexes(List<ConnectionInfoWithLocality> fromToConnections)
         {
             Task<CRAErrorCode>[] tasks = new Task<CRAErrorCode>[fromToConnections.Count];
 
@@ -233,19 +233,19 @@ namespace CRA.ClientLibrary
             {
                 int fromToEndpointIndex = i;
                 var currentFromToConnection = fromToConnection;
-                tasks[fromToEndpointIndex] = ConnectAsync(currentFromToConnection.FromProcess,
-                                                currentFromToConnection.FromEndpoint, currentFromToConnection.ToProcess,
+                tasks[fromToEndpointIndex] = ConnectAsync(currentFromToConnection.FromVertex,
+                                                currentFromToConnection.FromEndpoint, currentFromToConnection.ToVertex,
                                                 currentFromToConnection.ToEndpoint, ConnectionInitiator.FromSide);
                 i++;
             }
             CRAErrorCode[] results = Task.WhenAll(tasks).Result;
 
-            CRAErrorCode result = CRAErrorCode.ProcessEndpointNotFound;
+            CRAErrorCode result = CRAErrorCode.VertexEndpointNotFound;
             for (i = 0; i < results.Length; i++)
             {
                 if (results[i] != CRAErrorCode.Success)
                 {
-                    Console.WriteLine("We received an error code " + results[i] + " while processing the connection pair with number (" + i + ")");
+                    Console.WriteLine("We received an error code " + results[i] + " while vertexing the connection pair with number (" + i + ")");
                     result = results[i];
                 }
                 else
@@ -253,95 +253,95 @@ namespace CRA.ClientLibrary
             }
 
             if (result != CRAErrorCode.Success)
-                Console.WriteLine("All CRA instances appear to be down. Restart them and connect these two sharded processes again!");
+                Console.WriteLine("All CRA instances appear to be down. Restart them and connect these two sharded vertexes again!");
 
             return result;
         }
 
-        internal Task<CRAErrorCode> ConnectAsync(string fromProcessName, string fromEndpoint, string toProcessName, string toEndpoint, ConnectionInitiator direction)
+        internal Task<CRAErrorCode> ConnectAsync(string fromVertexName, string fromEndpoint, string toVertexName, string toEndpoint, ConnectionInitiator direction)
         {
             return Task.Factory.StartNew(
-                () => { return Connect(fromProcessName, fromEndpoint, toProcessName, toEndpoint, direction); });
+                () => { return Connect(fromVertexName, fromEndpoint, toVertexName, toEndpoint, direction); });
         }
 
 
         /// <summary>
-        /// Connect a set of processes in one sharded CRA process to another with a full mesh topology, via pre-defined endpoints. We contact the "from" process
+        /// Connect a set of vertexes in one sharded CRA vertex to another with a full mesh topology, via pre-defined endpoints. We contact the "from" vertex
         /// to initiate the creation of the link.
         /// </summary>
-        /// <param name="fromProcessName"></param>
+        /// <param name="fromVertexName"></param>
         /// <param name="fromEndpoints"></param>
-        /// <param name="toProcessName"></param>
+        /// <param name="toVertexName"></param>
         /// <param name="toEndpoints"></param>
         /// <returns></returns>
-        public CRAErrorCode ConnectShardedProcessesWithFullMesh(string fromProcessName, string[] fromEndpoints, string toProcessName, string[] toEndpoints)
+        public CRAErrorCode ConnectShardedVertexesWithFullMesh(string fromVertexName, string[] fromEndpoints, string toVertexName, string[] toEndpoints)
         {
-            var fromProcessesRows = ProcessTable.GetRowsForShardedProcess(_processTable, fromProcessName);
-            string[] fromProcessesNames = new string[fromProcessesRows.Count()];
+            var fromVertexesRows = VertexTable.GetRowsForShardedVertex(_vertexTable, fromVertexName);
+            string[] fromVertexesNames = new string[fromVertexesRows.Count()];
 
             int i = 0;
-            foreach (var fromProcessRow in fromProcessesRows)
+            foreach (var fromVertexRow in fromVertexesRows)
             {
-                fromProcessesNames[i] = fromProcessRow.ProcessName;
+                fromVertexesNames[i] = fromVertexRow.VertexName;
                 i++;
             }
 
-            var toProcessesRows = ProcessTable.GetRowsForShardedProcess(_processTable, toProcessName);
-            string[] toProcessesNames = new string[toProcessesRows.Count()];
+            var toVertexesRows = VertexTable.GetRowsForShardedVertex(_vertexTable, toVertexName);
+            string[] toVertexesNames = new string[toVertexesRows.Count()];
 
             i = 0;
-            foreach (var toProcessRow in toProcessesRows)
+            foreach (var toVertexRow in toVertexesRows)
             {
-                toProcessesNames[i] = toProcessRow.ProcessName;
+                toVertexesNames[i] = toVertexRow.VertexName;
                 i++;
             }
 
-            return ConnectShardedProcessesWithFullMesh(fromProcessesNames, fromEndpoints, toProcessesNames, toEndpoints, ConnectionInitiator.FromSide);
+            return ConnectShardedVertexesWithFullMesh(fromVertexesNames, fromEndpoints, toVertexesNames, toEndpoints, ConnectionInitiator.FromSide);
         }
 
         /// <summary>
-        /// Connect a set of processes in one sharded CRA process to another with a full mesh toplogy, via pre-defined endpoints. We contact the "from" process
+        /// Connect a set of vertexes in one sharded CRA vertex to another with a full mesh toplogy, via pre-defined endpoints. We contact the "from" vertex
         /// to initiate the creation of the link.
         /// </summary>
-        /// <param name="fromProcessesNames"></param>
+        /// <param name="fromVertexesNames"></param>
         /// <param name="fromEndpoints"></param>
-        /// <param name="toProcessesNames"></param>
+        /// <param name="toVertexesNames"></param>
         /// <param name="toEndpoints"></param>
         /// <param name="direction"></param>
         /// <returns></returns>
-        public CRAErrorCode ConnectShardedProcessesWithFullMesh(string[] fromProcessesNames, string[] fromEndpoints, string[] toProcessesNames, string[] toEndpoints, ConnectionInitiator direction)
+        public CRAErrorCode ConnectShardedVertexesWithFullMesh(string[] fromVertexesNames, string[] fromEndpoints, string[] toVertexesNames, string[] toEndpoints, ConnectionInitiator direction)
         {
-            // Check if the number of output endpoints in any fromProcess is equal to 
-            // the number of toProcesses
-            if (fromEndpoints.Length != toProcessesNames.Length)
-                return CRAErrorCode.ProcessesEndpointsNotMatched;
+            // Check if the number of output endpoints in any fromVertex is equal to 
+            // the number of toVertexes
+            if (fromEndpoints.Length != toVertexesNames.Length)
+                return CRAErrorCode.VertexesEndpointsNotMatched;
 
-            // Check if the number of input endpoints in any toProcess is equal to 
-            // the number of fromProcesses
-            if (toEndpoints.Length != fromProcessesNames.Length)
-                return CRAErrorCode.ProcessesEndpointsNotMatched;
+            // Check if the number of input endpoints in any toVertex is equal to 
+            // the number of fromVertexes
+            if (toEndpoints.Length != fromVertexesNames.Length)
+                return CRAErrorCode.VertexesEndpointsNotMatched;
 
-            //Connect the sharded processes in parallel
+            //Connect the sharded vertexes in parallel
             List<Task<CRAErrorCode>> tasks = new List<Task<CRAErrorCode>>();
             for (int i = 0; i < fromEndpoints.Length; i++)
             {
-                for (int j = 0; j < fromProcessesNames.Length; j++)
+                for (int j = 0; j < fromVertexesNames.Length; j++)
                 {
                     int fromEndpointIndex = i;
-                    int fromProcessIndex = j;
-                    tasks.Add(ConnectAsync(fromProcessesNames[fromProcessIndex], fromEndpoints[fromEndpointIndex],
-                                           toProcessesNames[fromEndpointIndex], toEndpoints[fromProcessIndex], direction));
+                    int fromVertexIndex = j;
+                    tasks.Add(ConnectAsync(fromVertexesNames[fromVertexIndex], fromEndpoints[fromEndpointIndex],
+                                           toVertexesNames[fromEndpointIndex], toEndpoints[fromVertexIndex], direction));
                 }
             }
             CRAErrorCode[] results = Task.WhenAll(tasks.ToArray()).Result;
 
-            //Check for the status of connected processes
-            CRAErrorCode result = CRAErrorCode.ProcessEndpointNotFound;
+            //Check for the status of connected vertexes
+            CRAErrorCode result = CRAErrorCode.VertexEndpointNotFound;
             for (int i = 0; i < results.Length; i++)
             {
                 if (results[i] != CRAErrorCode.Success)
                 {
-                    Console.WriteLine("We received an error code " + results[i] + " while processing the connection pair with number (" + i + ")");
+                    Console.WriteLine("We received an error code " + results[i] + " while vertexing the connection pair with number (" + i + ")");
                     result = results[i];
                 }
                 else
@@ -349,68 +349,68 @@ namespace CRA.ClientLibrary
             }
 
             if (result != CRAErrorCode.Success)
-                Console.WriteLine("All CRA instances appear to be down. Restart them and connect these two sharded processes again!");
+                Console.WriteLine("All CRA instances appear to be down. Restart them and connect these two sharded vertexes again!");
 
             return result;
         }
 
         /// <summary>
-        /// Disconnect a set of processes in one sharded CRA process from another, via pre-defined endpoints. 
+        /// Disconnect a set of vertexes in one sharded CRA vertex from another, via pre-defined endpoints. 
         /// </summary>
-        /// <param name="fromProcessName"></param>
+        /// <param name="fromVertexName"></param>
         /// <param name="fromEndpoints"></param>
-        /// <param name="toProcessName"></param>
+        /// <param name="toVertexName"></param>
         /// <param name="toEndpoints"></param>
         /// <returns></returns>
-        public void DisconnectShardedProcesses(string fromProcessName, string[] fromEndpoints, string toProcessName, string[] toEndpoints)
+        public void DisconnectShardedVertexes(string fromVertexName, string[] fromEndpoints, string toVertexName, string[] toEndpoints)
         {
-            var fromProcessesRows = ProcessTable.GetRowsForShardedProcess(_processTable, fromProcessName);
-            string[] fromProcessesNames = new string[fromProcessesRows.Count()];
+            var fromVertexesRows = VertexTable.GetRowsForShardedVertex(_vertexTable, fromVertexName);
+            string[] fromVertexesNames = new string[fromVertexesRows.Count()];
 
             int i = 0;
-            foreach (var fromProcessRow in fromProcessesRows)
+            foreach (var fromVertexRow in fromVertexesRows)
             {
-                fromProcessesNames[i] = fromProcessRow.ProcessName;
+                fromVertexesNames[i] = fromVertexRow.VertexName;
                 i++;
             }
 
-            var toProcessesRows = ProcessTable.GetRowsForShardedProcess(_processTable, toProcessName);
-            string[] toProcessesNames = new string[toProcessesRows.Count()];
+            var toVertexesRows = VertexTable.GetRowsForShardedVertex(_vertexTable, toVertexName);
+            string[] toVertexesNames = new string[toVertexesRows.Count()];
 
             i = 0;
-            foreach (var toProcessRow in toProcessesRows)
+            foreach (var toVertexRow in toVertexesRows)
             {
-                toProcessesNames[i] = toProcessRow.ProcessName;
+                toVertexesNames[i] = toVertexRow.VertexName;
                 i++;
             }
 
-            DisconnectShardedProcesses(fromProcessesNames, fromEndpoints, toProcessesNames, toEndpoints);
+            DisconnectShardedVertexes(fromVertexesNames, fromEndpoints, toVertexesNames, toEndpoints);
         }
 
         /// <summary>
-        /// Disconnect the CRA connections between processes in two sharded processes
+        /// Disconnect the CRA connections between vertexes in two sharded vertexes
         /// </summary>
-        /// <param name="fromProcessesNames"></param>
-        /// <param name="fromProcessesOutputs"></param>
-        /// <param name="toProcessesNames"></param>
-        /// <param name="toProcessesInputs"></param>
-        public void DisconnectShardedProcesses(string[] fromProcessesNames, string[] fromProcessesOutputs, string[] toProcessesNames, string[] toProcessesInputs)
+        /// <param name="fromVertexesNames"></param>
+        /// <param name="fromVertexesOutputs"></param>
+        /// <param name="toVertexesNames"></param>
+        /// <param name="toVertexesInputs"></param>
+        public void DisconnectShardedVertexes(string[] fromVertexesNames, string[] fromVertexesOutputs, string[] toVertexesNames, string[] toVertexesInputs)
         {
-            // Check if the number of output endpoints in any fromProcess is equal to 
-            // the number of toProcesses, and the number of input endpoints in any toProcess 
-            // is equal to the number of fromProcesses
-            if ((fromProcessesOutputs.Length == toProcessesNames.Length) && (toProcessesInputs.Length == fromProcessesNames.Length))
+            // Check if the number of output endpoints in any fromVertex is equal to 
+            // the number of toVertexes, and the number of input endpoints in any toVertex 
+            // is equal to the number of fromVertexes
+            if ((fromVertexesOutputs.Length == toVertexesNames.Length) && (toVertexesInputs.Length == fromVertexesNames.Length))
             {
-                //Disconnect the sharded processes in parallel
+                //Disconnect the sharded vertexes in parallel
                 List<Task> tasks = new List<Task>();
-                for (int i = 0; i < fromProcessesOutputs.Length; i++)
+                for (int i = 0; i < fromVertexesOutputs.Length; i++)
                 {
-                    for (int j = 0; j < fromProcessesNames.Length; j++)
+                    for (int j = 0; j < fromVertexesNames.Length; j++)
                     {
                         int fromEndpointIndex = i;
-                        int fromProcessIndex = j;
-                        tasks.Add(DisconnectAsync(fromProcessesNames[fromProcessIndex], fromProcessesOutputs[fromEndpointIndex],
-                                  toProcessesNames[fromEndpointIndex], toProcessesInputs[fromProcessIndex]));
+                        int fromVertexIndex = j;
+                        tasks.Add(DisconnectAsync(fromVertexesNames[fromVertexIndex], fromVertexesOutputs[fromEndpointIndex],
+                                  toVertexesNames[fromEndpointIndex], toVertexesInputs[fromVertexIndex]));
                     }
                 }
 
@@ -419,10 +419,10 @@ namespace CRA.ClientLibrary
         }
 
 
-        internal Task DisconnectAsync(string fromProcessName, string fromProcessOutput, string toProcessName, string toProcessInput)
+        internal Task DisconnectAsync(string fromVertexName, string fromVertexOutput, string toVertexName, string toVertexInput)
         {
             return Task.Factory.StartNew(
-                () => { Disconnect(fromProcessName, fromProcessOutput, toProcessName, toProcessInput); });
+                () => { Disconnect(fromVertexName, fromVertexOutput, toVertexName, toVertexInput); });
         }
 
     }

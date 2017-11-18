@@ -10,12 +10,12 @@ namespace FusableConnectionPair
             var client = new CRAClientLibrary();
             client.Reset();
 
-            client.DefineProcess("fusableconnectionpairprocess", () => new FusableConnectionPairProcess());
+            client.DefineVertex("fusableconnectionpairvertex", () => new FusableConnectionPairVertex());
 
-            client.InstantiateProcess("crainst01", "fprocess1", "fusableconnectionpairprocess", null);
-            client.InstantiateProcess("crainst01", "fprocess2", "fusableconnectionpairprocess", null);
+            client.InstantiateVertex("crainst01", "fvertex1", "fusableconnectionpairvertex", null);
+            client.InstantiateVertex("crainst01", "fvertex2", "fusableconnectionpairvertex", null);
 
-            client.Connect("fprocess1", "output", "fprocess2", "input");
+            client.Connect("fvertex1", "output", "fvertex2", "input");
 
             Console.ReadLine();
         }

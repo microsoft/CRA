@@ -6,12 +6,12 @@
     public enum ConnectionInitiator
     {
         /// <summary>
-        /// Initiate connection from "from" process
+        /// Initiate connection from "from" vertex
         /// </summary>
         FromSide,
 
         /// <summary>
-        /// Initiate connection from "to" process
+        /// Initiate connection from "to" vertex
         /// </summary>
         ToSide
     }
