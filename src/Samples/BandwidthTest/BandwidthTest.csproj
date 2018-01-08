@@ -63,7 +63,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="BandwidthTestProcess.cs" />
+    <Compile Include="BandwidthTestVertex.cs" />
     <Compile Include="MyAsyncInput.cs" />
     <Compile Include="MyAsyncOutput.cs" />
     <Compile Include="Program.cs" />

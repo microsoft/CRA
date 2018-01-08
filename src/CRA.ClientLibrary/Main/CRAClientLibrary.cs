@@ -268,7 +268,7 @@ namespace CRA.ClientLibrary
                     stream = client.GetStream();
                 }
 
-                stream.WriteInt32((int)CRATaskMessageType.LOAD_PROCESS);
+                stream.WriteInt32((int)CRATaskMessageType.LOAD_VERTEX);
                 stream.WriteByteArray(Encoding.UTF8.GetBytes(vertexName));
                 stream.WriteByteArray(Encoding.UTF8.GetBytes(vertexDefinition));
                 stream.WriteByteArray(Encoding.UTF8.GetBytes(newRow.VertexParameter));
@@ -427,7 +427,7 @@ namespace CRA.ClientLibrary
 
             var row = VertexTable.GetRowForVertexDefinition(_vertexTable, vertexDefinition);
 
-            // CREATE THE PROCESS
+            // CREATE THE VERTEX
             var vertex = row.GetVertexCreateAction()();
 
             // LATCH CALLBACKS TO POPULATE ENDPOINT TABLE
@@ -497,12 +497,12 @@ namespace CRA.ClientLibrary
         }
 
         /// <summary>
-        /// Load all vertexes for the given instance name, returns only when all
-        /// vertexes have been initialized and activated.
+        /// Load all vertices for the given instance name, returns only when all
+        /// vertices have been initialized and activated.
         /// </summary>
         /// <param name="thisInstanceName"></param>
         /// <returns></returns>
-        public ConcurrentDictionary<string, IVertex> LoadAllVertexes(string thisInstanceName)
+        public ConcurrentDictionary<string, IVertex> LoadAllVertices(string thisInstanceName)
         {
             ConcurrentDictionary<string, IVertex> result = new ConcurrentDictionary<string, IVertex>();
             var rows = VertexTable.GetAllRowsForInstance(_vertexTable, thisInstanceName);
@@ -635,9 +635,9 @@ namespace CRA.ClientLibrary
                 }
 
                 if (direction == ConnectionInitiator.FromSide)
-                    stream.WriteInt32((int)CRATaskMessageType.CONNECT_PROCESS_INITIATOR);
+                    stream.WriteInt32((int)CRATaskMessageType.CONNECT_VERTEX_INITIATOR);
                 else
-                    stream.WriteInt32((int)CRATaskMessageType.CONNECT_PROCESS_INITIATOR_REVERSE);
+                    stream.WriteInt32((int)CRATaskMessageType.CONNECT_VERTEX_INITIATOR_REVERSE);
 
                 stream.WriteByteArray(Encoding.UTF8.GetBytes(fromVertexName));
                 stream.WriteByteArray(Encoding.UTF8.GetBytes(fromEndpoint));
@@ -710,7 +710,7 @@ namespace CRA.ClientLibrary
 
 
         /// <summary>
-        /// Gets a list of all vertexes registered with CRA
+        /// Gets a list of all vertices registered with CRA
         /// </summary>
         /// <returns></returns>
         public IEnumerable<string> VertexNames

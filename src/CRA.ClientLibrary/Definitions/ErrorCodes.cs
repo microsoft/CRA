@@ -46,8 +46,8 @@
         /// </summary>
         ConnectionEstablishFailed,
         /// <summary>
-        /// Failed to match endpoints between fromVertexes and toVertexes
+        /// Failed to match endpoints between fromVertices and toVertices
         /// </summary>
-        VertexesEndpointsNotMatched
+        VerticesEndpointsNotMatched
     };
 }

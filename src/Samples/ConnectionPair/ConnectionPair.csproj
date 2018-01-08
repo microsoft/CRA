@@ -82,7 +82,7 @@
   <ItemGroup>
     <Compile Include="MyAsyncInput.cs" />
     <Compile Include="MyAsyncOutput.cs" />
-    <Compile Include="ConnectionPairProcess.cs" />
+    <Compile Include="ConnectionPairVertex.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>

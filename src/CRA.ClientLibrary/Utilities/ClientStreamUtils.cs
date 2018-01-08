@@ -11,7 +11,7 @@ namespace CRA.ClientLibrary
     public partial class CRAClientLibrary : IDisposable
     {
 
-        // A pool of stream connections from this CRA client to other CRA running entities (instances and vertexes)
+        // A pool of stream connections from this CRA client to other CRA running entities (instances and vertices)
         ConcurrentDictionary<string, StreamConnectionPool> _streamConnectionPools = new ConcurrentDictionary<string, StreamConnectionPool>();
 
         /// <summary>

@@ -246,7 +246,7 @@ namespace CRA.ClientLibrary
                 .First();
         }
 
-        internal static IEnumerable<VertexTable> GetVertexes(CloudTable instanceTable, string instanceName)
+        internal static IEnumerable<VertexTable> GetVertices(CloudTable instanceTable, string instanceName)
         {
             return GetAll(instanceTable).Where(gn => instanceName == gn.InstanceName && !string.IsNullOrEmpty(gn.VertexName));
         }

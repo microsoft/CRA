@@ -20,12 +20,12 @@ namespace CRA.ClientLibrary
         /// <param name="vertexName">Name of the sharded vertex (particular instance)</param>
         /// <param name="vertexDefinition">Definition of the vertex (type)</param>
         /// <param name="vertexParameter">Parameters to be passed to each vertex of the sharded vertex in its constructor (serializable object)</param>
-        /// <param name="vertexShards"> A map that holds the number of vertexes from a sharded vertex needs to be instantiated for each CRA instance </param>
+        /// <param name="vertexShards"> A map that holds the number of vertices from a sharded vertex needs to be instantiated for each CRA instance </param>
         /// <returns>Status of the command</returns>
         public CRAErrorCode InstantiateShardedVertex<VertexParameterType>(string vertexName, string vertexDefinition, VertexParameterType vertexParameter, ConcurrentDictionary<string, int> vertexShards)
         {
-            int vertexesCount = CountVertexShards(vertexShards);
-            Task<CRAErrorCode>[] tasks = new Task<CRAErrorCode>[vertexesCount];
+            int verticesCount = CountVertexShards(vertexShards);
+            Task<CRAErrorCode>[] tasks = new Task<CRAErrorCode>[verticesCount];
             int currentCount = 0;
             foreach (var key in vertexShards.Keys)
             {
@@ -39,7 +39,7 @@ namespace CRA.ClientLibrary
             }
             CRAErrorCode[] results = Task.WhenAll(tasks).Result;
 
-            // Check for the status of instantiated vertexes
+            // Check for the status of instantiated vertices
             CRAErrorCode result = CRAErrorCode.ConnectionEstablishFailed;
             for (int i = 0; i < results.Length; i++)
             {
@@ -64,20 +64,20 @@ namespace CRA.ClientLibrary
                 () => { return InstantiateVertex(instanceName, vertexName, vertexDefinition, vertexParameter); });
         }
 
-        internal int CountVertexShards(ConcurrentDictionary<string, int> vertexesPerInstanceMap)
+        internal int CountVertexShards(ConcurrentDictionary<string, int> verticesPerInstanceMap)
         {
             int count = 0;
-            foreach (var key in vertexesPerInstanceMap.Keys)
+            foreach (var key in verticesPerInstanceMap.Keys)
             {
-                count += vertexesPerInstanceMap[key];
+                count += verticesPerInstanceMap[key];
             }
             return count;
         }
-        public bool AreTwoVertexessOnSameCRAInstance(string fromVertexName, ConcurrentDictionary<string, int> fromVertexShards, string toVertexName, ConcurrentDictionary<string, int> toVertexShards)
+        public bool AreTwoVerticessOnSameCRAInstance(string fromVertexName, ConcurrentDictionary<string, int> fromVertexShards, string toVertexName, ConcurrentDictionary<string, int> toVertexShards)
         {
             string fromVertexInstance = null;
             string fromVertexId = fromVertexName.Substring(fromVertexName.Length - 2);
-            int fromVertexesCount = CountVertexShards(fromVertexShards);
+            int fromVerticesCount = CountVertexShards(fromVertexShards);
             int currentCount = 0;
             foreach (var key in fromVertexShards.Keys)
             {
@@ -98,7 +98,7 @@ namespace CRA.ClientLibrary
 
             string toVertexInstance = null;
             string toVertexId = toVertexName.Substring(toVertexName.Length - 2);
-            int toVertexesCount = CountVertexShards(toVertexShards);
+            int toVerticesCount = CountVertexShards(toVertexShards);
             currentCount = 0;
             foreach (var key in toVertexShards.Keys)
             {
@@ -121,7 +121,7 @@ namespace CRA.ClientLibrary
         }
 
         /// <summary>
-        /// Delete all vertexes in a sharded vertex from a set of CRA instances
+        /// Delete all vertices in a sharded vertex from a set of CRA instances
         /// </summary>
         /// <param name="vertexName"></param>
         /// <param name="instancesNames"></param>
@@ -131,26 +131,26 @@ namespace CRA.ClientLibrary
             for (int i = 0; i < tasks.Length; i++)
             {
                 int threadIndex = i;
-                tasks[threadIndex] = DeleteVertexesFromInstanceAsync(vertexName, instancesNames[threadIndex]);
+                tasks[threadIndex] = DeleteVerticesFromInstanceAsync(vertexName, instancesNames[threadIndex]);
             }
             Task.WhenAll(tasks);
         }
 
-        internal Task DeleteVertexesFromInstanceAsync(string vertexName, string instanceName)
+        internal Task DeleteVerticesFromInstanceAsync(string vertexName, string instanceName)
         {
             return Task.Factory.StartNew(
-                () => { DeleteVertexesFromInstance(vertexName, instanceName); });
+                () => { DeleteVerticesFromInstance(vertexName, instanceName); });
         }
 
-        private void DeleteVertexesFromInstance(string vertexName, string instanceName)
+        private void DeleteVerticesFromInstance(string vertexName, string instanceName)
         {
-            Expression<Func<DynamicTableEntity, bool>> vertexesFilter = (e => e.PartitionKey == instanceName && e.RowKey.StartsWith(vertexName + "$"));
-            FilterAndDeleteEntitiesInBatches(_vertexTable, vertexesFilter);
+            Expression<Func<DynamicTableEntity, bool>> verticesFilter = (e => e.PartitionKey == instanceName && e.RowKey.StartsWith(vertexName + "$"));
+            FilterAndDeleteEntitiesInBatches(_vertexTable, verticesFilter);
         }
 
         private void FilterAndDeleteEntitiesInBatches(CloudTable table, Expression<Func<DynamicTableEntity, bool>> filter)
         {
-            Action<IEnumerable<DynamicTableEntity>> deleteVertexor = entities =>
+            Action<IEnumerable<DynamicTableEntity>> deleteProcessor = entities =>
             {
                 var batches = new Dictionary<string, TableBatchOperation>();
                 foreach (var entity in entities)
@@ -179,7 +179,7 @@ namespace CRA.ClientLibrary
                 }
             };
 
-            FilterAndVertexEntitiesInSegments(table, deleteVertexor, filter);
+            FilterAndVertexEntitiesInSegments(table, deleteProcessor, filter);
         }
 
 
@@ -203,16 +203,16 @@ namespace CRA.ClientLibrary
         }
 
         /// <summary>
-        /// Delete an endpoint from all vertexes in a sharded vertex
+        /// Delete an endpoint from all vertices in a sharded vertex
         /// </summary>
         /// <param name="vertexName"></param>
         /// <param name="endpointName"></param>
         public void DeleteEndpointFromShardedVertex(string vertexName, string endpointName)
         {
-            DeleteEndpointsFromAllVertexes(vertexName, endpointName);
+            DeleteEndpointsFromAllVertices(vertexName, endpointName);
         }
 
-        private void DeleteEndpointsFromAllVertexes(string vertexName, string endpointName)
+        private void DeleteEndpointsFromAllVertices(string vertexName, string endpointName)
         {
             Expression<Func<DynamicTableEntity, bool>> filters = (e => e.PartitionKey.StartsWith(vertexName + "$") && e.RowKey == endpointName);
             FilterAndDeleteEntitiesInBatches(_endpointTableManager.EndpointTable, filters);
@@ -224,7 +224,7 @@ namespace CRA.ClientLibrary
         /// </summary>
         /// <param name="fromToConnections"></param>
         /// <returns></returns>
-        public CRAErrorCode ConnectShardedVertexes(List<ConnectionInfoWithLocality> fromToConnections)
+        public CRAErrorCode ConnectShardedVertices(List<ConnectionInfoWithLocality> fromToConnections)
         {
             Task<CRAErrorCode>[] tasks = new Task<CRAErrorCode>[fromToConnections.Count];
 
@@ -253,7 +253,7 @@ namespace CRA.ClientLibrary
             }
 
             if (result != CRAErrorCode.Success)
-                Console.WriteLine("All CRA instances appear to be down. Restart them and connect these two sharded vertexes again!");
+                Console.WriteLine("All CRA instances appear to be down. Restart them and connect these two sharded vertices again!");
 
             return result;
         }
@@ -266,7 +266,7 @@ namespace CRA.ClientLibrary
 
 
         /// <summary>
-        /// Connect a set of vertexes in one sharded CRA vertex to another with a full mesh topology, via pre-defined endpoints. We contact the "from" vertex
+        /// Connect a set of vertices in one sharded CRA vertex to another with a full mesh topology, via pre-defined endpoints. We contact the "from" vertex
         /// to initiate the creation of the link.
         /// </summary>
         /// <param name="fromVertexName"></param>
@@ -274,68 +274,68 @@ namespace CRA.ClientLibrary
         /// <param name="toVertexName"></param>
         /// <param name="toEndpoints"></param>
         /// <returns></returns>
-        public CRAErrorCode ConnectShardedVertexesWithFullMesh(string fromVertexName, string[] fromEndpoints, string toVertexName, string[] toEndpoints)
+        public CRAErrorCode ConnectShardedVerticesWithFullMesh(string fromVertexName, string[] fromEndpoints, string toVertexName, string[] toEndpoints)
         {
-            var fromVertexesRows = VertexTable.GetRowsForShardedVertex(_vertexTable, fromVertexName);
-            string[] fromVertexesNames = new string[fromVertexesRows.Count()];
+            var fromVerticesRows = VertexTable.GetRowsForShardedVertex(_vertexTable, fromVertexName);
+            string[] fromVerticesNames = new string[fromVerticesRows.Count()];
 
             int i = 0;
-            foreach (var fromVertexRow in fromVertexesRows)
+            foreach (var fromVertexRow in fromVerticesRows)
             {
-                fromVertexesNames[i] = fromVertexRow.VertexName;
+                fromVerticesNames[i] = fromVertexRow.VertexName;
                 i++;
             }
 
-            var toVertexesRows = VertexTable.GetRowsForShardedVertex(_vertexTable, toVertexName);
-            string[] toVertexesNames = new string[toVertexesRows.Count()];
+            var toVerticesRows = VertexTable.GetRowsForShardedVertex(_vertexTable, toVertexName);
+            string[] toVerticesNames = new string[toVerticesRows.Count()];
 
             i = 0;
-            foreach (var toVertexRow in toVertexesRows)
+            foreach (var toVertexRow in toVerticesRows)
             {
-                toVertexesNames[i] = toVertexRow.VertexName;
+                toVerticesNames[i] = toVertexRow.VertexName;
                 i++;
             }
 
-            return ConnectShardedVertexesWithFullMesh(fromVertexesNames, fromEndpoints, toVertexesNames, toEndpoints, ConnectionInitiator.FromSide);
+            return ConnectShardedVerticesWithFullMesh(fromVerticesNames, fromEndpoints, toVerticesNames, toEndpoints, ConnectionInitiator.FromSide);
         }
 
         /// <summary>
-        /// Connect a set of vertexes in one sharded CRA vertex to another with a full mesh toplogy, via pre-defined endpoints. We contact the "from" vertex
+        /// Connect a set of vertices in one sharded CRA vertex to another with a full mesh toplogy, via pre-defined endpoints. We contact the "from" vertex
         /// to initiate the creation of the link.
         /// </summary>
-        /// <param name="fromVertexesNames"></param>
+        /// <param name="fromVerticesNames"></param>
         /// <param name="fromEndpoints"></param>
-        /// <param name="toVertexesNames"></param>
+        /// <param name="toVerticesNames"></param>
         /// <param name="toEndpoints"></param>
         /// <param name="direction"></param>
         /// <returns></returns>
-        public CRAErrorCode ConnectShardedVertexesWithFullMesh(string[] fromVertexesNames, string[] fromEndpoints, string[] toVertexesNames, string[] toEndpoints, ConnectionInitiator direction)
+        public CRAErrorCode ConnectShardedVerticesWithFullMesh(string[] fromVerticesNames, string[] fromEndpoints, string[] toVerticesNames, string[] toEndpoints, ConnectionInitiator direction)
         {
             // Check if the number of output endpoints in any fromVertex is equal to 
-            // the number of toVertexes
-            if (fromEndpoints.Length != toVertexesNames.Length)
-                return CRAErrorCode.VertexesEndpointsNotMatched;
+            // the number of toVertices
+            if (fromEndpoints.Length != toVerticesNames.Length)
+                return CRAErrorCode.VerticesEndpointsNotMatched;
 
             // Check if the number of input endpoints in any toVertex is equal to 
-            // the number of fromVertexes
-            if (toEndpoints.Length != fromVertexesNames.Length)
-                return CRAErrorCode.VertexesEndpointsNotMatched;
+            // the number of fromVertices
+            if (toEndpoints.Length != fromVerticesNames.Length)
+                return CRAErrorCode.VerticesEndpointsNotMatched;
 
-            //Connect the sharded vertexes in parallel
+            //Connect the sharded vertices in parallel
             List<Task<CRAErrorCode>> tasks = new List<Task<CRAErrorCode>>();
             for (int i = 0; i < fromEndpoints.Length; i++)
             {
-                for (int j = 0; j < fromVertexesNames.Length; j++)
+                for (int j = 0; j < fromVerticesNames.Length; j++)
                 {
                     int fromEndpointIndex = i;
                     int fromVertexIndex = j;
-                    tasks.Add(ConnectAsync(fromVertexesNames[fromVertexIndex], fromEndpoints[fromEndpointIndex],
-                                           toVertexesNames[fromEndpointIndex], toEndpoints[fromVertexIndex], direction));
+                    tasks.Add(ConnectAsync(fromVerticesNames[fromVertexIndex], fromEndpoints[fromEndpointIndex],
+                                           toVerticesNames[fromEndpointIndex], toEndpoints[fromVertexIndex], direction));
                 }
             }
             CRAErrorCode[] results = Task.WhenAll(tasks.ToArray()).Result;
 
-            //Check for the status of connected vertexes
+            //Check for the status of connected vertices
             CRAErrorCode result = CRAErrorCode.VertexEndpointNotFound;
             for (int i = 0; i < results.Length; i++)
             {
@@ -349,68 +349,68 @@ namespace CRA.ClientLibrary
             }
 
             if (result != CRAErrorCode.Success)
-                Console.WriteLine("All CRA instances appear to be down. Restart them and connect these two sharded vertexes again!");
+                Console.WriteLine("All CRA instances appear to be down. Restart them and connect these two sharded vertices again!");
 
             return result;
         }
 
         /// <summary>
-        /// Disconnect a set of vertexes in one sharded CRA vertex from another, via pre-defined endpoints. 
+        /// Disconnect a set of vertices in one sharded CRA vertex from another, via pre-defined endpoints. 
         /// </summary>
         /// <param name="fromVertexName"></param>
         /// <param name="fromEndpoints"></param>
         /// <param name="toVertexName"></param>
         /// <param name="toEndpoints"></param>
         /// <returns></returns>
-        public void DisconnectShardedVertexes(string fromVertexName, string[] fromEndpoints, string toVertexName, string[] toEndpoints)
+        public void DisconnectShardedVertices(string fromVertexName, string[] fromEndpoints, string toVertexName, string[] toEndpoints)
         {
-            var fromVertexesRows = VertexTable.GetRowsForShardedVertex(_vertexTable, fromVertexName);
-            string[] fromVertexesNames = new string[fromVertexesRows.Count()];
+            var fromVerticesRows = VertexTable.GetRowsForShardedVertex(_vertexTable, fromVertexName);
+            string[] fromVerticesNames = new string[fromVerticesRows.Count()];
 
             int i = 0;
-            foreach (var fromVertexRow in fromVertexesRows)
+            foreach (var fromVertexRow in fromVerticesRows)
             {
-                fromVertexesNames[i] = fromVertexRow.VertexName;
+                fromVerticesNames[i] = fromVertexRow.VertexName;
                 i++;
             }
 
-            var toVertexesRows = VertexTable.GetRowsForShardedVertex(_vertexTable, toVertexName);
-            string[] toVertexesNames = new string[toVertexesRows.Count()];
+            var toVerticesRows = VertexTable.GetRowsForShardedVertex(_vertexTable, toVertexName);
+            string[] toVerticesNames = new string[toVerticesRows.Count()];
 
             i = 0;
-            foreach (var toVertexRow in toVertexesRows)
+            foreach (var toVertexRow in toVerticesRows)
             {
-                toVertexesNames[i] = toVertexRow.VertexName;
+                toVerticesNames[i] = toVertexRow.VertexName;
                 i++;
             }
 
-            DisconnectShardedVertexes(fromVertexesNames, fromEndpoints, toVertexesNames, toEndpoints);
+            DisconnectShardedVertices(fromVerticesNames, fromEndpoints, toVerticesNames, toEndpoints);
         }
 
         /// <summary>
-        /// Disconnect the CRA connections between vertexes in two sharded vertexes
+        /// Disconnect the CRA connections between vertices in two sharded vertices
         /// </summary>
-        /// <param name="fromVertexesNames"></param>
-        /// <param name="fromVertexesOutputs"></param>
-        /// <param name="toVertexesNames"></param>
-        /// <param name="toVertexesInputs"></param>
-        public void DisconnectShardedVertexes(string[] fromVertexesNames, string[] fromVertexesOutputs, string[] toVertexesNames, string[] toVertexesInputs)
+        /// <param name="fromVerticesNames"></param>
+        /// <param name="fromVerticesOutputs"></param>
+        /// <param name="toVerticesNames"></param>
+        /// <param name="toVerticesInputs"></param>
+        public void DisconnectShardedVertices(string[] fromVerticesNames, string[] fromVerticesOutputs, string[] toVerticesNames, string[] toVerticesInputs)
         {
             // Check if the number of output endpoints in any fromVertex is equal to 
-            // the number of toVertexes, and the number of input endpoints in any toVertex 
-            // is equal to the number of fromVertexes
-            if ((fromVertexesOutputs.Length == toVertexesNames.Length) && (toVertexesInputs.Length == fromVertexesNames.Length))
+            // the number of toVertices, and the number of input endpoints in any toVertex 
+            // is equal to the number of fromVertices
+            if ((fromVerticesOutputs.Length == toVerticesNames.Length) && (toVerticesInputs.Length == fromVerticesNames.Length))
             {
-                //Disconnect the sharded vertexes in parallel
+                //Disconnect the sharded vertices in parallel
                 List<Task> tasks = new List<Task>();
-                for (int i = 0; i < fromVertexesOutputs.Length; i++)
+                for (int i = 0; i < fromVerticesOutputs.Length; i++)
                 {
-                    for (int j = 0; j < fromVertexesNames.Length; j++)
+                    for (int j = 0; j < fromVerticesNames.Length; j++)
                     {
                         int fromEndpointIndex = i;
                         int fromVertexIndex = j;
-                        tasks.Add(DisconnectAsync(fromVertexesNames[fromVertexIndex], fromVertexesOutputs[fromEndpointIndex],
-                                  toVertexesNames[fromEndpointIndex], toVertexesInputs[fromVertexIndex]));
+                        tasks.Add(DisconnectAsync(fromVerticesNames[fromVertexIndex], fromVerticesOutputs[fromEndpointIndex],
+                                  toVerticesNames[fromEndpointIndex], toVerticesInputs[fromVertexIndex]));
                     }
                 }
 

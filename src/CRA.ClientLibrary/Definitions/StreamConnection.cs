@@ -4,7 +4,7 @@ using System.IO;
 namespace CRA.ClientLibrary
 {
     /// <summary>
-    /// Describes a stream connection between two CRA entities (instances and vertexes)
+    /// Describes a stream connection between two CRA entities (instances and vertices)
     /// </summary>
     public class StreamConnection : IDisposable
     {

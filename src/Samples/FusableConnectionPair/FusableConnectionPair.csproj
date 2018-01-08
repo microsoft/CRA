@@ -63,7 +63,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="FusableConnectionPairProcess.cs" />
+    <Compile Include="FusableConnectionPairVertex.cs" />
     <Compile Include="MyAsyncFusableInput.cs" />
     <Compile Include="MyAsyncFusableOutput.cs" />
     <Compile Include="Program.cs" />

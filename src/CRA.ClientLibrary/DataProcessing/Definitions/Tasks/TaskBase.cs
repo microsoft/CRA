@@ -93,7 +93,7 @@ namespace CRA.ClientLibrary.DataProcessing
             }
         }
 
-        public ConcurrentDictionary<string, List<ConnectionInfoWithLocality>> VertexesConnectionsMap
+        public ConcurrentDictionary<string, List<ConnectionInfoWithLocality>> VerticesConnectionsMap
         {
             set
             {

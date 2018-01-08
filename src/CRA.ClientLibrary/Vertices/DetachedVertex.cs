@@ -328,9 +328,9 @@ namespace CRA.ClientLibrary
             }
 
             if (!reverse)
-                ns.WriteInt32((int)CRATaskMessageType.CONNECT_PROCESS_RECEIVER);
+                ns.WriteInt32((int)CRATaskMessageType.CONNECT_VERTEX_RECEIVER);
             else
-                ns.WriteInt32((int)CRATaskMessageType.CONNECT_PROCESS_RECEIVER_REVERSE);
+                ns.WriteInt32((int)CRATaskMessageType.CONNECT_VERTEX_RECEIVER_REVERSE);
 
             ns.WriteByteArray(Encoding.UTF8.GetBytes(fromVertexName));
             ns.WriteByteArray(Encoding.UTF8.GetBytes(fromVertexOutput));

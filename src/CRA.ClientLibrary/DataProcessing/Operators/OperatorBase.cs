@@ -84,7 +84,7 @@ namespace CRA.ClientLibrary.DataProcessing
             _fromToConnections = new ConcurrentDictionary<Tuple<string, string>, Tuple<string, string, bool>>();
             _toFromConnections = new ConcurrentDictionary<Tuple<string, string>, Tuple<string, string, bool>>();
 
-            var connectionsMap = _task.VertexesConnectionsMap;
+            var connectionsMap = _task.VerticesConnectionsMap;
             foreach (var connectionsListKey in connectionsMap.Keys)
             {
                 var connectionsList = connectionsMap[connectionsListKey];

@@ -88,11 +88,11 @@ namespace CRA.ClientLibrary
             // Update vertex table
             _craClient.RegisterInstance(_workerinstanceName, _address, _port);
 
-            // Restore vertexes on machine
-            RestoreVertexesAndConnections();
+            // Restore vertices on machine
+            RestoreVerticesAndConnections();
 
             // Then start server. This ensures that others can establish 
-            // connections to local vertexes at this point.
+            // connections to local vertices at this point.
             Thread serverThread = new Thread(StartServer);
             serverThread.Start();
 
@@ -129,23 +129,23 @@ namespace CRA.ClientLibrary
         {
             switch (message)
             {
-                case CRATaskMessageType.LOAD_PROCESS:
+                case CRATaskMessageType.LOAD_VERTEX:
                     Task.Run(() => LoadVertex(stream));
                     break;
 
-                case CRATaskMessageType.CONNECT_PROCESS_INITIATOR:
+                case CRATaskMessageType.CONNECT_VERTEX_INITIATOR:
                     Task.Run(() => ConnectVertex_Initiator(stream, false));
                     break;
 
-                case CRATaskMessageType.CONNECT_PROCESS_RECEIVER:
+                case CRATaskMessageType.CONNECT_VERTEX_RECEIVER:
                     Task.Run(() => ConnectVertex_Receiver(stream, false));
                     break;
 
-                case CRATaskMessageType.CONNECT_PROCESS_INITIATOR_REVERSE:
+                case CRATaskMessageType.CONNECT_VERTEX_INITIATOR_REVERSE:
                     Task.Run(() => ConnectVertex_Initiator(stream, true));
                     break;
 
-                case CRATaskMessageType.CONNECT_PROCESS_RECEIVER_REVERSE:
+                case CRATaskMessageType.CONNECT_VERTEX_RECEIVER_REVERSE:
                     Task.Run(() => ConnectVertex_Receiver(stream, true));
                     break;
 
@@ -264,7 +264,7 @@ namespace CRA.ClientLibrary
                 return CRAErrorCode.ActiveVertexNotFound;
             }
 
-            // If from and to vertexes are on the same (this) instance,
+            // If from and to vertices are on the same (this) instance,
             // we can convert a "reverse" connection into a normal connection
             if (reverse && (row.InstanceName == InstanceName))
                 reverse = false;
@@ -320,9 +320,9 @@ namespace CRA.ClientLibrary
             }
 
             if (!reverse)
-                ns.WriteInt32((int)CRATaskMessageType.CONNECT_PROCESS_RECEIVER);
+                ns.WriteInt32((int)CRATaskMessageType.CONNECT_VERTEX_RECEIVER);
             else
-                ns.WriteInt32((int)CRATaskMessageType.CONNECT_PROCESS_RECEIVER_REVERSE);
+                ns.WriteInt32((int)CRATaskMessageType.CONNECT_VERTEX_RECEIVER_REVERSE);
 
             ns.WriteByteArray(Encoding.UTF8.GetBytes(fromVertexName));
             ns.WriteByteArray(Encoding.UTF8.GetBytes(fromVertexOutput));
@@ -738,7 +738,7 @@ namespace CRA.ClientLibrary
             }
         }
 
-        private void RestoreVertexesAndConnections()
+        private void RestoreVerticesAndConnections()
         {
             var rows = VertexTable.GetAllRowsForInstance(_workerInstanceTable, _workerinstanceName);
 

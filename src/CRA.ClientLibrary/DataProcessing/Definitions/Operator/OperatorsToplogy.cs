@@ -204,7 +204,7 @@ namespace CRA.ClientLibrary.DataProcessing
                 {
                     if (tasks[i].Transforms != null)
                     {
-                        int lastVertexedTransformIndex = 0;
+                        int lastProcessedTransformIndex = 0;
                         for (int j = 0; j < tasks[i].Transforms.Length; j++)
                         {
                             var currentInput = tasks[i].TransformsInputs[j].InputId1;
@@ -236,11 +236,11 @@ namespace CRA.ClientLibrary.DataProcessing
                                         UpdateOperatorsSecondaryInput(((ShuffleTask)tasks[inputTaskIndex]).ReducerVertexName, ((ShuffleTask)tasks[i]).MapperVertexName, currentSecondaryInput);
                                 }
 
-                                lastVertexedTransformIndex++;
+                                lastProcessedTransformIndex++;
                             }
                         }
 
-                        for (int k = lastVertexedTransformIndex; k < tasks[i].Transforms.Length; k++)
+                        for (int k = lastProcessedTransformIndex; k < tasks[i].Transforms.Length; k++)
                         {
                             tmpTransforms[i].Add(tasks[i].Transforms[k]);
                             tmpTransformsOperations[i].Add(tasks[i].TransformsOperations[k]);
