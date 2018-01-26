@@ -6,6 +6,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Configuration;
 using System.IO;
+using System.Linq;
 using System.Linq.Expressions;
 using System.Net.Sockets;
 using System.Text;
@@ -31,6 +32,7 @@ namespace CRA.ClientLibrary
         CloudTable _connectionTable;
 
         internal VertexTableManager _vertexTableManager;
+        internal ShardedVertexTableManager _shardedVertexTableManager;
         EndpointTableManager _endpointTableManager;
         ConnectionTableManager _connectionTableManager;
 
@@ -83,6 +85,8 @@ namespace CRA.ClientLibrary
             _tableClient = _storageAccount.CreateCloudTableClient();
 
             _vertexTableManager = new VertexTableManager(_storageConnectionString);
+            _shardedVertexTableManager = new ShardedVertexTableManager(_storageConnectionString);
+
             _endpointTableManager = new EndpointTableManager(_storageConnectionString);
             _connectionTableManager = new ConnectionTableManager(_storageConnectionString);
 
@@ -230,6 +234,11 @@ namespace CRA.ClientLibrary
         /// <returns>Status of the command</returns>
         public CRAErrorCode InstantiateVertex(string instanceName, string vertexName, string vertexDefinition, object vertexParameter)
         {
+            return InstantiateVertex(instanceName, vertexName, vertexDefinition, vertexParameter, false);
+        }
+
+        internal CRAErrorCode InstantiateVertex(string instanceName, string vertexName, string vertexDefinition, object vertexParameter, bool sharded)
+        { 
             var procDefRow = VertexTable.GetRowForVertexDefinition(_vertexTable, vertexDefinition);
 
             // Serialize and write the vertex parameters to a blob
@@ -246,7 +255,7 @@ namespace CRA.ClientLibrary
             var newRow = new VertexTable(instanceName, vertexName, vertexDefinition, "", 0,
                 procDefRow.VertexCreateAction,
                 vertexName,
-                false);
+                false, sharded);
             TableOperation insertOperation = TableOperation.InsertOrReplace(newRow);
             _vertexTable.Execute(insertOperation);
 
@@ -584,7 +593,16 @@ namespace CRA.ClientLibrary
             // Check that vertex and endpoints are valid and existing
             if (!_vertexTableManager.ExistsVertex(fromVertexName) || !_vertexTableManager.ExistsVertex(toVertexName))
             {
-                return CRAErrorCode.VertexNotFound;
+                // Check for sharded vertices
+                List<int> fromVertexShards, toVertexShards;
+
+                if (!_vertexTableManager.ExistsShardedVertex(fromVertexName, out fromVertexShards))
+                    return CRAErrorCode.VertexNotFound;
+
+                if (!_vertexTableManager.ExistsShardedVertex(toVertexName, out toVertexShards))
+                    return CRAErrorCode.VertexNotFound;
+
+                return ConnectSharded(fromVertexName, fromVertexShards, fromEndpoint, toVertexName, toVertexShards, toEndpoint, direction);
             }
 
             // Make the connection information stable
@@ -662,6 +680,16 @@ namespace CRA.ClientLibrary
             return result;
         }
 
+        private CRAErrorCode ConnectSharded(string fromVertexName, List<int> fromVertexShards, string fromEndpoint, string toVertexName, List<int> toVertexShards, string toEndpoint, ConnectionInitiator direction)
+        {
+            var fromVertexNames = fromVertexShards.Select(e => fromVertexName + "$" + e).ToArray();
+            var toVertexNames = toVertexShards.Select(e => toVertexName + "$" + e).ToArray();
+            var fromEndpoints = toVertexShards.Select(e => fromEndpoint + "$" + e).ToArray();
+            var toEndpoints = fromVertexShards.Select(e => toEndpoint + "$" + e).ToArray();
+
+            return
+                ConnectShardedVerticesWithFullMesh(fromVertexNames, fromEndpoints, toVertexNames, toEndpoints, direction);
+        }
 
         public string GetDefaultInstanceName()
         {

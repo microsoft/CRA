@@ -292,21 +292,13 @@ namespace CRA.ClientLibrary
             {
                 AssemblyName assemblyFullName = new AssemblyName(assemblyKey);
                 var assemblyPath = Path.Combine(AssemblyDirectory, assemblyFullName.Name + ".dll");
-                if (!File.Exists(assemblyPath))
+                try
                 {
-                    bool isSuccess = false;
-                    while (!isSuccess)
-                    {
-                        try
-                        {
-                            File.WriteAllBytes(assemblyPath, AssemblyResolver.GetAssemblyBytes(assemblyKey));
-                            isSuccess = true;
-                        }
-                        catch (Exception)
-                        {
-                            isSuccess = false;
-                        }
-                    }
+                    File.WriteAllBytes(assemblyPath, AssemblyResolver.GetAssemblyBytes(assemblyKey));
+                }
+                catch (Exception)
+                {
+                    Console.WriteLine("INFO: Unable to update " + assemblyFullName.Name + ".dll");
                 }
             }
         }

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Concurrent;
+using System.Linq.Expressions;
 using System.Threading.Tasks;
 
 namespace CRA.ClientLibrary
@@ -195,7 +196,7 @@ namespace CRA.ClientLibrary
         /// Get the name of the vertex
         /// </summary>
         /// <returns></returns>
-        public string VertexName
+        public virtual string VertexName
         {
             get
             {
@@ -332,6 +333,38 @@ namespace CRA.ClientLibrary
                     }
                 }
             }
+        }
+    }
+
+    /// <summary>
+    /// Base class for Sharded Vertex abstraction
+    /// </summary>
+    public abstract class ShardedVertexBase : VertexBase, IShardedVertex
+    {
+        /// <summary>
+        /// Get the name of the vertex
+        /// </summary>
+        /// <returns></returns>
+        public string GetVertexName()
+        {
+            return base.VertexName.Split('$')[0];
+        }
+
+        /// <summary>
+        /// Initialize vertex
+        /// </summary>
+        /// <param name="vertexParameter"></param>
+        public override void Initialize(object vertexParameter)
+        {
+            var par = (Tuple<int, object>)vertexParameter;
+            var shardingInfo = ClientLibrary.GetShardingInfo(GetVertexName());
+            Initialize(par.Item1, shardingInfo, par.Item2);
+        }
+
+        public abstract void Initialize(int shardId, ShardingInfo shardingInfo, object vertexParameter);
+
+        public virtual void UpdateShardingInfo(ShardingInfo shardingInfo)
+        {
         }
     }
 }

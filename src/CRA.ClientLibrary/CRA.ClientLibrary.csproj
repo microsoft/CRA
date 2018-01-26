@@ -138,6 +138,7 @@
     <Compile Include="DataProcessing\Utilities\OperatorUtils.cs" />
     <Compile Include="DataProcessing\Utilities\ParallelismUtils.cs" />
     <Compile Include="DataProcessing\Utilities\TransformUtils.cs" />
+    <Compile Include="Definitions\ShardingInfo.cs" />
     <Compile Include="Definitions\StreamConnection.cs" />
     <Compile Include="Definitions\StreamConnectionPool.cs" />
     <Compile Include="Main\CRAClientLibrary.cs" />
@@ -147,11 +148,15 @@
     <Compile Include="Definitions\CoralTaskMessageType.cs" />
     <Compile Include="Definitions\ErrorCodes.cs" />
     <Compile Include="Main\ShardedCRAClientLibrary.cs" />
+    <Compile Include="Tables\ShardedVertexTable.cs" />
+    <Compile Include="Tables\ShardedVertexTableManager.cs" />
     <Compile Include="Vertices\IAsyncVertexInputEndpoint.cs" />
     <Compile Include="Vertices\IAsyncVertexOutputEndpoint.cs" />
     <Compile Include="Vertices\IVertex.cs" />
     <Compile Include="Vertices\IVertexInputEndpoint.cs" />
     <Compile Include="Vertices\IVertexOutputEndpoint.cs" />
+    <Compile Include="Vertices\VertexOutputEndpointBase.cs" />
+    <Compile Include="Vertices\VertexInputEndpointBase.cs" />
     <Compile Include="Vertices\VertexBase.cs" />
     <Compile Include="Vertices\DetachedVertex.cs" />
     <Compile Include="Definitions\ObjectWrapper.cs" />

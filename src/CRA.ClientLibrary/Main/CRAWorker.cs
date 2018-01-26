@@ -214,8 +214,9 @@ namespace CRA.ClientLibrary
                     return;
                 }
 
-                if (!_localVertexTable[fromVertexName].OutputEndpoints.ContainsKey(fromVertexOutput) &&
-                    !_localVertexTable[fromVertexName].AsyncOutputEndpoints.ContainsKey(fromVertexOutput)
+                var key = GetShardedVertexName(fromVertexOutput);
+                if (!_localVertexTable[fromVertexName].OutputEndpoints.ContainsKey(key) &&
+                    !_localVertexTable[fromVertexName].AsyncOutputEndpoints.ContainsKey(key)
                    )
                 {
                     stream.WriteInt32((int)CRAErrorCode.VertexInputNotFound);
@@ -435,16 +436,28 @@ namespace CRA.ClientLibrary
         {
             try
             {
-                if (_localVertexTable[fromVertexName].OutputEndpoints.ContainsKey(fromVertexOutput))
+                string key = GetShardedVertexName(fromVertexOutput);
+                int shardId = GetShardedVertexShardId(fromVertexOutput);
+
+                if (_localVertexTable[fromVertexName].OutputEndpoints.ContainsKey(key))
                 {
-                    await
-                        Task.Run(() =>
-                            _localVertexTable[fromVertexName].OutputEndpoints[fromVertexOutput]
-                                .ToStream(ns, toVertexName, toVertexInput, source.Token), source.Token);
+                    if (shardId < 0)
+                        await
+                            Task.Run(() =>
+                                _localVertexTable[fromVertexName].OutputEndpoints[fromVertexOutput]
+                                    .ToStream(ns, toVertexName, toVertexInput, source.Token), source.Token);
+                    else
+                        throw new NotImplementedException();
+
                 }
-                else if (_localVertexTable[fromVertexName].AsyncOutputEndpoints.ContainsKey(fromVertexOutput))
+                else if (_localVertexTable[fromVertexName].AsyncOutputEndpoints.ContainsKey(key))
                 {
-                    await _localVertexTable[fromVertexName].AsyncOutputEndpoints[fromVertexOutput].ToStreamAsync(ns, toVertexName, toVertexInput, source.Token);
+                    if (shardId < 0)
+                        await _localVertexTable[fromVertexName].AsyncOutputEndpoints[fromVertexOutput].ToStreamAsync(ns, toVertexName, toVertexInput, source.Token);
+                    else
+                        await ((IAsyncShardedVertexOutputEndpoint)_localVertexTable[fromVertexName].AsyncOutputEndpoints[key])
+                            .ToStreamAsync(ns, GetShardedVertexName(toVertexName), 
+                            shardId, GetShardedVertexName(toVertexInput), source.Token);
                 }
                 else
                 {
@@ -493,6 +506,20 @@ namespace CRA.ClientLibrary
                 RetryRestoreConnection(fromVertexName, fromVertexOutput, toVertexName, toVertexInput, false);
             }
         }
+        
+        private string GetShardedVertexName(string name)
+        {
+            if (name.Contains("$"))
+                return name.Split('$')[0];
+            return name;
+        }
+        private int GetShardedVertexShardId(string name)
+        {
+            if (name.Contains("$"))
+                return int.Parse(name.Split('$')[1]);
+            return -1;
+        }
+
 
         private async Task EgressToVertexInput(string fromVertexName, string fromVertexOutput, string toVertexName, string toVertexInput,
             CancellationTokenSource source)
@@ -580,8 +607,9 @@ namespace CRA.ClientLibrary
                     return;
                 }
 
-                if (!_localVertexTable[toVertexName].InputEndpoints.ContainsKey(toVertexInput) &&
-                    !_localVertexTable[toVertexName].AsyncInputEndpoints.ContainsKey(toVertexInput)
+                var key = GetShardedVertexName(toVertexInput);
+                if (!_localVertexTable[toVertexName].InputEndpoints.ContainsKey(key) &&
+                    !_localVertexTable[toVertexName].AsyncInputEndpoints.ContainsKey(key)
                     )
                 {
                     stream.WriteInt32((int)CRAErrorCode.VertexInputNotFound);
@@ -682,15 +710,26 @@ namespace CRA.ClientLibrary
         {
             try
             {
-                if (_localVertexTable[toVertexName].InputEndpoints.ContainsKey(toVertexInput))
+                string key = GetShardedVertexName(toVertexInput);
+                int shardId = GetShardedVertexShardId(toVertexInput);
+
+                if (_localVertexTable[toVertexName].InputEndpoints.ContainsKey(key))
                 {
-                    await Task.Run(
-                        () => _localVertexTable[toVertexName].InputEndpoints[toVertexInput]
-                        .FromStream(ns, fromVertexName, fromVertexOutput, source.Token), source.Token);
+                    if (shardId < 0)
+                        await Task.Run(
+                            () => _localVertexTable[toVertexName].InputEndpoints[toVertexInput]
+                            .FromStream(ns, fromVertexName, fromVertexOutput, source.Token), source.Token);
+                    else
+                        throw new NotImplementedException();
                 }
-                else if (_localVertexTable[toVertexName].AsyncInputEndpoints.ContainsKey(toVertexInput))
+                else if (_localVertexTable[toVertexName].AsyncInputEndpoints.ContainsKey(key))
                 {
-                    await _localVertexTable[toVertexName].AsyncInputEndpoints[toVertexInput].FromStreamAsync(ns, fromVertexName, fromVertexOutput, source.Token);
+                    if (shardId < 0)
+                        await _localVertexTable[toVertexName].AsyncInputEndpoints[toVertexInput].FromStreamAsync(ns, fromVertexName, fromVertexOutput, source.Token);
+                    else
+                        await ((IAsyncShardedVertexInputEndpoint)_localVertexTable[toVertexName].AsyncInputEndpoints[key])
+                            .FromStreamAsync(ns, GetShardedVertexName(fromVertexName), 
+                            shardId, GetShardedVertexName(fromVertexOutput), source.Token);
                 }
                 else
                 {

@@ -32,17 +32,36 @@ namespace CRA.ClientLibrary
             return _vertexTable.ExecuteQuery(query).Any();
         }
 
+        internal bool ExistsShardedVertex(string vertexName, out List<int> shards)
+        {
+            TableQuery<VertexTable> query = new TableQuery<VertexTable>()
+                .Where(
+                TableQuery.CombineFilters(
+            TableQuery.GenerateFilterCondition("RowKey",
+                QueryComparisons.GreaterThanOrEqual,
+                vertexName + "$"),
+            TableOperators.And,
+            TableQuery.GenerateFilterCondition("RowKey",
+                QueryComparisons.LessThan,
+                vertexName + "$9999999999999")
+            ));
+            shards = _vertexTable.ExecuteQuery(query)
+                .Select(e => int.Parse(e.VertexName.Split('$')[1])).ToList();
+
+            return shards.Count > 0;
+        }
+
         internal void RegisterInstance(string instanceName, string address, int port)
         {
             TableOperation insertOperation = TableOperation.InsertOrReplace(new VertexTable
-                (instanceName, "", "", address, port, "", "", true));
+                (instanceName, "", "", address, port, "", "", true, false));
             _vertexTable.Execute(insertOperation);
         }
 
         internal void RegisterVertex(string vertexName, string instanceName)
         {
             TableOperation insertOperation = TableOperation.InsertOrReplace(new VertexTable
-                (instanceName, vertexName, "", "", 0, "", "", false));
+                (instanceName, vertexName, "", "", 0, "", "", false, false));
             _vertexTable.Execute(insertOperation);
         }
 
@@ -86,6 +105,23 @@ namespace CRA.ClientLibrary
             newRow.ETag = "*";
             TableOperation deleteOperation = TableOperation.Delete(newRow);
             _vertexTable.Execute(deleteOperation);
+        }
+
+        internal void DeleteInstanceVertex(string instanceName, string vertexName)
+        {
+            var newRow = new DynamicTableEntity(instanceName, vertexName);
+            newRow.ETag = "*";
+            TableOperation deleteOperation = TableOperation.Delete(newRow);
+            _vertexTable.Execute(deleteOperation);
+        }
+
+        internal void DeleteShardedVertex(string vertexName)
+        {
+            foreach (var row in VertexTable.GetRowsForShardedVertex(_vertexTable, vertexName))
+            {
+                TableOperation deleteOperation = TableOperation.Delete(row);
+                _vertexTable.Execute(deleteOperation);
+            }
         }
 
         internal VertexTable GetRowForActiveVertex(string vertexName)

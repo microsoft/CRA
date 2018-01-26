@@ -65,6 +65,11 @@ namespace CRA.ClientLibrary
         public bool IsActive { get; set; }
 
         /// <summary>
+        /// Whether the vertex is of sharded type
+        /// </summary>
+        public bool IsSharded { get; set; }
+
+        /// <summary>
         /// Constructor
         /// </summary>
         /// <param name="instanceName"></param>
@@ -85,6 +90,7 @@ namespace CRA.ClientLibrary
             this.Port = port;
             this.VertexCreateAction = "";
             this.IsActive = isActive;
+            this.IsSharded = false;
 
             if (vertexCreateAction != null)
             {
@@ -109,7 +115,42 @@ namespace CRA.ClientLibrary
         /// <param name="vertexCreateAction"></param>
         /// <param name="vertexParameter"></param>
         /// <param name="isActive"></param>
-        public VertexTable(string instanceName, string vertexName, string vertexDefinition, string address, int port, string vertexCreateAction, string vertexParameter, bool isActive)
+        public VertexTable(string instanceName, string vertexName, string vertexDefinition, string address, int port, Expression<Func<IShardedVertex>> vertexCreateAction, object vertexParameter, bool isActive)
+        {
+            this.PartitionKey = instanceName;
+            this.RowKey = vertexName;
+
+            this.VertexDefinition = vertexDefinition;
+            this.Address = address;
+            this.Port = port;
+            this.VertexCreateAction = "";
+            this.IsActive = isActive;
+            this.IsSharded = true;
+
+            if (vertexCreateAction != null)
+            {
+                var closureEliminator = new ClosureEliminator();
+                Expression vertexedUserLambdaExpression = closureEliminator.Visit(
+                        vertexCreateAction);
+
+                this.VertexCreateAction = SerializationHelper.Serialize(vertexedUserLambdaExpression);
+            }
+
+            this.VertexParameter = SerializationHelper.SerializeObject(vertexParameter);
+        }
+
+        /// <summary>
+        /// Constructor
+        /// </summary>
+        /// <param name="instanceName"></param>
+        /// <param name="vertexName"></param>
+        /// <param name="vertexDefinition"></param>
+        /// <param name="address"></param>
+        /// <param name="port"></param>
+        /// <param name="vertexCreateAction"></param>
+        /// <param name="vertexParameter"></param>
+        /// <param name="isActive"></param>
+        public VertexTable(string instanceName, string vertexName, string vertexDefinition, string address, int port, string vertexCreateAction, string vertexParameter, bool isActive, bool isSharded)
         {
             this.PartitionKey = instanceName;
             this.RowKey = vertexName;
@@ -120,6 +161,7 @@ namespace CRA.ClientLibrary
             this.VertexCreateAction = vertexCreateAction;
             this.VertexParameter = vertexParameter;
             this.IsActive = isActive;
+            this.IsSharded = isSharded;
         }
 
         /// <summary>

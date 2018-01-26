@@ -21,6 +21,21 @@ namespace CRA.ClientLibrary
         Task ToStreamAsync(Stream stream, string otherVertex, string otherEndpoint, CancellationToken token);
     }
 
+    /// <summary>
+    /// Interface for async output endpoints in CRA
+    /// </summary>
+    public interface IAsyncShardedVertexOutputEndpoint : IAsyncVertexOutputEndpoint
+    {
+        /// <summary>
+        /// Async version of ToStream
+        /// </summary>
+        /// <param name="stream"></param>
+        /// <param name="otherVertex"></param>
+        /// <param name="otherEndpoint"></param>
+        /// <param name="token"></param>
+        /// <returns></returns>
+        Task ToStreamAsync(Stream stream, string otherVertex, int otherShardId, string otherEndpoint, CancellationToken token);
+    }
 
     /// <summary>
     /// Interface for async output endpoints in CRA with fusable output

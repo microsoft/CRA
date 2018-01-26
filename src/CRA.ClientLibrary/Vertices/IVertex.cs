@@ -80,4 +80,23 @@ namespace CRA.ClientLibrary
         /// <returns></returns>
         Task InitializeAsync(object vertexParameter);
     }
+
+    /// <summary>
+    /// User provided notion of a running sharded vertex
+    /// </summary>
+    public interface IShardedVertex : IVertex
+    {
+        /// <summary>
+        /// Initialize sharded vertex with shard-id and specified params
+        /// </summary>
+        /// <param name="shardId"></param>
+        /// <param name="vertexParameter"></param>
+        void Initialize(int shardId, ShardingInfo shardingInfo, object vertexParameter);
+
+        /// <summary>
+        /// Update sharding info
+        /// </summary>
+        /// <param name="shardingInfo"></param>
+        void UpdateShardingInfo(ShardingInfo shardingInfo);
+    }
 }

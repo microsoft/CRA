@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
-VisualStudioVersion = 15.0.26430.12
+VisualStudioVersion = 15.0.27004.2010
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CRA.ClientLibrary", "CRA.ClientLibrary\CRA.ClientLibrary.csproj", "{EF23EB6A-E329-496D-9B7A-8CAD66EA4E3A}"
 EndProject
@@ -16,6 +16,8 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BandwidthTest", "Samples\BandwidthTest\BandwidthTest.csproj", "{3C700A3B-9958-4470-9639-87964D20B11A}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FusableConnectionPair", "Samples\FusableConnectionPair\FusableConnectionPair.csproj", "{73DDDFAF-6075-405F-B171-C935EE38B44A}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ShardedConnectionPair", "Samples\ShardedConnectionPair\ShardedConnectionPair.csproj", "{E3179DFF-83BC-4F87-BC77-58418E7736AE}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -65,6 +67,14 @@ Global
 		{73DDDFAF-6075-405F-B171-C935EE38B44A}.Release|Any CPU.Build.0 = Release|Any CPU
 		{73DDDFAF-6075-405F-B171-C935EE38B44A}.Release|x64.ActiveCfg = Release|x64
 		{73DDDFAF-6075-405F-B171-C935EE38B44A}.Release|x64.Build.0 = Release|x64
+		{E3179DFF-83BC-4F87-BC77-58418E7736AE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E3179DFF-83BC-4F87-BC77-58418E7736AE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E3179DFF-83BC-4F87-BC77-58418E7736AE}.Debug|x64.ActiveCfg = Debug|x64
+		{E3179DFF-83BC-4F87-BC77-58418E7736AE}.Debug|x64.Build.0 = Debug|x64
+		{E3179DFF-83BC-4F87-BC77-58418E7736AE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E3179DFF-83BC-4F87-BC77-58418E7736AE}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E3179DFF-83BC-4F87-BC77-58418E7736AE}.Release|x64.ActiveCfg = Release|x64
+		{E3179DFF-83BC-4F87-BC77-58418E7736AE}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -75,5 +85,9 @@ Global
 		{00F97B37-965A-4F20-B5B2-E182D20509C2} = {EC027445-85E2-4FD3-83F3-224CA6481849}
 		{3C700A3B-9958-4470-9639-87964D20B11A} = {EC027445-85E2-4FD3-83F3-224CA6481849}
 		{73DDDFAF-6075-405F-B171-C935EE38B44A} = {EC027445-85E2-4FD3-83F3-224CA6481849}
+		{E3179DFF-83BC-4F87-BC77-58418E7736AE} = {EC027445-85E2-4FD3-83F3-224CA6481849}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {56499FC6-00D1-40EF-ACD5-99EDF9A957EB}
 	EndGlobalSection
 EndGlobal

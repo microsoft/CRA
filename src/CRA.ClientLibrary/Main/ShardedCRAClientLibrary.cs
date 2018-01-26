@@ -1,4 +1,5 @@
-﻿using Microsoft.WindowsAzure.Storage.Table;
+﻿using Microsoft.WindowsAzure.Storage.Blob;
+using Microsoft.WindowsAzure.Storage.Table;
 using Microsoft.WindowsAzure.Storage.Table.Queryable;
 using System;
 using System.Collections.Concurrent;
@@ -14,6 +15,92 @@ namespace CRA.ClientLibrary
     /// </summary>
     public partial class CRAClientLibrary
     {
+        /// <summary>
+        /// Define a sharded vertex type and register with CRA.
+        /// </summary>
+        /// <param name="vertexDefinition">Name of the vertex type</param>
+        /// <param name="creator">Lambda that describes how to instantiate the vertex, taking in an object as parameter</param>
+        public CRAErrorCode DefineVertex(string vertexDefinition, Expression<Func<IShardedVertex>> creator)
+        {
+            CloudBlobContainer container = _blobClient.GetContainerReference("cra");
+            container.CreateIfNotExists();
+            var blockBlob = container.GetBlockBlobReference(vertexDefinition + "/binaries");
+            CloudBlobStream blobStream = blockBlob.OpenWrite();
+            AssemblyUtils.WriteAssembliesToStream(blobStream);
+            blobStream.Close();
+
+            // Add metadata
+            var newRow = new VertexTable("", vertexDefinition, vertexDefinition, "", 0, creator, null, true);
+            TableOperation insertOperation = TableOperation.InsertOrReplace(newRow);
+            _vertexTable.Execute(insertOperation);
+
+            return CRAErrorCode.Success;
+        }
+
+        public ShardingInfo GetShardingInfo(string vertexName)
+        {
+            return _shardedVertexTableManager.GetLatestShardingInfo(vertexName);
+        }
+
+        /// <summary>
+        /// Instantiate a sharded vertex on a set of CRA instances.
+        /// </summary>
+        /// <param name="vertexName">Name of the sharded vertex (particular instance)</param>
+        /// <param name="vertexDefinition">Definition of the vertex (type)</param>
+        /// <param name="vertexParameter">Parameters to be passed to each vertex of the sharded vertex in its constructor (serializable object)</param>
+        /// <param name="vertexShards"> A map that holds the number of vertices from a sharded vertex needs to be instantiated for each CRA instance </param>
+        /// <returns>Status of the command</returns>
+        public CRAErrorCode InstantiateVertex(string[] instanceNames, string vertexName, 
+            string vertexDefinition, object vertexParameter, int numShardsPerInstance = 1,
+            Expression<Func<int, int>> shardLocator = null)
+        {
+            var allInstances = new List<string>();
+            var allShards = new List<int>();
+            var addedShards = new List<int>();
+            var removedShards = new List<int>();
+
+
+            Task<CRAErrorCode>[] tasks = new Task<CRAErrorCode>[instanceNames.Length*numShardsPerInstance];
+            int index = 0;
+            foreach (var instanceName in instanceNames)
+            {
+                for (int c = 0; c < numShardsPerInstance; c++)
+                {
+                    allInstances.Add(instanceName);
+                    allShards.Add(index);
+                    addedShards.Add(index);
+                    tasks[index] = InstantiateShardedVertexAsync
+                        (instanceName, vertexName + "$" + index,
+                        vertexDefinition,
+                        new Tuple<int, object>(index, vertexParameter));
+                    index++;
+                }
+            }
+
+            _shardedVertexTableManager.DeleteShardedVertex(vertexName);
+            _shardedVertexTableManager.RegisterShardedVertex(vertexName, allInstances, allShards, addedShards, removedShards, shardLocator);
+
+            CRAErrorCode[] results = Task.WhenAll(tasks).Result;
+
+            // Check for the status of instantiated vertices
+            CRAErrorCode result = CRAErrorCode.ConnectionEstablishFailed;
+            for (int i = 0; i < results.Length; i++)
+            {
+                if (results[i] != CRAErrorCode.Success)
+                {
+                    Console.WriteLine("We received an error code " + results[i] + " from one CRA instance while instantiating the vertex " + vertexName + "$" + i + " in the sharded vertex");
+                    result = results[i];
+                }
+                else
+                    result = CRAErrorCode.Success;
+            }
+
+            if (result != CRAErrorCode.Success)
+                Console.WriteLine("All CRA instances appear to be down. Restart them and this sharded vertex will be automatically instantiated");
+
+            return result;
+        }
+
         /// <summary>
         /// Instantiate a sharded vertex on a set of CRA instances.
         /// </summary>
@@ -32,7 +119,7 @@ namespace CRA.ClientLibrary
                 for (int i = currentCount; i < currentCount + vertexShards[key]; i++)
                 {
                     int threadIndex = i; string currInstanceName = key;
-                    tasks[threadIndex] = InstantiateVertexAsync(currInstanceName, vertexName + "$" + threadIndex,
+                    tasks[threadIndex] = InstantiateShardedVertexAsync(currInstanceName, vertexName + "$" + threadIndex,
                                                                         vertexDefinition, new Tuple<int, VertexParameterType>(threadIndex, vertexParameter));
                 }
                 currentCount += vertexShards[key];
@@ -58,10 +145,10 @@ namespace CRA.ClientLibrary
             return result;
         }
 
-        internal Task<CRAErrorCode> InstantiateVertexAsync(string instanceName, string vertexName, string vertexDefinition, object vertexParameter)
+        internal Task<CRAErrorCode> InstantiateShardedVertexAsync(string instanceName, string vertexName, string vertexDefinition, object vertexParameter)
         {
             return Task.Factory.StartNew(
-                () => { return InstantiateVertex(instanceName, vertexName, vertexDefinition, vertexParameter); });
+                () => { return InstantiateVertex(instanceName, vertexName, vertexDefinition, vertexParameter, true); });
         }
 
         internal int CountVertexShards(ConcurrentDictionary<string, int> verticesPerInstanceMap)
