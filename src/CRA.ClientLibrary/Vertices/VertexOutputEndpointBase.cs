@@ -20,5 +20,9 @@ namespace CRA.ClientLibrary
         {
             return Task.CompletedTask;
         }
+
+        public virtual void UpdateShardingInfo(string otherVertex, ShardingInfo shardingInfo)
+        {
+        }
     }
 }

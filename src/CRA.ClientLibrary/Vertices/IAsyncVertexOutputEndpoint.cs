@@ -35,6 +35,14 @@ namespace CRA.ClientLibrary
         /// <param name="token"></param>
         /// <returns></returns>
         Task ToStreamAsync(Stream stream, string otherVertex, int otherShardId, string otherEndpoint, CancellationToken token);
+
+        /// <summary>
+        /// Provide info on sharding for the "other" sharded vertex that 
+        /// this endpoint writes to.
+        /// </summary>
+        /// <param name="otherVertex"></param>
+        /// <param name="shardingInfo"></param>
+        void UpdateShardingInfo(string otherVertex, ShardingInfo shardingInfo);
     }
 
     /// <summary>
