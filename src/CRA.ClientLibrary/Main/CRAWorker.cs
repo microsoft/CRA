@@ -42,7 +42,7 @@ namespace CRA.ClientLibrary
 
         ConcurrentDictionary<string, CancellationTokenSource> inConnections = new ConcurrentDictionary<string, CancellationTokenSource>();
         ConcurrentDictionary<string, CancellationTokenSource> outConnections = new ConcurrentDictionary<string, CancellationTokenSource>();
-
+        ConcurrentDictionary<string, ShardingInfo> shardingInfoTable = new ConcurrentDictionary<string, ShardingInfo>();
 
         /// <summary>
         /// Instance name
@@ -439,6 +439,32 @@ namespace CRA.ClientLibrary
                 string key = GetShardedVertexName(fromVertexOutput);
                 int shardId = GetShardedVertexShardId(fromVertexOutput);
 
+                var skey = GetShardedVertexName(fromVertexName) + ":" + key + ":" + GetShardedVertexName(toVertexName);
+                while (true)
+                {
+                    if (shardingInfoTable.ContainsKey(skey))
+                    {
+                        var si = shardingInfoTable[skey];
+                        if (si.AllShards.Contains(GetShardedVertexShardId(toVertexName)))
+                            break;
+                        var newSI = _craClient.GetShardingInfo(GetShardedVertexName(toVertexName));
+                        if (shardingInfoTable.TryUpdate(skey, newSI, si))
+                        {
+                            ((IAsyncShardedVertexOutputEndpoint)_localVertexTable[fromVertexName].AsyncOutputEndpoints[key]).UpdateShardingInfo(GetShardedVertexName(toVertexName), newSI);
+                            break;
+                        }
+                    }
+                    else
+                    {
+                        var newSI = _craClient.GetShardingInfo(GetShardedVertexName(toVertexName));
+                        if (shardingInfoTable.TryAdd(skey, newSI))
+                        {
+                            ((IAsyncShardedVertexOutputEndpoint)_localVertexTable[fromVertexName].AsyncOutputEndpoints[key]).UpdateShardingInfo(GetShardedVertexName(toVertexName), newSI);
+                            break;
+                        }
+                    }
+                }
+
                 if (_localVertexTable[fromVertexName].OutputEndpoints.ContainsKey(key))
                 {
                     if (shardId < 0)
@@ -712,6 +738,32 @@ namespace CRA.ClientLibrary
             {
                 string key = GetShardedVertexName(toVertexInput);
                 int shardId = GetShardedVertexShardId(toVertexInput);
+
+                var skey = GetShardedVertexName(toVertexName) + ":" + key + ":" + GetShardedVertexName(fromVertexName);
+                while (true)
+                {
+                    if (shardingInfoTable.ContainsKey(skey))
+                    {
+                        var si = shardingInfoTable[skey];
+                        if (si.AllShards.Contains(GetShardedVertexShardId(fromVertexName)))
+                            break;
+                        var newSI = _craClient.GetShardingInfo(GetShardedVertexName(fromVertexName));
+                        if (shardingInfoTable.TryUpdate(skey, newSI, si))
+                        {
+                            ((IAsyncShardedVertexInputEndpoint)_localVertexTable[toVertexName].AsyncInputEndpoints[key]).UpdateShardingInfo(GetShardedVertexName(fromVertexName), newSI);
+                            break;
+                        }
+                    }
+                    else
+                    {
+                        var newSI = _craClient.GetShardingInfo(GetShardedVertexName(fromVertexName));
+                        if (shardingInfoTable.TryAdd(skey, newSI))
+                        {
+                            ((IAsyncShardedVertexInputEndpoint)_localVertexTable[toVertexName].AsyncInputEndpoints[key]).UpdateShardingInfo(GetShardedVertexName(fromVertexName), newSI);
+                            break;
+                        }
+                    }
+                }
 
                 if (_localVertexTable[toVertexName].InputEndpoints.ContainsKey(key))
                 {
