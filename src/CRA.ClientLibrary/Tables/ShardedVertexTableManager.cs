@@ -19,7 +19,7 @@ namespace CRA.ClientLibrary
         {
             var _storageAccount = CloudStorageAccount.Parse(storageConnectionString);
             var _tableClient = _storageAccount.CreateCloudTableClient();
-            _shardedVertexTable = CreateTableIfNotExists("shardedvertextableforcra", _tableClient);
+            _shardedVertexTable = CreateTableIfNotExists("crashardedvertextable", _tableClient);
             _vertexTableManager = new VertexTableManager(storageConnectionString);
         }
 
@@ -55,6 +55,11 @@ namespace CRA.ClientLibrary
         internal ShardingInfo GetLatestShardingInfo(string vertexName)
         {
             ShardingInfo result = new ShardingInfo();
+
+            if (ShardedVertexTable.GetEntriesForVertex(_shardedVertexTable, vertexName).Count() == 0)
+            {
+                return result;
+            }
 
             var entry = ShardedVertexTable.GetLatestEntryForVertex(_shardedVertexTable, vertexName);
             result.AllShards = entry.AllShards.Split(';').Select(e => Int32.Parse(e)).ToArray();

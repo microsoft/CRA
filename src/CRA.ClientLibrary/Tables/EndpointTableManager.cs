@@ -18,7 +18,7 @@ namespace CRA.ClientLibrary
         {
             var _storageAccount = CloudStorageAccount.Parse(storageConnectionString);
             var _tableClient = _storageAccount.CreateCloudTableClient();
-            _endpointTable = CreateTableIfNotExists("endpointtableforcra", _tableClient);
+            _endpointTable = CreateTableIfNotExists("craendpointtable", _tableClient);
         }
 
         public CloudTable EndpointTable

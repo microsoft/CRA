@@ -17,7 +17,7 @@ namespace CRA.ClientLibrary
         {
             var _storageAccount = CloudStorageAccount.Parse(storageConnectionString);
             var _tableClient = _storageAccount.CreateCloudTableClient();
-            _connectionTable = CreateTableIfNotExists("connectiontableforcra", _tableClient);
+            _connectionTable = CreateTableIfNotExists("craconnectiontable", _tableClient);
         }
 
         internal void DeleteTable()

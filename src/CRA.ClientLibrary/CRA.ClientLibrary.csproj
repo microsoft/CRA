@@ -147,6 +147,9 @@
     <Compile Include="Main\CRAWorker.cs" />
     <Compile Include="Definitions\CoralTaskMessageType.cs" />
     <Compile Include="Definitions\ErrorCodes.cs" />
+    <Compile Include="Security\SampleSecureStreamConnectionDescriptor.cs" />
+    <Compile Include="Security\DummySecureStreamConnectionDescriptor.cs" />
+    <Compile Include="Security\ISecureStreamConnectionDescriptor.cs" />
     <Compile Include="Main\ShardedCRAClientLibrary.cs" />
     <Compile Include="Tables\ShardedVertexTable.cs" />
     <Compile Include="Tables\ShardedVertexTableManager.cs" />

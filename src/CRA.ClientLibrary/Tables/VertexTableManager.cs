@@ -17,7 +17,7 @@ namespace CRA.ClientLibrary
         {
             var _storageAccount = CloudStorageAccount.Parse(storageConnectionString);
             var _tableClient = _storageAccount.CreateCloudTableClient();
-            _vertexTable = CreateTableIfNotExists("vertextableforcra", _tableClient);
+            _vertexTable = CreateTableIfNotExists("cravertextable", _tableClient);
         }
 
         internal void DeleteTable()

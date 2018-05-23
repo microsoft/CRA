@@ -38,6 +38,9 @@ namespace CRA.ClientLibrary
 
         Type aquaType = typeof(Aqua.TypeSystem.ConstructorInfo);
 
+        public ISecureStreamConnectionDescriptor SecureStreamConnectionDescriptor = new DummySecureStreamConnectionDescriptor();
+
+
         /// <summary>
         /// Create an instance of the client library for Common Runtime for Applications (CRA)
         /// </summary>
@@ -90,8 +93,17 @@ namespace CRA.ClientLibrary
             _endpointTableManager = new EndpointTableManager(_storageConnectionString);
             _connectionTableManager = new ConnectionTableManager(_storageConnectionString);
 
-            _vertexTable = CreateTableIfNotExists("vertextableforcra");
-            _connectionTable = CreateTableIfNotExists("connectiontableforcra");
+            _vertexTable = CreateTableIfNotExists("cravertextable");
+            _connectionTable = CreateTableIfNotExists("craconnectiontable");
+        }
+
+        /// <summary>
+        /// Define secure stream connections
+        /// </summary>
+        /// <param name="descriptor"></param>
+        public void DefineSecureStreamConnection(ISecureStreamConnectionDescriptor descriptor)
+        {
+            this.SecureStreamConnectionDescriptor = descriptor;
         }
 
         /// <summary>
@@ -268,13 +280,15 @@ namespace CRA.ClientLibrary
                 instanceRow = VertexTable.GetRowForInstance(_vertexTable, instanceName);
 
                 // Get a stream connection from the pool if available
-                NetworkStream stream;
+                Stream stream;
                 if (!TryGetSenderStreamFromPool(instanceRow.Address, instanceRow.Port.ToString(), out stream))
                 {
                     TcpClient client = new TcpClient(instanceRow.Address, instanceRow.Port);
                     client.NoDelay = true;
 
                     stream = client.GetStream();
+                    if (SecureStreamConnectionDescriptor != null)
+                        stream = SecureStreamConnectionDescriptor.CreateSecureClient(stream, instanceName);
                 }
 
                 stream.WriteInt32((int)CRATaskMessageType.LOAD_VERTEX);
@@ -439,6 +453,13 @@ namespace CRA.ClientLibrary
             // CREATE THE VERTEX
             var vertex = row.GetVertexCreateAction()();
 
+            // INITIALIZE
+            if ((VertexBase)vertex != null)
+            {
+                ((VertexBase)vertex).VertexName = vertexName;
+                ((VertexBase)vertex).ClientLibrary = this;
+            }
+
             // LATCH CALLBACKS TO POPULATE ENDPOINT TABLE
             vertex.OnAddInputEndpoint((name, endpt) => _endpointTableManager.AddEndpoint(vertexName, name, true, false));
             vertex.OnAddOutputEndpoint((name, endpt) => _endpointTableManager.AddEndpoint(vertexName, name, false, false));
@@ -482,12 +503,6 @@ namespace CRA.ClientLibrary
                 });
             }
 
-            // INITIALIZE
-            if ((VertexBase)vertex != null)
-            {
-                ((VertexBase)vertex).VertexName = vertexName;
-                ((VertexBase)vertex).ClientLibrary = this;
-            }
 
             var parametersBlob = container.GetBlockBlobReference(vertexDefinition + "/" + vertexName);
             Stream parametersStream = parametersBlob.OpenRead();
@@ -643,13 +658,16 @@ namespace CRA.ClientLibrary
                 var row = VertexTable.GetRowForInstance(_vertexTable, _row.InstanceName);
 
                 // Get a stream connection from the pool if available
-                NetworkStream stream;
+                Stream stream;
                 if (!TryGetSenderStreamFromPool(row.Address, row.Port.ToString(), out stream))
                 {
                     client = new TcpClient(row.Address, row.Port);
                     client.NoDelay = true;
 
                     stream = client.GetStream();
+
+                    if (SecureStreamConnectionDescriptor != null)
+                        stream = SecureStreamConnectionDescriptor.CreateSecureClient(stream, _row.InstanceName);
                 }
 
                 if (direction == ConnectionInitiator.FromSide)

@@ -71,13 +71,12 @@ namespace CRA.ClientLibrary
             _port = port;
             _streamsPoolSize = streamsPoolSize;
 
-
             _storageConnectionString = storageConnectionString;
             _storageAccount = CloudStorageAccount.Parse(_storageConnectionString);
             _blobClient = _storageAccount.CreateCloudBlobClient();
             _tableClient = _storageAccount.CreateCloudTableClient();
-            _workerInstanceTable = CreateTableIfNotExists("vertextableforcra");
-            _connectionTable = CreateTableIfNotExists("connectiontableforcra");
+            _workerInstanceTable = CreateTableIfNotExists("cravertextable");
+            _connectionTable = CreateTableIfNotExists("craconnectiontable");
         }
 
         /// <summary>
@@ -117,7 +116,7 @@ namespace CRA.ClientLibrary
                 Debug.WriteLine("Connected!");
 
                 // Get a stream object for reading and writing
-                NetworkStream stream = client.GetStream();
+                Stream stream = _craClient.SecureStreamConnectionDescriptor.CreateSecureServer(client.GetStream());
 
                 // Handle a task message sent to the CRA instance
                 CRATaskMessageType message = (CRATaskMessageType)stream.ReadInt32();
@@ -302,7 +301,7 @@ namespace CRA.ClientLibrary
             }
 
             // Send request to CRA instance
-            NetworkStream ns = null;
+            Stream ns = null;
             var _row = VertexTable.GetRowForInstanceVertex(_workerInstanceTable, row.InstanceName, "");
             try
             {
@@ -312,7 +311,8 @@ namespace CRA.ClientLibrary
                     TcpClient client = new TcpClient(_row.Address, _row.Port);
                     client.NoDelay = true;
 
-                    ns = client.GetStream();
+                    ns = _craClient.SecureStreamConnectionDescriptor
+                          .CreateSecureClient(client.GetStream(), row.InstanceName);
                 }
             }
             catch
@@ -436,6 +436,9 @@ namespace CRA.ClientLibrary
         {
             try
             {
+                string key = fromVertexOutput;
+                int shardId = -1;
+#if SHARDING
                 string key = GetShardedVertexName(fromVertexOutput);
                 int shardId = GetShardedVertexShardId(fromVertexOutput);
 
@@ -464,7 +467,7 @@ namespace CRA.ClientLibrary
                         }
                     }
                 }
-
+#endif
                 if (_localVertexTable[fromVertexName].OutputEndpoints.ContainsKey(key))
                 {
                     if (shardId < 0)
@@ -736,6 +739,9 @@ namespace CRA.ClientLibrary
         {
             try
             {
+                string key = toVertexInput;
+                int shardId = -1;
+#if SHARDING
                 string key = GetShardedVertexName(toVertexInput);
                 int shardId = GetShardedVertexShardId(toVertexInput);
 
@@ -764,7 +770,7 @@ namespace CRA.ClientLibrary
                         }
                     }
                 }
-
+#endif
                 if (_localVertexTable[toVertexName].InputEndpoints.ContainsKey(key))
                 {
                     if (shardId < 0)

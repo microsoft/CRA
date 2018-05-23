@@ -311,7 +311,7 @@ namespace CRA.ClientLibrary
             var _row = _vertexTableManager.GetRowForInstance(row.InstanceName);
 
             // Send request to CRA instance
-            NetworkStream ns = null;
+            Stream ns = null;
             try
             {
                 if (!_clientLibrary.TryGetSenderStreamFromPool(_row.Address, _row.Port.ToString(), out ns))
@@ -319,7 +319,8 @@ namespace CRA.ClientLibrary
                     TcpClient client = new TcpClient(_row.Address, _row.Port);
                     client.NoDelay = true;
 
-                    ns = client.GetStream();
+                    ns = _clientLibrary.SecureStreamConnectionDescriptor
+                          .CreateSecureClient(client.GetStream(), row.InstanceName);
                 }
             }
             catch

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Concurrent;
+using System.IO;
 using System.Net.Sockets;
 
 
@@ -26,7 +27,7 @@ namespace CRA.ClientLibrary
         /// <param name="port"> Port number of the CRA entity that this CRA client wants to connect to</param>
         /// <param name="stream"> A network sender stream that connects this CRA client to the other CRA entity</param>
         /// <returns>A boolean indicates whether the retrieval operation is successful or not</returns>
-        internal bool TryGetSenderStreamFromPool(string address, string port, out NetworkStream stream)
+        internal bool TryGetSenderStreamFromPool(string address, string port, out Stream stream)
         {
             StreamConnectionPool connectionsPool;
             StreamConnection streamConnection;
@@ -59,7 +60,7 @@ namespace CRA.ClientLibrary
         /// <param name="port"> Port number of the CRA entity that this CRA client wants to connect to</param>
         /// <param name="stream"> A network sender stream that connects this CRA client to the other CRA entity</param>
         /// <returns>A boolean indicates whether the return operation is successful or not</returns>
-        internal bool TryAddSenderStreamToPool(string address, string port, NetworkStream stream)
+        internal bool TryAddSenderStreamToPool(string address, string port, Stream stream)
         {
             StreamConnectionPool connectionsPool;
 
