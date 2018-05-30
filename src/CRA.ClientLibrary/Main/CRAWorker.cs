@@ -62,7 +62,8 @@ namespace CRA.ClientLibrary
         /// <param name="port">Port</param>
         /// <param name="storageConnectionString">Storage account to store metadata</param>
         /// <param name="streamsPoolSize">Maximum number of stream connections will be cached in the CRA client</param>
-        public CRAWorker(string workerInstanceName, string address, int port, string storageConnectionString, int streamsPoolSize)
+        /// <param name="descriptor">Secure stream connection callbacks</param>
+        public CRAWorker(string workerInstanceName, string address, int port, string storageConnectionString, ISecureStreamConnectionDescriptor descriptor = null, int streamsPoolSize = 0)
         {
             _craClient = new CRAClientLibrary(storageConnectionString, this);
 
@@ -77,6 +78,9 @@ namespace CRA.ClientLibrary
             _tableClient = _storageAccount.CreateCloudTableClient();
             _workerInstanceTable = CreateTableIfNotExists("cravertextable");
             _connectionTable = CreateTableIfNotExists("craconnectiontable");
+
+            if (descriptor != null)
+                _craClient.SecureStreamConnectionDescriptor = descriptor;
         }
 
         /// <summary>

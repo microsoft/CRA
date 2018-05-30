@@ -4,6 +4,7 @@ using System.Net.Sockets;
 using System.Configuration;
 using System.Diagnostics;
 using CRA.ClientLibrary;
+using System.Reflection;
 
 namespace CRA.Worker
 {
@@ -13,7 +14,8 @@ namespace CRA.Worker
         {
             if (args.Length < 2)
             {
-                Console.WriteLine("Worker for Common Runtime for Applications (CRA)\nUsage: CRA.Worker.exe instancename (e.g., instance1) port (e.g., 11000) [ipaddress (e.g., 127.0.0.1)]");
+                Console.WriteLine("Worker for Common Runtime for Applications (CRA) [http://github.com/Microsoft/CRA]");
+                Console.WriteLine("Usage: CRA.Worker.exe instancename (e.g., instance1) port (e.g., 11000) [ipaddress (null for default)] [storageConnectionString (null for default)] [secure_network_assembly_name secure_network_class_name]");
                 return;
             }
 
@@ -28,11 +30,17 @@ namespace CRA.Worker
                 ipAddress = args[2];
             }
 
-            Debug.WriteLine("Worker instance name is: " + args[0]);
-            Debug.WriteLine("Using IP address: " + ipAddress + " and port " + Convert.ToInt32(args[1]));
 
-            // Load CRA worker settings 
-            string storageConnectionString = ConfigurationManager.AppSettings.Get("CRA_STORAGE_CONN_STRING");
+            string storageConnectionString = null;
+            if (args.Length < 4 || args[3] != "null")
+            {
+                storageConnectionString = args[3];
+            }
+            else
+            {
+                storageConnectionString = ConfigurationManager.AppSettings.Get("CRA_STORAGE_CONN_STRING");
+            }
+
             if (storageConnectionString == null)
             {
                 storageConnectionString = Environment.GetEnvironmentVariable("CRA_STORAGE_CONN_STRING");
@@ -61,12 +69,30 @@ namespace CRA.Worker
                 connectionsPoolPerWorker = 1000;
             }
 
-            Debug.WriteLine("Using Azure connection string: " + storageConnectionString);
+            ISecureStreamConnectionDescriptor descriptor = null;
+            if (args.Length > 4)
+            {
+                if (args.Length < 6)
+                    throw new InvalidOperationException("Invalid secure network info provided");
+
+                descriptor = (ISecureStreamConnectionDescriptor)Activator.CreateInstance(args[4], args[5]).Unwrap();
+            }
+
+            Console.WriteLine("Starting CRA Worker [http://github.com/Microsoft/CRA]");
+            Console.WriteLine("   Worker Instance Name: " + args[0]);
+            Console.WriteLine("   IP address: " + ipAddress);
+            Console.WriteLine("   Port: " + Convert.ToInt32(args[1]));
+            Console.WriteLine("   Azure connection string: " + storageConnectionString);
+
+            if (descriptor != null)
+                Console.WriteLine("   Secure CRA network connections enabled using assembly=" + args[4] + "; type=" + args[5]);
+            else
+                if (args.Length > 4)
+                    Console.WriteLine("   WARNING: Secure network could not be configured");
 
             var worker = new CRAWorker
                 (args[0], ipAddress, Convert.ToInt32(args[1]),
-                storageConnectionString, connectionsPoolPerWorker);
-
+                storageConnectionString, descriptor, connectionsPoolPerWorker);
 
             worker.Start();
         }
