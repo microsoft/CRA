@@ -69,14 +69,14 @@ namespace CRA.ClientLibrary
 
             if (storageConnectionString == "" || storageConnectionString == null)
             {
-                _storageConnectionString = ConfigurationManager.AppSettings.Get("CRA_STORAGE_CONN_STRING");
+                _storageConnectionString = ConfigurationManager.AppSettings.Get("AZURE_STORAGE_CONN_STRING");
                 if (_storageConnectionString == null)
                 {
-                    _storageConnectionString = Environment.GetEnvironmentVariable("CRA_STORAGE_CONN_STRING");
+                    _storageConnectionString = Environment.GetEnvironmentVariable("AZURE_STORAGE_CONN_STRING");
                 }
                 if (_storageConnectionString == null)
                 {
-                    throw new InvalidOperationException("CRA storage connection string not found. Use appSettings in your app.config to provide this using the key CRA_STORAGE_CONN_STRING, or use the environment variable CRA_STORAGE_CONN_STRING.");
+                    throw new InvalidOperationException("Azure storage connection string not found. Use appSettings in your app.config to provide this using the key AZURE_STORAGE_CONN_STRING, or use the environment variable AZURE_STORAGE_CONN_STRING.");
                 }
             }
             else

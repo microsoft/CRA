@@ -2,7 +2,7 @@
 # Kubernetes Deployment File for Common Runtime for Applications (CRA) workers
 #
 # Before deployment, you need to specify your storage connection string to Kubernetes as follows:
-#    kubectl create configmap cra-config --from-literal=cra_storage_conn_string=your_key
+#    kubectl create configmap cra-config --from-literal=azure_storage_conn_string=your_key
 #
 # where your_key is your Azure storage connection string.
 #
@@ -28,11 +28,11 @@ spec :
               ports:
               - containerPort: 1500
               env:
-              - name: CRA_STORAGE_CONN_STRING
+              - name: AZURE_STORAGE_CONN_STRING
                 valueFrom:
                   configMapKeyRef:
                     name: cra-config # Name of the ConfigMap containing the storage connection string
-                    key: cra_storage_conn_string # Key in the configmap associated with the storage connection string
+                    key: azure_storage_conn_string # Key in the configmap associated with the storage connection string
               args : ["crainst01", "1500"] # CRA instance name: crainst01, exposed on port 1500
 ---
 kind : Deployment
@@ -56,9 +56,9 @@ spec :
               ports:
               - containerPort: 1501
               env: 
-              - name: CRA_STORAGE_CONN_STRING
+              - name: AZURE_STORAGE_CONN_STRING
                 valueFrom:
                   configMapKeyRef:
                     name: cra-config # Name of the ConfigMap containing the storage connection string
-                    key: cra_storage_conn_string # Key in the configmap associated with the storage connection string
+                    key: azure_storage_conn_string # Key in the configmap associated with the storage connection string
               args : ["crainst02", "1501"] # CRA instance name: crainst02, exposed on port 1501
