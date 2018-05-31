@@ -15,7 +15,7 @@ namespace CRA.Worker
             if (args.Length < 2)
             {
                 Console.WriteLine("Worker for Common Runtime for Applications (CRA) [http://github.com/Microsoft/CRA]");
-                Console.WriteLine("Usage: CRA.Worker.exe instancename (e.g., instance1) port (e.g., 11000) [ipaddress (null for default)] [storageConnectionString (null for default)] [secure_network_assembly_name secure_network_class_name]");
+                Console.WriteLine("Usage: CRA.Worker.exe instancename (e.g., instance1) port (e.g., 11000) [ipaddress (null for default)] [secure_network_assembly_name secure_network_class_name]");
                 return;
             }
 
@@ -31,24 +31,16 @@ namespace CRA.Worker
             }
 
 
-            string storageConnectionString = null;
-            if (args.Length < 4 || args[3] != "null")
+            string storageConnectionString = ConfigurationManager.AppSettings.Get("AZURE_STORAGE_CONN_STRING");
+
+            if (storageConnectionString == null)
             {
-                storageConnectionString = args[3];
-            }
-            else
-            {
-                storageConnectionString = ConfigurationManager.AppSettings.Get("CRA_STORAGE_CONN_STRING");
+                storageConnectionString = Environment.GetEnvironmentVariable("AZURE_STORAGE_CONN_STRING");
             }
 
             if (storageConnectionString == null)
             {
-                storageConnectionString = Environment.GetEnvironmentVariable("CRA_STORAGE_CONN_STRING");
-            }
-
-            if (storageConnectionString == null)
-            {
-                throw new InvalidOperationException("CRA storage connection string not found. Use appSettings in your app.config to provide this using the key CRA_STORAGE_CONN_STRING, or use the environment variable CRA_STORAGE_CONN_STRING.");
+                throw new InvalidOperationException("Azure storage connection string not found. Use appSettings in your app.config to provide this using the key AZURE_STORAGE_CONN_STRING, or use the environment variable AZURE_STORAGE_CONN_STRING.");
             }
 
             int connectionsPoolPerWorker;
@@ -70,9 +62,9 @@ namespace CRA.Worker
             }
 
             ISecureStreamConnectionDescriptor descriptor = null;
-            if (args.Length > 4)
+            if (args.Length > 3)
             {
-                if (args.Length < 6)
+                if (args.Length < 5)
                     throw new InvalidOperationException("Invalid secure network info provided");
 
                 descriptor = (ISecureStreamConnectionDescriptor)Activator.CreateInstance(args[4], args[5]).Unwrap();
@@ -85,9 +77,9 @@ namespace CRA.Worker
             Console.WriteLine("   Azure connection string: " + storageConnectionString);
 
             if (descriptor != null)
-                Console.WriteLine("   Secure CRA network connections enabled using assembly=" + args[4] + "; type=" + args[5]);
+                Console.WriteLine("   Secure network connections enabled using assembly=" + args[4] + "; type=" + args[5]);
             else
-                if (args.Length > 4)
+                if (args.Length > 3)
                     Console.WriteLine("   WARNING: Secure network could not be configured");
 
             var worker = new CRAWorker
