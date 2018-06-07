@@ -67,7 +67,9 @@ namespace CRA.Worker
                 if (args.Length < 5)
                     throw new InvalidOperationException("Invalid secure network info provided");
 
-                descriptor = (ISecureStreamConnectionDescriptor)Activator.CreateInstance(args[4], args[5]).Unwrap();
+                var assembly = Assembly.Load(args[4]);
+                var type = assembly.GetType(args[5]);
+                descriptor = (ISecureStreamConnectionDescriptor)Activator.CreateInstance(type);
             }
 
             Console.WriteLine("Starting CRA Worker [http://github.com/Microsoft/CRA]");

@@ -90,12 +90,6 @@
     <None Include="App.config" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\CRA.ClientLibrary\CRA.ClientLibrary.csproj">
-      <Project>{ef23eb6a-e329-496d-9b7a-8cad66ea4e3a}</Project>
-      <Name>CRA.ClientLibrary</Name>
-    </ProjectReference>
-  </ItemGroup>
-  <ItemGroup>
     <BootstrapperPackage Include=".NETFramework,Version=v4.6">
       <Visible>False</Visible>
       <ProductName>Microsoft .NET Framework 4.6 %28x86 and x64%29</ProductName>
@@ -106,6 +100,12 @@
       <ProductName>.NET Framework 3.5 SP1</ProductName>
       <Install>false</Install>
     </BootstrapperPackage>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\CRA.ClientLibrary\CRA.ClientLibrary.csproj">
+      <Project>{ef23eb6a-e329-496d-9b7a-8cad66ea4e3a}</Project>
+      <Name>CRA.ClientLibrary</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
