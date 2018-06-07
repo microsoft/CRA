@@ -7,9 +7,39 @@ using System.Collections.Generic;
 using System.Diagnostics.Contracts;
 using System.Globalization;
 using System.Runtime.Serialization;
+using System.Threading.Tasks;
+using Microsoft.WindowsAzure.Storage.Table;
+using System.Threading;
 
 namespace CRA.ClientLibrary
 {
+    public static class TableExtensions
+    {
+        public static IList<T> ExecuteQuery<T>(this CloudTable table, TableQuery<T> query) where T : ITableEntity, new()
+        {
+            return table.ExecuteQueryAsync(query).GetAwaiter().GetResult();
+        }
+
+        public static async Task<IList<T>> ExecuteQueryAsync<T>(this CloudTable table, TableQuery<T> query, CancellationToken ct = default(CancellationToken), Action<IList<T>> onProgress = null) where T : ITableEntity, new()
+        {
+
+            var items = new List<T>();
+            TableContinuationToken token = null;
+
+            do
+            {
+
+                TableQuerySegment<T> seg = await table.ExecuteQuerySegmentedAsync<T>(query, token);
+                token = seg.ContinuationToken;
+                items.AddRange(seg);
+                if (onProgress != null) onProgress(items);
+
+            } while (token != null && !ct.IsCancellationRequested);
+
+            return items;
+        }
+    }
+
     internal static class AssemblyUtils
     {
         internal struct ApplicationAssembly

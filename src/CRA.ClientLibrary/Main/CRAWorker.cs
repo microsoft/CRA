@@ -903,7 +903,7 @@ namespace CRA.ClientLibrary
             CloudTable table = _tableClient.GetTableReference(tableName);
             try
             {
-                table.CreateIfNotExists();
+                table.CreateIfNotExistsAsync().Wait();
             }
             catch { }
 

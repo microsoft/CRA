@@ -44,7 +44,7 @@ namespace CRA.ClientLibrary
     }
 
 
-
+    /*
     internal class RemoteLinqConstantExpressionTypeCaster
     {
         private ITypeResolver _typeResolver;
@@ -284,5 +284,5 @@ namespace CRA.ClientLibrary
             return new RemoteLinqConstantExpressionTypeCaster().Visit(expression);
         }
     }
-
+    */
 }

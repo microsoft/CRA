@@ -114,16 +114,16 @@ namespace CRA.ClientLibrary
         public CRAErrorCode DefineVertex(string vertexDefinition, Expression<Func<IVertex>> creator)
         {
             CloudBlobContainer container = _blobClient.GetContainerReference("cra");
-            container.CreateIfNotExists();
+            container.CreateIfNotExistsAsync().Wait();
             var blockBlob = container.GetBlockBlobReference(vertexDefinition + "/binaries");
-            CloudBlobStream blobStream = blockBlob.OpenWrite();
+            CloudBlobStream blobStream = blockBlob.OpenWriteAsync().GetAwaiter().GetResult();
             AssemblyUtils.WriteAssembliesToStream(blobStream);
             blobStream.Close();
 
             // Add metadata
             var newRow = new VertexTable("", vertexDefinition, vertexDefinition, "", 0, creator, null, true);
             TableOperation insertOperation = TableOperation.InsertOrReplace(newRow);
-            _vertexTable.Execute(insertOperation);
+            _vertexTable.ExecuteAsync(insertOperation).Wait();
 
             return CRAErrorCode.Success;
         }
@@ -166,8 +166,8 @@ namespace CRA.ClientLibrary
         /// </summary>
         public void Reset()
         {
-            _connectionTable.DeleteIfExists();
-            _vertexTable.DeleteIfExists();
+            _connectionTable.DeleteIfExistsAsync().Wait();
+            _vertexTable.DeleteIfExistsAsync().Wait();
             _endpointTableManager.DeleteTable();
         }
 
@@ -194,7 +194,7 @@ namespace CRA.ClientLibrary
 
                     if (batch.Count == 100)
                     {
-                        table.ExecuteBatch(batch);
+                        table.ExecuteBatchAsync(batch).Wait();
                         batches[entity.PartitionKey] = new TableBatchOperation();
                     }
                 }
@@ -203,7 +203,7 @@ namespace CRA.ClientLibrary
                 {
                     if (batch.Count > 0)
                     {
-                        table.ExecuteBatch(batch);
+                        table.ExecuteBatchAsync(batch).Wait();
                     }
                 }
             };
@@ -218,13 +218,17 @@ namespace CRA.ClientLibrary
         /// <param name="vertexor"></param>
         private static void VertexEntities(CloudTable table, Action<IEnumerable<DynamicTableEntity>> vertexor)
         {
+#if false
             TableQuerySegment<DynamicTableEntity> segment = null;
 
             while (segment == null || segment.ContinuationToken != null)
             {
-                segment = table.ExecuteQuerySegmented(new TableQuery().Take(100), segment == null ? null : segment.ContinuationToken);
+                segment = table
+                    .ExecuteQuerySegmentedAsync(new TableQuery().Take(100), segment?.ContinuationToken)
+                    .GetAwaiter().GetResult();
                 vertexor(segment.Results);
             }
+#endif
         }
 
         /// <summary>
@@ -255,9 +259,9 @@ namespace CRA.ClientLibrary
 
             // Serialize and write the vertex parameters to a blob
             CloudBlobContainer container = _blobClient.GetContainerReference("cra");
-            container.CreateIfNotExists();
+            container.CreateIfNotExistsAsync().Wait();
             var blockBlob = container.GetBlockBlobReference(vertexDefinition + "/" + vertexName);
-            CloudBlobStream blobStream = blockBlob.OpenWrite();
+            CloudBlobStream blobStream = blockBlob.OpenWriteAsync().GetAwaiter().GetResult();
             byte[] parameterBytes = Encoding.UTF8.GetBytes(
                         SerializationHelper.SerializeObject(vertexParameter));
             blobStream.WriteByteArray(parameterBytes);
@@ -269,7 +273,7 @@ namespace CRA.ClientLibrary
                 vertexName,
                 false, sharded);
             TableOperation insertOperation = TableOperation.InsertOrReplace(newRow);
-            _vertexTable.Execute(insertOperation);
+            _vertexTable.ExecuteAsync(insertOperation).Wait();
 
             CRAErrorCode result = CRAErrorCode.Success;
 
@@ -377,14 +381,16 @@ namespace CRA.ClientLibrary
                 DeleteConnectionInfo(conn);
             }
 
+#if !DOTNETCORE
             var query = new TableQuery<VertexTable>()
                    .Where(TableQuery.GenerateFilterCondition("RowKey", QueryComparisons.Equal, vertexName));
 
             foreach (var item in _vertexTable.ExecuteQuery(query))
             {
                 var oper = TableOperation.Delete(item);
-                _vertexTable.Execute(oper);
+                _vertexTable.ExecuteAsync(oper).Wait();
             }
+#endif
         }
 
         /// <summary>
@@ -396,11 +402,11 @@ namespace CRA.ClientLibrary
             var entity = new DynamicTableEntity("", vertexDefinition);
             entity.ETag = "*";
             TableOperation deleteOperation = TableOperation.Delete(entity);
-            _vertexTable.Execute(deleteOperation);
+            _vertexTable.ExecuteAsync(deleteOperation).Wait();
             CloudBlobContainer container = _blobClient.GetContainerReference("cra");
-            container.CreateIfNotExists();
+            container.CreateIfNotExistsAsync().Wait();
             var blockBlob = container.GetBlockBlobReference(vertexDefinition + "/binaries");
-            blockBlob.DeleteIfExists();
+            blockBlob.DeleteIfExistsAsync().Wait();
         }
 
 
@@ -441,9 +447,9 @@ namespace CRA.ClientLibrary
             _vertexTableManager.DeactivateVertexOnInstance(vertexName, instanceName);
 
             CloudBlobContainer container = _blobClient.GetContainerReference("cra");
-            container.CreateIfNotExists();
+            container.CreateIfNotExistsAsync().Wait();
             var blockBlob = container.GetBlockBlobReference(vertexDefinition + "/binaries");
-            Stream blobStream = blockBlob.OpenRead();
+            Stream blobStream = blockBlob.OpenReadAsync().GetAwaiter().GetResult();
             AssemblyUtils.LoadAssembliesFromStream(blobStream);
             AssemblyUtils.DumpAssemblies();
             blobStream.Close();
@@ -499,13 +505,13 @@ namespace CRA.ClientLibrary
                     var entity = new DynamicTableEntity(instanceName, vertexName);
                     entity.ETag = "*";
                     TableOperation deleteOperation = TableOperation.Delete(entity);
-                    _vertexTable.Execute(deleteOperation);
+                    _vertexTable.ExecuteAsync(deleteOperation).Wait();
                 });
             }
 
 
             var parametersBlob = container.GetBlockBlobReference(vertexDefinition + "/" + vertexName);
-            Stream parametersStream = parametersBlob.OpenRead();
+            Stream parametersStream = parametersBlob.OpenReadAsync().GetAwaiter().GetResult();
             byte[] parametersBytes = parametersStream.ReadByteArray();
             string parameterString = Encoding.UTF8.GetString(parametersBytes);
             parametersStream.Close();
@@ -796,7 +802,7 @@ namespace CRA.ClientLibrary
             CloudTable table = _tableClient.GetTableReference(tableName);
             try
             {
-                table.CreateIfNotExists();
+                table.CreateIfNotExistsAsync().Wait();
             }
             catch { }
 

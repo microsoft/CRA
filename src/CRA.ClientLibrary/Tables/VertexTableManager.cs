@@ -22,7 +22,7 @@ namespace CRA.ClientLibrary
 
         internal void DeleteTable()
         {
-            _vertexTable.DeleteIfExists();
+            _vertexTable.DeleteIfExistsAsync().Wait();
         }
 
         internal bool ExistsVertex(string vertexName)
@@ -55,14 +55,14 @@ namespace CRA.ClientLibrary
         {
             TableOperation insertOperation = TableOperation.InsertOrReplace(new VertexTable
                 (instanceName, "", "", address, port, "", "", true, false));
-            _vertexTable.Execute(insertOperation);
+            _vertexTable.ExecuteAsync(insertOperation).Wait();
         }
 
         internal void RegisterVertex(string vertexName, string instanceName)
         {
             TableOperation insertOperation = TableOperation.InsertOrReplace(new VertexTable
                 (instanceName, vertexName, "", "", 0, "", "", false, false));
-            _vertexTable.Execute(insertOperation);
+            _vertexTable.ExecuteAsync(insertOperation).Wait();
         }
 
         internal void ActivateVertexOnInstance(string vertexName, string instanceName)
@@ -73,7 +73,7 @@ namespace CRA.ClientLibrary
 
             newActiveVertex.IsActive = true;
             TableOperation insertOperation = TableOperation.InsertOrReplace(newActiveVertex);
-            _vertexTable.Execute(insertOperation);
+            _vertexTable.ExecuteAsync(insertOperation).Wait();
 
             var procs = VertexTable.GetAll(_vertexTable)
                 .Where(gn => vertexName == gn.VertexName && instanceName != gn.InstanceName);
@@ -83,7 +83,7 @@ namespace CRA.ClientLibrary
                 {
                     proc.IsActive = false;
                     TableOperation _insertOperation = TableOperation.InsertOrReplace(proc);
-                    _vertexTable.Execute(_insertOperation);
+                    _vertexTable.ExecuteAsync(_insertOperation).Wait();
                 }
             }
         }
@@ -96,7 +96,7 @@ namespace CRA.ClientLibrary
 
             newActiveVertex.IsActive = false;
             TableOperation insertOperation = TableOperation.InsertOrReplace(newActiveVertex);
-            _vertexTable.Execute(insertOperation);
+            _vertexTable.ExecuteAsync(insertOperation).Wait();
         }
 
         internal void DeleteInstance(string instanceName)
@@ -104,7 +104,7 @@ namespace CRA.ClientLibrary
             var newRow = new DynamicTableEntity(instanceName, "");
             newRow.ETag = "*";
             TableOperation deleteOperation = TableOperation.Delete(newRow);
-            _vertexTable.Execute(deleteOperation);
+            _vertexTable.ExecuteAsync(deleteOperation).Wait();
         }
 
         internal void DeleteInstanceVertex(string instanceName, string vertexName)
@@ -112,7 +112,7 @@ namespace CRA.ClientLibrary
             var newRow = new DynamicTableEntity(instanceName, vertexName);
             newRow.ETag = "*";
             TableOperation deleteOperation = TableOperation.Delete(newRow);
-            _vertexTable.Execute(deleteOperation);
+            _vertexTable.ExecuteAsync(deleteOperation).Wait();
         }
 
         internal void DeleteShardedVertex(string vertexName)
@@ -120,7 +120,7 @@ namespace CRA.ClientLibrary
             foreach (var row in VertexTable.GetRowsForShardedVertex(_vertexTable, vertexName))
             {
                 TableOperation deleteOperation = TableOperation.Delete(row);
-                _vertexTable.Execute(deleteOperation);
+                _vertexTable.ExecuteAsync(deleteOperation).Wait();
             }
         }
 
@@ -152,7 +152,7 @@ namespace CRA.ClientLibrary
             CloudTable table = _tableClient.GetTableReference(tableName);
             try
             {
-                table.CreateIfNotExists();
+                table.CreateIfNotExistsAsync().Wait();
             }
             catch (Exception)
             {

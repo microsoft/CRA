@@ -31,7 +31,7 @@ namespace CRA.ClientLibrary
 
         internal void DeleteTable()
         {
-            _endpointTable.DeleteIfExists();
+            _endpointTable.DeleteIfExistsAsync().Wait();
         }
 
         internal bool ExistsEndpoint(string vertexName, string endPoint)
@@ -49,7 +49,7 @@ namespace CRA.ClientLibrary
             // Make the connection information stable
             var newRow = new EndpointTable(vertexName, endpointName, isInput, isAsync);
             TableOperation insertOperation = TableOperation.InsertOrReplace(newRow);
-            _endpointTable.Execute(insertOperation);
+            _endpointTable.ExecuteAsync(insertOperation).Wait();
         }
 
         internal void DeleteEndpoint(string vertexName, string endpointName)
@@ -58,13 +58,13 @@ namespace CRA.ClientLibrary
             var newRow = new DynamicTableEntity(vertexName, endpointName);
             newRow.ETag = "*";
             TableOperation deleteOperation = TableOperation.Delete(newRow);
-            _endpointTable.Execute(deleteOperation);
+            _endpointTable.ExecuteAsync(deleteOperation).GetAwaiter().GetResult();
         }
 
         internal void RemoveEndpoint(string vertexName, string endpointName)
         {
             var op = TableOperation.Retrieve<EndpointTable>(vertexName, endpointName);
-            TableResult retrievedResult = _endpointTable.Execute(op);
+            TableResult retrievedResult = _endpointTable.ExecuteAsync(op).GetAwaiter().GetResult();
 
             // Assign the result to a CustomerEntity.
             var deleteEntity = (EndpointTable)retrievedResult.Result;
@@ -75,7 +75,7 @@ namespace CRA.ClientLibrary
                 TableOperation deleteOperation = TableOperation.Delete(deleteEntity);
 
                 // Execute the operation.
-                _endpointTable.Execute(deleteOperation);
+                _endpointTable.ExecuteAsync(deleteOperation).Wait();
             }
             else
             {
@@ -103,7 +103,7 @@ namespace CRA.ClientLibrary
             try
             {
                 Debug.WriteLine("Creating table " + tableName);
-                table.CreateIfNotExists();
+                table.CreateIfNotExistsAsync().Wait();
             }
             catch { }
 
@@ -141,7 +141,7 @@ namespace CRA.ClientLibrary
 
                     if (batch.Count == 100)
                     {
-                        table.ExecuteBatch(batch);
+                        table.ExecuteBatchAsync(batch).Wait();
                         batches[entity.PartitionKey] = new TableBatchOperation();
                     }
                 }
@@ -150,7 +150,7 @@ namespace CRA.ClientLibrary
                 {
                     if (batch.Count > 0)
                     {
-                        table.ExecuteBatch(batch);
+                        table.ExecuteBatchAsync(batch).Wait();
                     }
                 }
             };
@@ -165,13 +165,15 @@ namespace CRA.ClientLibrary
         /// <param name="vertexor"></param>
         private static void VertexEntities(CloudTable table, Action<IEnumerable<DynamicTableEntity>> vertexor)
         {
-            TableQuerySegment<DynamicTableEntity> segment = null;
+#if false
+            TableQuerySegment segment = null;
 
             while (segment == null || segment.ContinuationToken != null)
             {
-                segment = table.ExecuteQuerySegmented(new TableQuery().Take(100), segment == null ? null : segment.ContinuationToken);
+                segment = table.ExecuteQueryForKeyRotationSegmented(new TableQuery().Take(100), segment == null ? null : segment.ContinuationToken);
                 vertexor(segment.Results);
             }
+#endif
         }
     }
 }

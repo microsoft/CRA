@@ -22,7 +22,7 @@ namespace CRA.ClientLibrary
 
         internal void DeleteTable()
         {
-            _connectionTable.DeleteIfExists();
+            _connectionTable.DeleteIfExistsAsync().Wait();
         }
 
 
@@ -31,7 +31,7 @@ namespace CRA.ClientLibrary
             // Make the connection information stable
             var newRow = new ConnectionTable(fromVertex, fromOutput, toConnection, toInput);
             TableOperation insertOperation = TableOperation.InsertOrReplace(newRow);
-            _connectionTable.Execute(insertOperation);
+            _connectionTable.ExecuteAsync(insertOperation).Wait();
         }
 
         internal void DeleteConnection(string fromVertex, string fromOutput, string toConnection, string toInput)
@@ -40,12 +40,12 @@ namespace CRA.ClientLibrary
             var newRow = new ConnectionTable(fromVertex, fromOutput, toConnection, toInput);
             newRow.ETag = "*";
             TableOperation retrieveOperation = TableOperation.Retrieve<ConnectionTable>(newRow.PartitionKey, newRow.RowKey);
-            TableResult retrievedResult = _connectionTable.Execute(retrieveOperation);
+            TableResult retrievedResult = _connectionTable.ExecuteAsync(retrieveOperation).GetAwaiter().GetResult();
             ConnectionTable deleteEntity = (ConnectionTable)retrievedResult.Result;
             if (deleteEntity != null)
             {
                 TableOperation deleteOperation = TableOperation.Delete(deleteEntity);
-                _connectionTable.Execute(deleteOperation);
+                _connectionTable.ExecuteAsync(deleteOperation).Wait();
             }
         }
 
@@ -74,7 +74,7 @@ namespace CRA.ClientLibrary
             try
             {
                 Debug.WriteLine("Creating table " + tableName);
-                table.CreateIfNotExists();
+                table.CreateIfNotExistsAsync().Wait();
             }
             catch { }
 

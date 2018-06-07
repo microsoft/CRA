@@ -25,7 +25,7 @@ namespace CRA.ClientLibrary
 
         internal void DeleteTable()
         {
-            _shardedVertexTable.DeleteIfExists();
+            _shardedVertexTable.DeleteIfExistsAsync().Wait();
         }
 
         internal void RegisterShardedVertex(string vertexName, List<string> allInstances,
@@ -33,7 +33,7 @@ namespace CRA.ClientLibrary
         {
             TableOperation insertOperation = TableOperation.InsertOrReplace(new ShardedVertexTable
                 (vertexName, "0", allInstances, allShards, addedShards, removedShards, shardLocator));
-            _shardedVertexTable.Execute(insertOperation);
+            _shardedVertexTable.ExecuteAsync(insertOperation).Wait();
         }
 
         internal bool ExistsShardedVertex(string vertexName)
@@ -79,7 +79,7 @@ namespace CRA.ClientLibrary
             foreach (var entry in ShardedVertexTable.GetEntriesForVertex(_shardedVertexTable, vertexName))
             {
                 TableOperation deleteOperation = TableOperation.Delete(entry);
-                _shardedVertexTable.Execute(deleteOperation);
+                _shardedVertexTable.ExecuteAsync(deleteOperation).Wait();
             }
         }
 
@@ -88,7 +88,7 @@ namespace CRA.ClientLibrary
             CloudTable table = _tableClient.GetTableReference(tableName);
             try
             {
-                table.CreateIfNotExists();
+                table.CreateIfNotExistsAsync().Wait();
             }
             catch (Exception)
             {

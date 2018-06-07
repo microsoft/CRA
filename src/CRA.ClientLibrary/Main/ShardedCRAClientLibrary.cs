@@ -1,6 +1,5 @@
 ﻿using Microsoft.WindowsAzure.Storage.Blob;
 using Microsoft.WindowsAzure.Storage.Table;
-using Microsoft.WindowsAzure.Storage.Table.Queryable;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -23,16 +22,16 @@ namespace CRA.ClientLibrary
         public CRAErrorCode DefineVertex(string vertexDefinition, Expression<Func<IShardedVertex>> creator)
         {
             CloudBlobContainer container = _blobClient.GetContainerReference("cra");
-            container.CreateIfNotExists();
+            container.CreateIfNotExistsAsync().Wait();
             var blockBlob = container.GetBlockBlobReference(vertexDefinition + "/binaries");
-            CloudBlobStream blobStream = blockBlob.OpenWrite();
+            CloudBlobStream blobStream = blockBlob.OpenWriteAsync().GetAwaiter().GetResult();
             AssemblyUtils.WriteAssembliesToStream(blobStream);
             blobStream.Close();
 
             // Add metadata
             var newRow = new VertexTable("", vertexDefinition, vertexDefinition, "", 0, creator, null, true);
             TableOperation insertOperation = TableOperation.InsertOrReplace(newRow);
-            _vertexTable.Execute(insertOperation);
+            _vertexTable.ExecuteAsync(insertOperation).Wait();
 
             return CRAErrorCode.Success;
         }
@@ -252,7 +251,7 @@ namespace CRA.ClientLibrary
 
                     if (batch.Count == 100)
                     {
-                        table.ExecuteBatch(batch);
+                        table.ExecuteBatchAsync(batch).Wait();
                         batches[entity.PartitionKey] = new TableBatchOperation();
                     }
                 }
@@ -261,7 +260,7 @@ namespace CRA.ClientLibrary
                 {
                     if (batch.Count > 0)
                     {
-                        table.ExecuteBatch(batch);
+                        table.ExecuteBatchAsync(batch).Wait();
                     }
                 }
             };
@@ -272,12 +271,13 @@ namespace CRA.ClientLibrary
 
         private void FilterAndVertexEntitiesInSegments(CloudTable table, Action<IEnumerable<DynamicTableEntity>> operationExecutor, Expression<Func<DynamicTableEntity, bool>> filter)
         {
+#if false
             TableQuerySegment<DynamicTableEntity> segment = null;
             while (segment == null || segment.ContinuationToken != null)
             {
                 if (filter == null)
                 {
-                    segment = table.ExecuteQuerySegmented(new TableQuery().Take(100), segment == null ? null : segment.ContinuationToken);
+                    segment = table.ExecuteQuerySegmentedAsync(new TableQuery().Take(100), segment == null ? null : segment.ContinuationToken).GetAwaiter().GetResult();
                 }
                 else
                 {
@@ -287,8 +287,9 @@ namespace CRA.ClientLibrary
 
                 operationExecutor(segment.Results);
             }
+#endif
         }
-
+         
         /// <summary>
         /// Delete an endpoint from all vertices in a sharded vertex
         /// </summary>
