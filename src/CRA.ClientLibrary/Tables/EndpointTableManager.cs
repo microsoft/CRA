@@ -165,15 +165,7 @@ namespace CRA.ClientLibrary
         /// <param name="vertexor"></param>
         private static void VertexEntities(CloudTable table, Action<IEnumerable<DynamicTableEntity>> vertexor)
         {
-#if false
-            TableQuerySegment segment = null;
-
-            while (segment == null || segment.ContinuationToken != null)
-            {
-                segment = table.ExecuteQueryForKeyRotationSegmented(new TableQuery().Take(100), segment == null ? null : segment.ContinuationToken);
-                vertexor(segment.Results);
-            }
-#endif
+            vertexor(table.ExecuteQuery(new TableQuery<DynamicTableEntity>()));
         }
     }
 }

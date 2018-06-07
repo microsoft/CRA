@@ -271,23 +271,14 @@ namespace CRA.ClientLibrary
 
         private void FilterAndVertexEntitiesInSegments(CloudTable table, Action<IEnumerable<DynamicTableEntity>> operationExecutor, Expression<Func<DynamicTableEntity, bool>> filter)
         {
-#if false
-            TableQuerySegment<DynamicTableEntity> segment = null;
-            while (segment == null || segment.ContinuationToken != null)
+            if (filter == null)
             {
-                if (filter == null)
-                {
-                    segment = table.ExecuteQuerySegmentedAsync(new TableQuery().Take(100), segment == null ? null : segment.ContinuationToken).GetAwaiter().GetResult();
-                }
-                else
-                {
-                    var query = table.CreateQuery<DynamicTableEntity>().Where(filter).Take(100).AsTableQuery();
-                    segment = query.ExecuteSegmented(segment == null ? null : segment.ContinuationToken);
-                }
-
-                operationExecutor(segment.Results);
+                operationExecutor(table.ExecuteQuery(new TableQuery<DynamicTableEntity>()));
             }
-#endif
+            else
+            {
+                operationExecutor(table.ExecuteQuery(new TableQuery<DynamicTableEntity>()).Where(filter.Compile()));
+            }
         }
          
         /// <summary>

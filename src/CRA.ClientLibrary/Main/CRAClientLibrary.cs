@@ -218,17 +218,7 @@ namespace CRA.ClientLibrary
         /// <param name="vertexor"></param>
         private static void VertexEntities(CloudTable table, Action<IEnumerable<DynamicTableEntity>> vertexor)
         {
-#if false
-            TableQuerySegment<DynamicTableEntity> segment = null;
-
-            while (segment == null || segment.ContinuationToken != null)
-            {
-                segment = table
-                    .ExecuteQuerySegmentedAsync(new TableQuery().Take(100), segment?.ContinuationToken)
-                    .GetAwaiter().GetResult();
-                vertexor(segment.Results);
-            }
-#endif
+            vertexor(table.ExecuteQuery(new TableQuery<DynamicTableEntity>()));
         }
 
         /// <summary>
@@ -381,7 +371,6 @@ namespace CRA.ClientLibrary
                 DeleteConnectionInfo(conn);
             }
 
-#if !DOTNETCORE
             var query = new TableQuery<VertexTable>()
                    .Where(TableQuery.GenerateFilterCondition("RowKey", QueryComparisons.Equal, vertexName));
 
@@ -390,7 +379,6 @@ namespace CRA.ClientLibrary
                 var oper = TableOperation.Delete(item);
                 _vertexTable.ExecuteAsync(oper).Wait();
             }
-#endif
         }
 
         /// <summary>
