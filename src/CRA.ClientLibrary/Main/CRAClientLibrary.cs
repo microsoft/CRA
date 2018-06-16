@@ -253,10 +253,12 @@ namespace CRA.ClientLibrary
         { 
             var procDefRow = VertexTable.GetRowForVertexDefinition(_vertexTable, vertexDefinition);
 
+            string blobName = vertexName + "-" + instanceName;
+
             // Serialize and write the vertex parameters to a blob
             CloudBlobContainer container = _blobClient.GetContainerReference("cra");
             container.CreateIfNotExists();
-            var blockBlob = container.GetBlockBlobReference(vertexDefinition + "/" + vertexName);
+            var blockBlob = container.GetBlockBlobReference(vertexDefinition + "/" + blobName);
             CloudBlobStream blobStream = blockBlob.OpenWrite();
             byte[] parameterBytes = Encoding.UTF8.GetBytes(
                         SerializationHelper.SerializeObject(vertexParameter));
@@ -266,7 +268,7 @@ namespace CRA.ClientLibrary
             // Add metadata
             var newRow = new VertexTable(instanceName, vertexName, vertexDefinition, "", 0,
                 procDefRow.VertexCreateAction,
-                vertexName,
+                blobName,
                 false, sharded);
             TableOperation insertOperation = TableOperation.InsertOrReplace(newRow);
             _vertexTable.Execute(insertOperation);
@@ -504,7 +506,9 @@ namespace CRA.ClientLibrary
             }
 
 
-            var parametersBlob = container.GetBlockBlobReference(vertexDefinition + "/" + vertexName);
+            string blobName = vertexName + "-" + instanceName;
+
+            var parametersBlob = container.GetBlockBlobReference(vertexDefinition + "/" + blobName);
             Stream parametersStream = parametersBlob.OpenRead();
             byte[] parametersBytes = parametersStream.ReadByteArray();
             string parameterString = Encoding.UTF8.GetString(parametersBytes);
