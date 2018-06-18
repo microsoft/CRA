@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "CRA.Worker": {
+      "commandName": "Project",
+      "commandLineArgs": "crainst01 11000"
+    }
+  }
+}

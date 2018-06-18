@@ -34,7 +34,7 @@ namespace CRA.Worker
             string storageConnectionString = null;
 
 #if !DOTNETCORE
-            ConfigurationManager.AppSettings.Get("AZURE_STORAGE_CONN_STRING");
+            storageConnectionString = ConfigurationManager.AppSettings.Get("AZURE_STORAGE_CONN_STRING");
 #endif
 
             if (storageConnectionString == null)
@@ -74,8 +74,16 @@ namespace CRA.Worker
                 if (args.Length < 5)
                     throw new InvalidOperationException("Invalid secure network info provided");
 
-                var assembly = Assembly.Load(args[4]);
-                var type = assembly.GetType(args[5]);
+                Type type;
+                if (args[3] != "null")
+                {
+                    var assembly = Assembly.Load(args[3]);
+                    type = assembly.GetType(args[4]);
+                }
+                else
+                {
+                    type = Type.GetType(args[4]);
+                }
                 descriptor = (ISecureStreamConnectionDescriptor)Activator.CreateInstance(type);
             }
 
@@ -86,7 +94,7 @@ namespace CRA.Worker
             Console.WriteLine("   Azure connection string: " + storageConnectionString);
 
             if (descriptor != null)
-                Console.WriteLine("   Secure network connections enabled using assembly=" + args[4] + "; type=" + args[5]);
+                Console.WriteLine("   Secure network connections enabled using assembly=" + args[3] + "; type=" + args[4]);
             else
                 if (args.Length > 3)
                     Console.WriteLine("   WARNING: Secure network could not be configured");
