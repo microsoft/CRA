@@ -31,7 +31,11 @@ namespace CRA.Worker
             }
 
 
-            string storageConnectionString = ConfigurationManager.AppSettings.Get("AZURE_STORAGE_CONN_STRING");
+            string storageConnectionString = null;
+
+#if !DOTNETCORE
+            ConfigurationManager.AppSettings.Get("AZURE_STORAGE_CONN_STRING");
+#endif
 
             if (storageConnectionString == null)
             {
@@ -44,7 +48,10 @@ namespace CRA.Worker
             }
 
             int connectionsPoolPerWorker;
-            string connectionsPoolPerWorkerString = ConfigurationManager.AppSettings.Get("CRA_WORKER_MAX_CONN_POOL");
+            string connectionsPoolPerWorkerString = "0";
+#if !DOTNETCORE
+            ConfigurationManager.AppSettings.Get("CRA_WORKER_MAX_CONN_POOL");
+#endif
             if (connectionsPoolPerWorkerString != null)
             {
                 try
