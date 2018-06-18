@@ -25,4 +25,8 @@
     <Reference Include="System.Configuration" />
   </ItemGroup>
 
+  <Target Name="PostBuild" AfterTargets="PostBuildEvent">
+    <Exec Command="IF EXIST $(ProjectDir)..\privatesettings.config copy $(ProjectDir)..\privatesettings.config $(ProjectDir)$(OutDir)" />
+  </Target>
+
 </Project>

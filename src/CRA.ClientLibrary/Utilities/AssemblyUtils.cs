@@ -163,6 +163,8 @@ namespace CRA.ClientLibrary
                 "System.Activities.DurableInstancing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35",
                 "System.Xaml.Hosting, Version=4.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35",
                 "CRA.ClientLibrary, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null",
+                "Microsoft.VisualStudio.Debugger.Runtime, Version=15.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a",
+                "Microsoft.VisualStudio.Debugger.Runtime.Impl",
             };
             return excludedAssemblies;
         }
@@ -319,6 +321,7 @@ namespace CRA.ClientLibrary
                     AssemblyResolver.Register(assemblyName, assemblyFileBytes);
                 }
 
+                Assembly.Load(assemblyName);
             }
         }
 
