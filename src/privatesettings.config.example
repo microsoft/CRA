@@ -1,4 +1,4 @@
 ﻿<appSettings>
-    <add key="CRA_STORAGE_CONN_STRING" value="your Azure storage connection key comes here" />
+    <add key="AZURE_STORAGE_CONN_STRING" value="your Azure storage connection key comes here" />
     <add key="CRA_WORKER_MAX_CONN_POOL" value="your maximum number of connections per worker comes here" />
 </appSettings>

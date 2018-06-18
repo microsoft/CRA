@@ -216,9 +216,11 @@ namespace CRA.ClientLibrary
             CloudStorageAccount storageAccount = CloudStorageAccount.Parse(storageConnectionString);
             CloudBlobClient blobClient = storageAccount.CreateCloudBlobClient();
 
+            string blobName = VertexName + "-" + InstanceName;
+
             CloudBlobContainer container = blobClient.GetContainerReference("cra");
             container.CreateIfNotExistsAsync().Wait();
-            var blockBlob = container.GetBlockBlobReference(VertexDefinition + "/" + VertexName);
+            var blockBlob = container.GetBlockBlobReference(VertexDefinition + "/" + blobName);
             Stream blobStream = blockBlob.OpenReadAsync().GetAwaiter().GetResult();
             byte[] parameterBytes = blobStream.ReadByteArray();
             string parameterString = Encoding.UTF8.GetString(parameterBytes);
