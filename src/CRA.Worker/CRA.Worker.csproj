@@ -15,12 +15,6 @@
     <ProjectReference Include="..\CRA.ClientLibrary\CRA.ClientLibrary.csproj" />
   </ItemGroup>
 
-  <ItemGroup Condition="'$(TargetFramework)' == 'netcoreapp2.0'">
-    <PackageReference Include="System.Configuration.ConfigurationManager">
-      <Version>4.5.0</Version>
-    </PackageReference>
-  </ItemGroup>
-
   <ItemGroup Condition="'$(TargetFramework)' == 'net46'">
     <Reference Include="System.Configuration" />
   </ItemGroup>

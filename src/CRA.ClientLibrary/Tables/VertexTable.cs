@@ -207,7 +207,10 @@ namespace CRA.ClientLibrary
 
         internal object GetVertexParam()
         {
-            string storageConnectionString = ConfigurationManager.AppSettings.Get("AZURE_STORAGE_CONN_STRING");
+            string storageConnectionString = null;
+#if !DOTNETCORE
+            storageConnectionString = ConfigurationManager.AppSettings.Get("AZURE_STORAGE_CONN_STRING");
+#endif
             if (storageConnectionString == null)
                 storageConnectionString = Environment.GetEnvironmentVariable("AZURE_STORAGE_CONN_STRING");
             if (storageConnectionString == null)

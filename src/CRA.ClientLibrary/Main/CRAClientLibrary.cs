@@ -69,7 +69,10 @@ namespace CRA.ClientLibrary
 
             if (storageConnectionString == "" || storageConnectionString == null)
             {
+                _storageConnectionString = null;
+#if !DOTNETCORE
                 _storageConnectionString = ConfigurationManager.AppSettings.Get("AZURE_STORAGE_CONN_STRING");
+#endif
                 if (_storageConnectionString == null)
                 {
                     _storageConnectionString = Environment.GetEnvironmentVariable("AZURE_STORAGE_CONN_STRING");
