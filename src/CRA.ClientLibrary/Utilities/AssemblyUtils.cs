@@ -319,9 +319,8 @@ namespace CRA.ClientLibrary
                 else
                 {
                     AssemblyResolver.Register(assemblyName, assemblyFileBytes);
+                    Assembly.Load(assemblyName);
                 }
-
-                Assembly.Load(assemblyName);
             }
         }
 
