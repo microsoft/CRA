@@ -840,6 +840,18 @@ namespace CRA.ClientLibrary
             }
         }
 
+        public void SideloadVertex(IVertex vertex, string vertexName)
+        {
+            var rows = VertexTable.GetAllRowsForInstance(_workerInstanceTable, _workerinstanceName);
+            var matchingRows = rows.Where((row) => vertexName == row.VertexName);
+            if (matchingRows.Count() != 1)
+            {
+                throw new Exception("Incorrect number of matching rows");
+            }
+            var vertexRow = matchingRows.ElementAt(0);
+            _craClient.SideloadVertexAsync(vertexRow.VertexName, vertexRow.VertexDefinition, vertexRow.VertexParameter, _workerinstanceName, _localVertexTable, vertex).Wait();
+        }
+
         private void RestoreVerticesAndConnections()
         {
             var rows = VertexTable.GetAllRowsForInstance(_workerInstanceTable, _workerinstanceName);
