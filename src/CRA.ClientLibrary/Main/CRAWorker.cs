@@ -846,10 +846,10 @@ namespace CRA.ClientLibrary
             var matchingRows = rows.Where((row) => vertexName == row.VertexName);
             if (matchingRows.Count() != 1)
             {
-                throw new Exception("Incorrect number of matching rows");
+                throw new Exception(string.Format("Incorrect number of rows with VertexName {0} (expected 1, got {1})", vertexName, matchingRows.Count()));
             }
             var vertexRow = matchingRows.ElementAt(0);
-            _craClient.SideloadVertexAsync(vertexRow.VertexName, vertexRow.VertexDefinition, vertexRow.VertexParameter, _workerinstanceName, _localVertexTable, vertex).Wait();
+            _craClient.SideloadVertexAsync(vertexRow.VertexName, vertexRow.VertexDefinition, _workerinstanceName, _localVertexTable, vertex).Wait();
         }
 
         private void RestoreVerticesAndConnections()

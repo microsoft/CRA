@@ -443,15 +443,15 @@ namespace CRA.ClientLibrary
             CloudBlobContainer container = _blobClient.GetContainerReference("cra");
             container.CreateIfNotExistsAsync().Wait();
 
-            var vertex = LoadVertexAsyncSubmethod1(vertexName, vertexDefinition, vertexParameter, instanceName, table, container);
+            var vertex = CreateVertex(vertexDefinition, container);
             if (vertex != null)
             {
-                await LoadVertexAsyncSubmethod2(vertexName, vertexDefinition, vertexParameter, instanceName, table, container, vertex);
+                await InitializeVertexAsync(vertexName, vertexDefinition, instanceName, table, container, vertex);
             }
             return vertex;
         }
 
-        public IVertex LoadVertexAsyncSubmethod1(string vertexName, string vertexDefinition, string vertexParameter, string instanceName, ConcurrentDictionary<string, IVertex> table, CloudBlobContainer container)
+        public IVertex CreateVertex(string vertexDefinition, CloudBlobContainer container)
         {
             var blockBlob = container.GetBlockBlobReference(vertexDefinition + "/binaries");
             Stream blobStream = blockBlob.OpenReadAsync().GetAwaiter().GetResult();
@@ -463,6 +463,7 @@ namespace CRA.ClientLibrary
             catch (FileLoadException e)
             {
                 Debug.WriteLine("Ignoring exception from assembly loading: " + e.Message);
+                Debug.WriteLine("If vertex creation fails, the caller will need to sideload the vertex.");
             }
             blobStream.Close();
 
@@ -476,12 +477,13 @@ namespace CRA.ClientLibrary
             }
             catch (Exception e)
             {
-                Debug.WriteLine("Ignoring exception when creating vertex: " + e.Message);
+                Debug.WriteLine("Vertex creation failed: " + e.Message);
+                Debug.WriteLine("The caller will need to sideload the vertex.");
             }
             return vertex;
         }
 
-        public async Task LoadVertexAsyncSubmethod2(string vertexName, string vertexDefinition, string vertexParameter, string instanceName, ConcurrentDictionary<string, IVertex> table, CloudBlobContainer container, IVertex vertex)
+        public async Task InitializeVertexAsync(string vertexName, string vertexDefinition, string instanceName, ConcurrentDictionary<string, IVertex> table, CloudBlobContainer container, IVertex vertex)
         {
             // INITIALIZE
             if ((VertexBase)vertex != null)
@@ -550,10 +552,10 @@ namespace CRA.ClientLibrary
             ActivateVertex(vertexName, instanceName);
         }
 
-        public async Task SideloadVertexAsync(string vertexName, string vertexDefinition, string vertexParameter, string instanceName, ConcurrentDictionary<string, IVertex> table, IVertex vertex)
+        public async Task SideloadVertexAsync(string vertexName, string vertexDefinition, string instanceName, ConcurrentDictionary<string, IVertex> table, IVertex vertex)
         {
             CloudBlobContainer container = _blobClient.GetContainerReference("cra");
-            await LoadVertexAsyncSubmethod2(vertexName, vertexDefinition, vertexParameter, instanceName, table, container, vertex);
+            await InitializeVertexAsync(vertexName, vertexDefinition, instanceName, table, container, vertex);
         }
 
         /// <summary>
