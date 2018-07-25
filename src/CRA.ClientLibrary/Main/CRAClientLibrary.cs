@@ -41,6 +41,8 @@ namespace CRA.ClientLibrary
 
         public ISecureStreamConnectionDescriptor SecureStreamConnectionDescriptor = new DummySecureStreamConnectionDescriptor();
 
+        private Dictionary<string, IVertex> verticesToSideload = new Dictionary<string, IVertex>();
+
 
         /// <summary>
         /// Create an instance of the client library for Common Runtime for Applications (CRA)
@@ -444,10 +446,19 @@ namespace CRA.ClientLibrary
             container.CreateIfNotExistsAsync().Wait();
 
             var vertex = CreateVertex(vertexDefinition, container);
-            if (vertex != null)
+            if (vertex == null)
             {
-                await InitializeVertexAsync(vertexName, vertexDefinition, instanceName, table, container, vertex);
+                if (verticesToSideload.ContainsKey(vertexName))
+                {
+                    Debug.WriteLine("Sideloading vertex " + vertexName);
+                    vertex = verticesToSideload[vertexName];
+                }
+                else
+                {
+                    throw new InvalidOperationException("Failed to create vertex " + vertexName + ", and no sideloaded vertex with that name was provided.");
+                }
             }
+            await InitializeVertexAsync(vertexName, vertexDefinition, instanceName, table, container, vertex);
             return vertex;
         }
 
@@ -552,10 +563,9 @@ namespace CRA.ClientLibrary
             ActivateVertex(vertexName, instanceName);
         }
 
-        public async Task SideloadVertexAsync(string vertexName, string vertexDefinition, string instanceName, ConcurrentDictionary<string, IVertex> table, IVertex vertex)
+        public void SideloadVertex(IVertex vertex, string vertexName)
         {
-            CloudBlobContainer container = _blobClient.GetContainerReference("cra");
-            await InitializeVertexAsync(vertexName, vertexDefinition, instanceName, table, container, vertex);
+            verticesToSideload[vertexName] = vertex;
         }
 
         /// <summary>

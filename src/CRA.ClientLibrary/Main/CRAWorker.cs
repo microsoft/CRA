@@ -842,14 +842,7 @@ namespace CRA.ClientLibrary
 
         public void SideloadVertex(IVertex vertex, string vertexName)
         {
-            var rows = VertexTable.GetAllRowsForInstance(_workerInstanceTable, _workerinstanceName);
-            var matchingRows = rows.Where((row) => vertexName == row.VertexName);
-            if (matchingRows.Count() != 1)
-            {
-                throw new Exception(string.Format("Incorrect number of rows with VertexName {0} (expected 1, got {1})", vertexName, matchingRows.Count()));
-            }
-            var vertexRow = matchingRows.ElementAt(0);
-            _craClient.SideloadVertexAsync(vertexRow.VertexName, vertexRow.VertexDefinition, _workerinstanceName, _localVertexTable, vertex).Wait();
+            _craClient.SideloadVertex(vertex, vertexName);
         }
 
         private void RestoreVerticesAndConnections()
