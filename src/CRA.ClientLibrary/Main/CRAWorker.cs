@@ -97,6 +97,7 @@ namespace CRA.ClientLibrary
             // Then start server. This ensures that others can establish 
             // connections to local vertices at this point.
             Thread serverThread = new Thread(StartServer);
+            serverThread.IsBackground = true;
             serverThread.Start();
 
             // Wait for server to complete execution
