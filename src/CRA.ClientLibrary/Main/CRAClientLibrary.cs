@@ -815,5 +815,17 @@ namespace CRA.ClientLibrary
         {
             _connectionTableManager.DeleteConnection(fromVertexName, fromVertexOutput, toVertexName, toVertexInput);
         }
+
+        /// <summary>
+        /// Terminal local worker process.
+        /// </summary>
+        /// <param name="killMessage">Message to display on kill</param>
+        public void KillLocalWorker(string killMessage)
+        {
+            if (_localWorker != null)
+            {
+                _localWorker.Kill(killMessage);
+            }
+        }
     }
 }
