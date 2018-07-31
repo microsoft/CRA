@@ -444,7 +444,6 @@ namespace CRA.ClientLibrary
             var blockBlob = container.GetBlockBlobReference(vertexDefinition + "/binaries");
             Stream blobStream = blockBlob.OpenReadAsync().GetAwaiter().GetResult();
             AssemblyUtils.LoadAssembliesFromStream(blobStream);
-            AssemblyUtils.DumpAssemblies();
             blobStream.Close();
 
             var row = VertexTable.GetRowForVertexDefinition(_vertexTable, vertexDefinition);

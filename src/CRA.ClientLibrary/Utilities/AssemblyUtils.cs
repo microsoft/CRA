@@ -691,20 +691,21 @@ namespace CRA.ClientLibrary
                 var managedAssembly = stream.ReadByte() == 0 ? false : true;
 
                 byte[] assemblyFileBytes = stream.ReadByteArray();
-                
-                if (!managedAssembly)
-                {
-                    var assemblyPath = assemblyName + ".dll";
 
-                    try
-                    {
-                        File.WriteAllBytes(assemblyPath, assemblyFileBytes);
-                    }
-                    catch (Exception) {
-                        // we don't care if it can't be written. assume that means it is already there
-                    }
+
+                AssemblyName assemblyFullName = new AssemblyName(assemblyName);
+                var assemblyPath = Path.Combine(AssemblyDirectory, assemblyFullName.Name + ".dll");
+
+                try
+                {
+                    File.WriteAllBytes(assemblyPath, assemblyFileBytes);
                 }
-                else
+                catch (Exception e)
+                {
+                    Console.WriteLine("INFO: Unable to update " + assemblyFullName.Name + ".dll\nException: " + e.ToString());
+                }
+
+                if (managedAssembly)
                 {
                     AssemblyResolver.Register(assemblyName, assemblyFileBytes);
                     Assembly.Load(assemblyName);
@@ -720,11 +721,13 @@ namespace CRA.ClientLibrary
                 var assemblyPath = Path.Combine(AssemblyDirectory, assemblyFullName.Name + ".dll");
                 try
                 {
+                    Console.WriteLine("INFO: Updated " + assemblyFullName.Name + ".dll");
+
                     File.WriteAllBytes(assemblyPath, AssemblyResolver.GetAssemblyBytes(assemblyKey));
                 }
-                catch (Exception)
+                catch (Exception e)
                 {
-                    Console.WriteLine("INFO: Unable to update " + assemblyFullName.Name + ".dll");
+                    Console.WriteLine("INFO: Unable to update " + assemblyFullName.Name + ".dll -- " + e.ToString());
                 }
             }
         }
