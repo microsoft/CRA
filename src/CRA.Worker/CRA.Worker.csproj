@@ -19,8 +19,21 @@
     <Reference Include="System.Configuration" />
   </ItemGroup>
 
-  <Target Name="PostBuild" AfterTargets="PostBuildEvent">
-    <Exec Command="IF EXIST $(ProjectDir)..\privatesettings.config copy $(ProjectDir)..\privatesettings.config $(ProjectDir)$(OutDir)" />
+  <PropertyGroup Condition="'$(MSBuildRuntimeType)' == 'Core'">
+    <IsOSX Condition="'$([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform($([System.Runtime.InteropServices.OSPlatform]::OSX)))' == 'true'">true</IsOSX>
+    <IsLinux Condition="'$([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform($([System.Runtime.InteropServices.OSPlatform]::Linux)))' == 'true'">true</IsLinux>
+  </PropertyGroup>
+
+  <Target Name="PostBuild" Condition="'$(OS)' == 'Windows_NT'" AfterTargets="PostBuildEvent">
+	<Exec Command="IF EXIST $(ProjectDir)..\privatesettings.config copy $(ProjectDir)..\privatesettings.config $(ProjectDir)$(OutDir)" />
+  </Target>
+
+  <Target Name="PostBuild" Condition="$(IsLinux) == true" AfterTargets="PostBuildEvent">
+	<Exec Command="if [ -f $(ProjectDir)../privatesettings.config ]; then cp $(ProjectDir)../privatesettings.config $(ProjectDir)$(OutDir); fi" />
+  </Target>
+
+  <Target Name="PostBuild" Condition="$(IsOSX) == true" AfterTargets="PostBuildEvent">
+	<Exec Command="if [ -f $(ProjectDir)../privatesettings.config ]; then cp $(ProjectDir)../privatesettings.config $(ProjectDir)$(OutDir); fi" />
   </Target>
 
 </Project>
