@@ -920,5 +920,16 @@ namespace CRA.ClientLibrary
         {
             _craClient.Dispose();
         }
+
+
+        /// <summary>
+        /// Kill the worker process (this process)
+        /// </summary>
+        /// <param name="killMessage">Kill message</param>
+        public void Kill(string killMessage)
+        {
+            Console.WriteLine("KILLING WORKER: " + killMessage);
+            Process.GetCurrentProcess().Kill();
+        }
     }
 }
