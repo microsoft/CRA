@@ -5,6 +5,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Configuration;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Linq.Expressions;
@@ -39,6 +40,9 @@ namespace CRA.ClientLibrary
         Type aquaType = typeof(Aqua.TypeSystem.ConstructorInfo);
 
         public ISecureStreamConnectionDescriptor SecureStreamConnectionDescriptor = new DummySecureStreamConnectionDescriptor();
+
+        private Dictionary<string, IVertex> _verticesToSideload = new Dictionary<string, IVertex>();
+        private bool _dynamicLoadingEnabled = true;
 
 
         /// <summary>
@@ -441,16 +445,64 @@ namespace CRA.ClientLibrary
 
             CloudBlobContainer container = _blobClient.GetContainerReference("cra");
             container.CreateIfNotExistsAsync().Wait();
-            var blockBlob = container.GetBlockBlobReference(vertexDefinition + "/binaries");
-            Stream blobStream = blockBlob.OpenReadAsync().GetAwaiter().GetResult();
-            AssemblyUtils.LoadAssembliesFromStream(blobStream);
-            blobStream.Close();
+
+            var vertex = CreateVertex(vertexDefinition, container);
+            if (vertex == null)
+            {
+                if (_verticesToSideload.ContainsKey(vertexName))
+                {
+                    Debug.WriteLine("Sideloading vertex " + vertexName);
+                    vertex = _verticesToSideload[vertexName];
+                }
+                else
+                {
+                    throw new InvalidOperationException("Failed to create vertex " + vertexName + ", and no sideloaded vertex with that name was provided.");
+                }
+            }
+            await InitializeVertexAsync(vertexName, vertexDefinition, instanceName, table, container, vertex);
+            return vertex;
+        }
+
+        public IVertex CreateVertex(string vertexDefinition, CloudBlobContainer container)
+        {
+            if (_dynamicLoadingEnabled)
+            {
+                var blockBlob = container.GetBlockBlobReference(vertexDefinition + "/binaries");
+                Stream blobStream = blockBlob.OpenReadAsync().GetAwaiter().GetResult();
+                try
+                {
+                    AssemblyUtils.LoadAssembliesFromStream(blobStream);
+                }
+                catch (FileLoadException e)
+                {
+                    Debug.WriteLine("Ignoring exception from assembly loading: " + e.Message);
+                    Debug.WriteLine("If vertex creation fails, the caller will need to sideload the vertex.");
+                }
+                blobStream.Close();
+            }
+            else
+            {
+                Debug.WriteLine("Dynamic assembly loading is disabled. The caller will need to sideload the vertex.");
+            }
 
             var row = VertexTable.GetRowForVertexDefinition(_vertexTable, vertexDefinition);
 
             // CREATE THE VERTEX
-            var vertex = row.GetVertexCreateAction()();
+            IVertex vertex = null;
+            try
+            {
+                vertex = row.GetVertexCreateAction()();
+            }
+            catch (Exception e)
+            {
+                Debug.WriteLine("Vertex creation failed: " + e.Message);
+                Debug.WriteLine("The caller will need to sideload the vertex.");
+            }
+            return vertex;
+        }
 
+        public async Task InitializeVertexAsync(string vertexName, string vertexDefinition, string instanceName, ConcurrentDictionary<string, IVertex> table, CloudBlobContainer container, IVertex vertex)
+        {
             // INITIALIZE
             if ((VertexBase)vertex != null)
             {
@@ -516,8 +568,16 @@ namespace CRA.ClientLibrary
 
             // Activate vertex
             ActivateVertex(vertexName, instanceName);
+        }
 
-            return vertex;
+        public void SideloadVertex(IVertex vertex, string vertexName)
+        {
+            _verticesToSideload[vertexName] = vertex;
+        }
+
+        public void DisableDynamicLoading()
+        {
+            _dynamicLoadingEnabled = false;
         }
 
         /// <summary>
