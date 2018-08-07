@@ -41,7 +41,8 @@ namespace CRA.ClientLibrary
 
         public ISecureStreamConnectionDescriptor SecureStreamConnectionDescriptor = new DummySecureStreamConnectionDescriptor();
 
-        private Dictionary<string, IVertex> verticesToSideload = new Dictionary<string, IVertex>();
+        private Dictionary<string, IVertex> _verticesToSideload = new Dictionary<string, IVertex>();
+        private bool _dynamicLoadingEnabled = true;
 
 
         /// <summary>
@@ -448,10 +449,10 @@ namespace CRA.ClientLibrary
             var vertex = CreateVertex(vertexDefinition, container);
             if (vertex == null)
             {
-                if (verticesToSideload.ContainsKey(vertexName))
+                if (_verticesToSideload.ContainsKey(vertexName))
                 {
                     Debug.WriteLine("Sideloading vertex " + vertexName);
-                    vertex = verticesToSideload[vertexName];
+                    vertex = _verticesToSideload[vertexName];
                 }
                 else
                 {
@@ -464,18 +465,25 @@ namespace CRA.ClientLibrary
 
         public IVertex CreateVertex(string vertexDefinition, CloudBlobContainer container)
         {
-            var blockBlob = container.GetBlockBlobReference(vertexDefinition + "/binaries");
-            Stream blobStream = blockBlob.OpenReadAsync().GetAwaiter().GetResult();
-            try
+            if (_dynamicLoadingEnabled)
             {
-                AssemblyUtils.LoadAssembliesFromStream(blobStream);
+                var blockBlob = container.GetBlockBlobReference(vertexDefinition + "/binaries");
+                Stream blobStream = blockBlob.OpenReadAsync().GetAwaiter().GetResult();
+                try
+                {
+                    AssemblyUtils.LoadAssembliesFromStream(blobStream);
+                }
+                catch (FileLoadException e)
+                {
+                    Debug.WriteLine("Ignoring exception from assembly loading: " + e.Message);
+                    Debug.WriteLine("If vertex creation fails, the caller will need to sideload the vertex.");
+                }
+                blobStream.Close();
             }
-            catch (FileLoadException e)
+            else
             {
-                Debug.WriteLine("Ignoring exception from assembly loading: " + e.Message);
-                Debug.WriteLine("If vertex creation fails, the caller will need to sideload the vertex.");
+                Debug.WriteLine("Dynamic assembly loading is disabled. The caller will need to sideload the vertex.");
             }
-            blobStream.Close();
 
             var row = VertexTable.GetRowForVertexDefinition(_vertexTable, vertexDefinition);
 
@@ -564,7 +572,12 @@ namespace CRA.ClientLibrary
 
         public void SideloadVertex(IVertex vertex, string vertexName)
         {
-            verticesToSideload[vertexName] = vertex;
+            _verticesToSideload[vertexName] = vertex;
+        }
+
+        public void DisableDynamicLoading()
+        {
+            _dynamicLoadingEnabled = false;
         }
 
         /// <summary>

@@ -845,6 +845,11 @@ namespace CRA.ClientLibrary
             _craClient.SideloadVertex(vertex, vertexName);
         }
 
+        public void DisableDynamicLoading()
+        {
+            _craClient.DisableDynamicLoading();
+        }
+
         private void RestoreVerticesAndConnections()
         {
             var rows = VertexTable.GetAllRowsForInstance(_workerInstanceTable, _workerinstanceName);
