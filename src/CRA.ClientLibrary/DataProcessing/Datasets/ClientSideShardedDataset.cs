@@ -107,5 +107,11 @@ namespace CRA.ClientLibrary.DataProcessing
                 _craClient.Dispose();
             }
         }
+
+        public override void Consume<TDatasetConsumer>(Expression<Func<TDatasetConsumer>> consumer)
+        {
+            if (!_isDeployed) Deploy();
+            throw new NotImplementedException();
+        }
     }
 }

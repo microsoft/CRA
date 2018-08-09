@@ -312,5 +312,9 @@ namespace CRA.ClientLibrary.DataProcessing
                 inputConnections[key].WriteInt32((int)CRATaskMessageType.RELEASE);
         }
 
+        public override void Consume<TDatasetConsumer>(Expression<Func<TDatasetConsumer>> consumer)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

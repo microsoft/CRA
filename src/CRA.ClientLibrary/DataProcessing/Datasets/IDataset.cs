@@ -14,6 +14,8 @@ namespace CRA.ClientLibrary.DataProcessing
 
         void Subscribe(object observer);
 
+        void Consume(object consumer);
+
         void ToStream(Stream stream);
 
         IDataset<TKey, TPayload> ToObject();

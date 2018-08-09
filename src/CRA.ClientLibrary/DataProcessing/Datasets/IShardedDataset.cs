@@ -31,5 +31,7 @@ namespace CRA.ClientLibrary.DataProcessing
         void Subscribe<TDatasetObserver>(Expression<Func<TDatasetObserver>> observer);
 
         void MultiSubscribe<TDatasetObserver>(Expression<Func<TDatasetObserver>> observer, int runsCount);
+
+        void Consume<TDatasetConsumer>(Expression<Func<TDatasetConsumer>> consumer);
     }
 }
