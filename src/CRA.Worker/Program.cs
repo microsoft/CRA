@@ -48,9 +48,9 @@ namespace CRA.Worker
             }
 
             int connectionsPoolPerWorker;
-            string connectionsPoolPerWorkerString = "0";
+            string connectionsPoolPerWorkerString = null;
 #if !DOTNETCORE
-            ConfigurationManager.AppSettings.Get("CRA_WORKER_MAX_CONN_POOL");
+            connectionsPoolPerWorkerString = ConfigurationManager.AppSettings.Get("CRA_WORKER_MAX_CONN_POOL");
 #endif
             if (connectionsPoolPerWorkerString != null)
             {
