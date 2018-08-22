@@ -21,13 +21,16 @@ namespace CRA.ClientLibrary
         /// <param name="creator">Lambda that describes how to instantiate the vertex, taking in an object as parameter</param>
         public CRAErrorCode DefineVertex(string vertexDefinition, Expression<Func<IShardedVertex>> creator)
         {
-            CloudBlobContainer container = _blobClient.GetContainerReference("cra");
-            container.CreateIfNotExistsAsync().Wait();
-            var blockBlob = container.GetBlockBlobReference(vertexDefinition + "/binaries");
-            CloudBlobStream blobStream = blockBlob.OpenWriteAsync().GetAwaiter().GetResult();
-            AssemblyUtils.WriteAssembliesToStream(blobStream);
-            blobStream.Close();
-
+            if (_artifactUploading)
+            {
+                CloudBlobContainer container = _blobClient.GetContainerReference("cra");
+                container.CreateIfNotExistsAsync().Wait();
+                var blockBlob = container.GetBlockBlobReference(vertexDefinition + "/binaries");
+                CloudBlobStream blobStream = blockBlob.OpenWriteAsync().GetAwaiter().GetResult();
+                AssemblyUtils.WriteAssembliesToStream(blobStream);
+                blobStream.Close();
+            }
+            
             // Add metadata
             var newRow = new VertexTable("", vertexDefinition, vertexDefinition, "", 0, creator, null, true);
             TableOperation insertOperation = TableOperation.InsertOrReplace(newRow);
