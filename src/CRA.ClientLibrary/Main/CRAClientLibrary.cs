@@ -43,7 +43,7 @@ namespace CRA.ClientLibrary
 
         private Dictionary<string, IVertex> _verticesToSideload = new Dictionary<string, IVertex>();
         private bool _dynamicLoadingEnabled = true;
-
+        private bool _artifactUploading = true;
 
         /// <summary>
         /// Create an instance of the client library for Common Runtime for Applications (CRA)
@@ -120,13 +120,16 @@ namespace CRA.ClientLibrary
         /// <param name="creator">Lambda that describes how to instantiate the vertex, taking in an object as parameter</param>
         public CRAErrorCode DefineVertex(string vertexDefinition, Expression<Func<IVertex>> creator)
         {
-            CloudBlobContainer container = _blobClient.GetContainerReference("cra");
-            container.CreateIfNotExistsAsync().Wait();
-            var blockBlob = container.GetBlockBlobReference(vertexDefinition + "/binaries");
-            CloudBlobStream blobStream = blockBlob.OpenWriteAsync().GetAwaiter().GetResult();
-            AssemblyUtils.WriteAssembliesToStream(blobStream);
-            blobStream.Close();
-
+            if (_artifactUploading)
+            {
+                CloudBlobContainer container = _blobClient.GetContainerReference("cra");
+                container.CreateIfNotExistsAsync().Wait();
+                var blockBlob = container.GetBlockBlobReference(vertexDefinition + "/binaries");
+                CloudBlobStream blobStream = blockBlob.OpenWriteAsync().GetAwaiter().GetResult();
+                AssemblyUtils.WriteAssembliesToStream(blobStream);
+                blobStream.Close();
+            }
+            
             // Add metadata
             var newRow = new VertexTable("", vertexDefinition, vertexDefinition, "", 0, creator, null, true);
             TableOperation insertOperation = TableOperation.InsertOrReplace(newRow);
@@ -573,6 +576,11 @@ namespace CRA.ClientLibrary
         public void SideloadVertex(IVertex vertex, string vertexName)
         {
             _verticesToSideload[vertexName] = vertex;
+        }
+
+        public void DisableArtifactUploading()
+        {
+            _artifactUploading = false;
         }
 
         public void DisableDynamicLoading()
