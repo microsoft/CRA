@@ -46,7 +46,7 @@ namespace ShardedConnectionPair
 
                 for (int j = 0; j < 1; j++)
                 {
-                    Thread.Sleep(1000);
+                    await Task.Delay(1000);
                     token.ThrowIfCancellationRequested();
                 }
 
