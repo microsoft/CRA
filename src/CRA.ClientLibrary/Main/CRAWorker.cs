@@ -883,7 +883,7 @@ namespace CRA.ClientLibrary
             }
         }
 
-        private void RetryRestoreConnection(string fromVertexName, string fromVertexOutput, string toVertexName, string toVertexInput, bool reverse)
+        private async Task RetryRestoreConnection(string fromVertexName, string fromVertexOutput, string toVertexName, string toVertexInput, bool reverse)
         {
             var conn = reverse ? inConnections : outConnections;
 
@@ -902,7 +902,7 @@ namespace CRA.ClientLibrary
                 {
                     if (result == CRAErrorCode.ServerRecovering)
                         killRemote = true;
-                    Thread.Sleep(5000);
+                    await Task.Delay(5000);
                 }
                 else
                     break;
