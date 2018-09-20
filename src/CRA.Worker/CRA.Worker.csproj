@@ -5,6 +5,7 @@
     <Platforms>AnyCPU</Platforms>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <RootNamespace>CRA.Worker</RootNamespace>
+    <HighEntropyVA>true</HighEntropyVA>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(TargetFramework)' != 'net46'">
