@@ -1,0 +1,35 @@
+<?xml version="1.0"?>
+<package >
+  <metadata>
+    <id>CRA</id>
+    <version>$version$</version>
+    <title>Common Runtime for Applications (CRA)</title>
+    <authors>CRA</authors>
+    <owners>Microsoft</owners>
+    <projectUrl>https://github.com/Microsoft/CRA</projectUrl>
+    <licenseUrl>https://raw.githubusercontent.com/Microsoft/CRA/master/LICENSE</licenseUrl>
+    <requireLicenseAcceptance>true</requireLicenseAcceptance>
+    <description>
+      Common Runtime for Applications (CRA) is a software layer (library) that makes it 
+      easy to create and deploy distributed dataflow-style applications on top of resource 
+      managers such as Kubernetes, YARN, and stand-alone cluster execution. Currently, we 
+      support stand-alone execution (just deploy an .exe on every machine in your cluster)
+      as well as execution in a Kubernetes/Docker environment.
+    </description>
+    <releaseNotes>See project website</releaseNotes>
+    <copyright>Copyright 2018</copyright>
+    <tags>common runtime applications</tags>
+    <dependencies>
+        <dependency id="Newtonsoft.Json" version="11.0.2" />
+        <dependency id="Remote.Linq" version="5.6.1" />
+        <dependency id="WindowsAzure.Storage" version="9.2.0" />
+    </dependencies>
+  </metadata>
+  <files>
+    <file src="..\CRA.ClientLibrary\bin\Release\net46\CRA.ClientLibrary.dll" target="lib\net46" />
+    <file src="bin\Release\net46\CRA.Worker.exe" target="lib\net46" />
+    <file src="..\CRA.ClientLibrary\bin\Release\netstandard2.0\CRA.ClientLibrary.dll" target="lib\netstandard2.0" />
+    <file src="bin\Release\netcoreapp2.0\CRA.Worker.dll" target="lib\netcoreapp2.0" />   
+    <file src="bin\Release\netcoreapp2.0\CRA.ClientLibrary.dll" target="lib\netcoreapp2.0" />   
+  </files>
+</package>
