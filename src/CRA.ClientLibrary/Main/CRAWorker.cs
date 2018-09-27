@@ -65,6 +65,17 @@ namespace CRA.ClientLibrary
         /// <param name="descriptor">Secure stream connection callbacks</param>
         public CRAWorker(string workerInstanceName, string address, int port, string storageConnectionString, ISecureStreamConnectionDescriptor descriptor = null, int streamsPoolSize = 0)
         {
+            Console.WriteLine("Starting CRA Worker instance [http://github.com/Microsoft/CRA]");
+            Console.WriteLine("   Instance Name: " + workerInstanceName);
+            Console.WriteLine("   IP address: " + address);
+            Console.WriteLine("   Port: " + port);
+            Console.WriteLine("   Azure connection string: " + storageConnectionString);
+
+            if (descriptor != null)
+                Console.WriteLine("   Secure network connections: Enabled using assembly " + descriptor.GetType().FullName);
+            else
+                Console.WriteLine("   Secure network connections: Disabled");
+
             _craClient = new CRAClientLibrary(storageConnectionString, this);
 
             _workerinstanceName = workerInstanceName;
@@ -842,11 +853,13 @@ namespace CRA.ClientLibrary
 
         public void SideloadVertex(IVertex vertex, string vertexName)
         {
+            Console.WriteLine("Enabling sideload for vertex: " + vertexName + " (" + vertex.GetType().FullName + ")");
             _craClient.SideloadVertex(vertex, vertexName);
         }
 
         public void DisableDynamicLoading()
         {
+            Console.WriteLine("Disabling dynamic assembly loading");
             _craClient.DisableDynamicLoading();
         }
 

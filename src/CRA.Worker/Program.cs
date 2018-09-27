@@ -87,18 +87,6 @@ namespace CRA.Worker
                 descriptor = (ISecureStreamConnectionDescriptor)Activator.CreateInstance(type);
             }
 
-            Console.WriteLine("Starting CRA Worker [http://github.com/Microsoft/CRA]");
-            Console.WriteLine("   Worker Instance Name: " + args[0]);
-            Console.WriteLine("   IP address: " + ipAddress);
-            Console.WriteLine("   Port: " + Convert.ToInt32(args[1]));
-            Console.WriteLine("   Azure connection string: " + storageConnectionString);
-
-            if (descriptor != null)
-                Console.WriteLine("   Secure network connections enabled using assembly=" + args[3] + "; type=" + args[4]);
-            else
-                if (args.Length > 3)
-                    Console.WriteLine("   WARNING: Secure network could not be configured");
-
             var worker = new CRAWorker
                 (args[0], ipAddress, Convert.ToInt32(args[1]),
                 storageConnectionString, descriptor, connectionsPoolPerWorker);
