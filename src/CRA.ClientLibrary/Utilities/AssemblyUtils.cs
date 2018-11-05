@@ -509,6 +509,7 @@ namespace CRA.ClientLibrary
                 "System.Net.Http, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a",
                 "Microsoft.WindowsAzure.Storage, Version=8.1.1.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35",
                 "Microsoft.WindowsAzure.Storage, Version=9.2.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35",
+                "Microsoft.WindowsAzure.Storage, Version=9.3.2.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35",
                 "Microsoft.Data.Services.Client, Version=5.8.1.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35",
                 "Microsoft.Data.Edm, Version=5.8.1.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35",
                 "Microsoft.Data.OData, Version=5.8.1.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35",
@@ -526,6 +527,8 @@ namespace CRA.ClientLibrary
                 "Aqua.TypeSystem.Emit.Types, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
                 "Remote.Linq, Version=5.4.0.0, Culture=neutral, PublicKeyToken=null",
                 "Aqua, Version=4.0.0.0, Culture=neutral, PublicKeyToken=null",
+                "Aqua, Version=4.0.0.0, Culture=neutral, PublicKeyToken=82d6c51b67e8b655",
+                "Remote.Linq, Version=5.0.0.0, Culture=neutral, PublicKeyToken=82d6c51b67e8b655",
 
                 "System.ServiceModel, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089",
                 "System.IdentityModel, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089",
@@ -543,6 +546,7 @@ namespace CRA.ClientLibrary
                 "System.Activities.DurableInstancing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35",
                 "System.Xaml.Hosting, Version=4.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35",
                 "CRA.ClientLibrary, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null",
+                "CRA.ClientLibrary, Version=1.0.0.0, Culture=neutral, PublicKeyToken=cc877ef3899064b2",
                 "Microsoft.VisualStudio.Debugger.Runtime, Version=15.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a",
                 "Microsoft.VisualStudio.Debugger.Runtime.Impl",
             };
@@ -588,7 +592,8 @@ namespace CRA.ClientLibrary
             }
             else
             {
-
+                // Print included assembly name to console
+                // Console.WriteLine(name);
             }
 
             exclude.Add(name);
@@ -700,9 +705,9 @@ namespace CRA.ClientLibrary
                 {
                     File.WriteAllBytes(assemblyPath, assemblyFileBytes);
                 }
-                catch (Exception e)
+                catch (Exception)
                 {
-                    Console.WriteLine("INFO: Unable to update " + assemblyFullName.Name + ".dll\nException: " + e.ToString());
+                    Console.WriteLine("INFO: Unable to update " + assemblyFullName.Name + ".dll (perhaps another CRA worker holds the file lock?)");
                 }
 
                 if (managedAssembly)

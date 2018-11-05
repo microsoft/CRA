@@ -462,7 +462,15 @@ namespace CRA.ClientLibrary
                     throw new InvalidOperationException("Failed to create vertex " + vertexName + ", and no sideloaded vertex with that name was provided.");
                 }
             }
-            await InitializeVertexAsync(vertexName, vertexDefinition, instanceName, table, container, vertex);
+
+            try
+            {
+                await InitializeVertexAsync(vertexName, vertexDefinition, instanceName, table, container, vertex);
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine("INFO: Unable to initialize vertex " + vertexName + ". Check if runtime is compatible (uploaded vertex and worker should be same .NET runtime). Exception:\n" + e.ToString());
+            }
             return vertex;
         }
 

@@ -6,7 +6,7 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <RootNamespace>CRA.Worker</RootNamespace>
     <HighEntropyVA>true</HighEntropyVA>
-    <SignAssembly>false</SignAssembly>
+    <SignAssembly>true</SignAssembly>
     <DelaySign>false</DelaySign>
     <AssemblyOriginatorKeyFile>../CRA.snk</AssemblyOriginatorKeyFile>
   </PropertyGroup>
