@@ -19,12 +19,12 @@ namespace CRA.ClientLibrary
     /// </summary>
     public class CRAWorker : IDisposable
     {
-        string _address;
+        private readonly string _address;
 
-        IVertexConnectionInfoProvider _connectionInfoProvider;
+        private readonly IVertexConnectionInfoProvider _connectionInfoProvider;
 
         // CRA library client
-        CRAClientLibrary _craClient;
+        private readonly CRAClientLibrary _craClient;
 
         // Timer updateTimer
         private readonly ConcurrentDictionary<string, IVertex> _localVertexTable = new ConcurrentDictionary<string, IVertex>();
@@ -35,12 +35,12 @@ namespace CRA.ClientLibrary
         private readonly string _storageConnectionString;
 
         private readonly int _streamsPoolSize;
-        private CloudTableClient _tableClient;
-        private IVertexInfoProvider _vertexInfoProvider;
+        private readonly CloudTableClient _tableClient;
+        private readonly IVertexInfoProvider _vertexInfoProvider;
         private readonly string _workerinstanceName;
-        private ConcurrentDictionary<string, CancellationTokenSource> inConnections = new ConcurrentDictionary<string, CancellationTokenSource>();
-        private ConcurrentDictionary<string, CancellationTokenSource> outConnections = new ConcurrentDictionary<string, CancellationTokenSource>();
-        private ConcurrentDictionary<string, ShardingInfo> shardingInfoTable = new ConcurrentDictionary<string, ShardingInfo>();
+        private readonly ConcurrentDictionary<string, CancellationTokenSource> inConnections = new ConcurrentDictionary<string, CancellationTokenSource>();
+        private readonly ConcurrentDictionary<string, CancellationTokenSource> outConnections = new ConcurrentDictionary<string, CancellationTokenSource>();
+        private readonly ConcurrentDictionary<string, ShardingInfo> shardingInfoTable = new ConcurrentDictionary<string, ShardingInfo>();
 
         /// <summary>
         /// Define a new worker instance of Common Runtime for Applications (CRA)
@@ -66,9 +66,9 @@ namespace CRA.ClientLibrary
             Console.WriteLine("   Azure connection string: " + storageConnectionString);
 
             if (descriptor != null)
-                Console.WriteLine("   Secure network connections: Enabled using assembly " + descriptor.GetType().FullName);
+            { Console.WriteLine("   Secure network connections: Enabled using assembly " + descriptor.GetType().FullName); }
             else
-                Console.WriteLine("   Secure network connections: Disabled");
+            { Console.WriteLine("   Secure network connections: Disabled"); }
 
             _craClient = new CRAClientLibrary(storageConnectionString, this);
 
@@ -84,7 +84,7 @@ namespace CRA.ClientLibrary
             _connectionInfoProvider = new AzureVertexConnectionInfoProvider(CreateTableIfNotExists("craconnectiontable"));
 
             if (descriptor != null)
-                _craClient.SecureStreamConnectionDescriptor = descriptor;
+            { _craClient.SecureStreamConnectionDescriptor = descriptor; }
         }
 
         /// <summary>
