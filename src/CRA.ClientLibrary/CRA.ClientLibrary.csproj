@@ -17,6 +17,11 @@
     <Reference Include="System.Configuration" />
     <Reference Include="System.Management" />
   </ItemGroup>
+  <ItemGroup>
+    <Reference Include="System">
+      <HintPath>System</HintPath>
+    </Reference>
+  </ItemGroup>
 
   <PropertyGroup Condition="'$(TargetFramework)' != 'net46'">
     <DefineConstants>$(DefineConstants);DOTNETCORE</DefineConstants>

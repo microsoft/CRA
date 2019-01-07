@@ -1,0 +1,161 @@
+﻿//-----------------------------------------------------------------------
+// <copyright file="VertexInfo.cs" company="">
+//     Copyright (c) . All rights reserved.
+// </copyright>
+//-----------------------------------------------------------------------
+
+namespace CRA.ClientLibrary.DataProvider
+{
+    using System;
+    using System.Linq.Expressions;
+
+    /// <summary>
+    /// Definition for VertexInfo
+    /// </summary>
+    public struct VertexInfo
+    {
+        public static readonly TimeSpan HeartbeatTime = TimeSpan.FromSeconds(10);
+
+        public VertexInfo(
+            string instanceName,
+            string address,
+            int port,
+            string vertexName,
+            string vertexDefinition,
+            string vertexCreateAction,
+            string vertexParameter,
+            bool isActive,
+            bool isSharded)
+        {
+            this.InstanceName = instanceName;
+            this.Address = address;
+            this.Port = port;
+            this.VertexName = vertexName;
+            this.VertexDefinition = vertexDefinition;
+            this.VertexCreateAction = vertexCreateAction;
+            this.VertexParameter = vertexParameter;
+            this.IsActive = isActive;
+            this.IsSharded = isSharded;
+        }
+
+        public static VertexInfo Create(
+            string instanceName,
+            string vertexName,
+            string vertexDefinition,
+            string address,
+            int port,
+            Expression<Func<IVertex>> vertexCreateAction,
+            object vertexParameter,
+            bool isActive)
+        {
+            string vertexCreateActionStr = null;
+            if (vertexCreateAction != null)
+            {
+                var closureEliminator = new ClosureEliminator();
+                Expression vertexedUserLambdaExpression = closureEliminator.Visit(
+                        vertexCreateAction);
+
+                vertexCreateActionStr = SerializationHelper.Serialize(vertexedUserLambdaExpression);
+            }
+
+            string vertexParameterStr = SerializationHelper.SerializeObject(vertexParameter);
+
+            return new VertexInfo(
+                instanceName: instanceName,
+                address: address,
+                port: port,
+                vertexName: vertexName,
+                vertexDefinition: vertexDefinition,
+                vertexCreateAction: vertexCreateActionStr,
+                vertexParameter: vertexParameterStr,
+                isActive: isActive,
+                isSharded: false);
+        }
+
+        public static VertexInfo Create(
+            string instanceName,
+            string vertexName,
+            string vertexDefinition,
+            string address,
+            int port,
+            Expression<Func<IShardedVertex>> vertexCreateAction,
+            object vertexParameter,
+            bool isActive)
+        {
+            string vertexCreateActionStr = null;
+            if (vertexCreateAction != null)
+            {
+                var closureEliminator = new ClosureEliminator();
+                Expression vertexedUserLambdaExpression = closureEliminator.Visit(
+                        vertexCreateAction);
+
+                vertexCreateActionStr = SerializationHelper.Serialize(vertexedUserLambdaExpression);
+            }
+
+            string vertexParameterStr = SerializationHelper.SerializeObject(vertexParameter);
+
+            return new VertexInfo(
+                instanceName: instanceName,
+                address: address,
+                port: port,
+                vertexName: vertexName,
+                vertexDefinition: vertexDefinition,
+                vertexCreateAction: vertexCreateActionStr,
+                vertexParameter: vertexParameterStr,
+                isActive: isActive,
+                isSharded: false);
+        }
+
+
+        public string InstanceName { get; }
+
+        public string VertexName { get; }
+
+        public string VertexDefinition { get; }
+
+        public string Address { get; }
+
+        public int Port { get; }
+
+        public string VertexCreateAction { get; }
+
+        public string VertexParameter { get; }
+
+        public bool IsActive { get; }
+
+        public bool IsSharded { get; }
+
+        public override string ToString()
+        {
+            return string.Format(
+                "Instance '{0}', Address '{1}', Port '{2}'",
+                this.InstanceName,
+                this.Address,
+                this.Port);
+        }
+
+        public override bool Equals(object obj)
+        {
+            switch (obj)
+            {
+                case VertexInfo other:
+                    return this.InstanceName == other.InstanceName
+                        && this.VertexName == other.VertexName;
+            }
+
+            return false;
+        }
+
+        public override int GetHashCode()
+        {
+            return this.InstanceName.GetHashCode()
+                + this.VertexName.GetHashCode();
+        }
+
+        public static bool operator ==(VertexInfo left, VertexInfo right)
+            => left.VertexName == right.VertexName && left.InstanceName == right.InstanceName;
+
+        public static bool operator !=(VertexInfo left, VertexInfo right)
+            => !(left == right);
+    }
+}

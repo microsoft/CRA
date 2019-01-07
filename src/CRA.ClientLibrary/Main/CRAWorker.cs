@@ -1,9 +1,10 @@
-﻿using Microsoft.WindowsAzure.Storage;
+﻿using CRA.ClientLibrary.AzureProvider;
+using CRA.ClientLibrary.DataProvider;
+using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Microsoft.WindowsAzure.Storage.Table;
 using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -31,15 +32,13 @@ namespace CRA.ClientLibrary
 
         // Azure storage clients
         string _storageConnectionString;
+        IVertexConnectionInfoProvider _connectionInfoProvider;
+        IVertexInfoProvider _vertexInfoProvider;
         CloudStorageAccount _storageAccount;
-        CloudBlobClient _blobClient;
         CloudTableClient _tableClient;
-        CloudTable _workerInstanceTable;
-        CloudTable _connectionTable;
 
         // Timer updateTimer
         ConcurrentDictionary<string, IVertex> _localVertexTable = new ConcurrentDictionary<string, IVertex>();
-
         ConcurrentDictionary<string, CancellationTokenSource> inConnections = new ConcurrentDictionary<string, CancellationTokenSource>();
         ConcurrentDictionary<string, CancellationTokenSource> outConnections = new ConcurrentDictionary<string, CancellationTokenSource>();
         ConcurrentDictionary<string, ShardingInfo> shardingInfoTable = new ConcurrentDictionary<string, ShardingInfo>();
@@ -85,10 +84,9 @@ namespace CRA.ClientLibrary
 
             _storageConnectionString = storageConnectionString;
             _storageAccount = CloudStorageAccount.Parse(_storageConnectionString);
-            _blobClient = _storageAccount.CreateCloudBlobClient();
             _tableClient = _storageAccount.CreateCloudTableClient();
-            _workerInstanceTable = CreateTableIfNotExists("cravertextable");
-            _connectionTable = CreateTableIfNotExists("craconnectiontable");
+            _vertexInfoProvider = new AzureVertexInfoProvider(CreateTableIfNotExists("cravertextable"));
+            _connectionInfoProvider = new AzureVertexConnectionInfoProvider(CreateTableIfNotExists("craconnectiontable"));
 
             if (descriptor != null)
                 _craClient.SecureStreamConnectionDescriptor = descriptor;
@@ -102,12 +100,9 @@ namespace CRA.ClientLibrary
             // Update vertex table
             _craClient.RegisterInstance(_workerinstanceName, _address, _port);
 
-            // Restore vertices on machine
-            RestoreVerticesAndConnections();
-
             // Then start server. This ensures that others can establish 
             // connections to local vertices at this point.
-            Thread serverThread = new Thread(StartServer);
+            Thread serverThread = new Thread(()=> StartServer().Wait());
             serverThread.IsBackground = true;
             serverThread.Start();
 
@@ -115,9 +110,11 @@ namespace CRA.ClientLibrary
             serverThread.Join();
         }
 
-
-        private void StartServer()
+        private async Task StartServer()
         {
+            // Restore vertices on machine
+            await RestoreVerticesAndConnections();
+
             var server = new TcpListener(IPAddress.Parse(_address), _port);
 
             // Start listening for client requests.
@@ -170,7 +167,7 @@ namespace CRA.ClientLibrary
             }
         }
 
-        private async void TryReuseReceiverStream(Stream stream)
+        private async Task TryReuseReceiverStream(Stream stream)
         {
             try
             {
@@ -209,7 +206,7 @@ namespace CRA.ClientLibrary
             Task.Run(() => TryReuseReceiverStream(stream));
         }
 
-        private void ConnectVertex_Initiator(object streamObject, bool reverse = false)
+        private async Task ConnectVertex_Initiator(object streamObject, bool reverse = false)
         {
             var stream = (Stream)streamObject;
 
@@ -225,7 +222,7 @@ namespace CRA.ClientLibrary
                 if (!_localVertexTable.ContainsKey(fromVertexName))
                 {
                     stream.WriteInt32((int)CRAErrorCode.VertexNotFound);
-                    Task.Run(() => TryReuseReceiverStream(stream));
+                    await TryReuseReceiverStream(stream);
                     return;
                 }
 
@@ -235,7 +232,7 @@ namespace CRA.ClientLibrary
                    )
                 {
                     stream.WriteInt32((int)CRAErrorCode.VertexInputNotFound);
-                    Task.Run(() => TryReuseReceiverStream(stream));
+                    await TryReuseReceiverStream(stream);
                     return;
                 }
             }
@@ -244,7 +241,7 @@ namespace CRA.ClientLibrary
                 if (!_localVertexTable.ContainsKey(toVertexName))
                 {
                     stream.WriteInt32((int)CRAErrorCode.VertexNotFound);
-                    Task.Run(() => TryReuseReceiverStream(stream));
+                    await TryReuseReceiverStream(stream);
                     return;
                 }
 
@@ -253,27 +250,28 @@ namespace CRA.ClientLibrary
                     )
                 {
                     stream.WriteInt32((int)CRAErrorCode.VertexInputNotFound);
-                    Task.Run(() => TryReuseReceiverStream(stream));
+                    await TryReuseReceiverStream(stream);
                     return;
                 }
             }
 
-            CRAErrorCode result = Connect_InitiatorSide(fromVertexName, fromVertexOutput, toVertexName, toVertexInput, reverse);
+            CRAErrorCode result = await Connect_InitiatorSide(fromVertexName, fromVertexOutput, toVertexName, toVertexInput, reverse);
 
             stream.WriteInt32((int)result);
 
-            Task.Run(() => TryReuseReceiverStream(stream));
+            await TryReuseReceiverStream(stream);
         }
 
-        internal CRAErrorCode Connect_InitiatorSide(string fromVertexName, string fromVertexOutput, string toVertexName, string toVertexInput, bool reverse, bool killIfExists = true, bool killRemote = true)
+        internal async Task<CRAErrorCode> Connect_InitiatorSide(string fromVertexName, string fromVertexOutput, string toVertexName, string toVertexInput, bool reverse, bool killIfExists = true, bool killRemote = true)
         {
-            VertexTable row;
+            VertexInfo row;
 
             try
             {
                 // Need to get the latest address & port
-                row = reverse ? VertexTable.GetRowForVertex(_workerInstanceTable, fromVertexName)
-                : VertexTable.GetRowForVertex(_workerInstanceTable, toVertexName);
+                row = await (reverse
+                    ? _vertexInfoProvider.GetRowForVertex(fromVertexName)
+                    : _vertexInfoProvider.GetRowForVertex(toVertexName));
             }
             catch
             {
@@ -318,7 +316,7 @@ namespace CRA.ClientLibrary
 
             // Send request to CRA instance
             Stream ns = null;
-            var _row = VertexTable.GetRowForInstanceVertex(_workerInstanceTable, row.InstanceName, "");
+            var _row = await _vertexInfoProvider.GetRowForInstanceVertex(row.InstanceName, "");
             try
             {
                 // Get a stream connection from the pool if available
@@ -361,9 +359,7 @@ namespace CRA.ClientLibrary
                 {
                     if (outConnections.TryAdd(fromVertexName + ":" + fromVertexOutput + ":" + toVertexName + ":" + toVertexInput, source))
                     {
-                        Task.Run(() =>
-                            EgressToStream(fromVertexName, fromVertexOutput, toVertexName, toVertexInput, reverse, ns, source, _row.Address, _row.Port));
-
+                        await EgressToStream(fromVertexName, fromVertexOutput, toVertexName, toVertexInput, reverse, ns, source, _row.Address, _row.Port);
                         return CRAErrorCode.Success;
                     }
                     else
@@ -378,8 +374,7 @@ namespace CRA.ClientLibrary
                 {
                     if (inConnections.TryAdd(fromVertexName + ":" + fromVertexOutput + ":" + toVertexName + ":" + toVertexInput, source))
                     {
-                        Task.Run(() =>
-                            IngressFromStream(fromVertexName, fromVertexOutput, toVertexName, toVertexInput, reverse, ns, source, _row.Address, _row.Port));
+                        await IngressFromStream(fromVertexName, fromVertexOutput, toVertexName, toVertexInput, reverse, ns, source, _row.Address, _row.Port);
                         return CRAErrorCode.Success;
                     }
                     else
@@ -863,9 +858,9 @@ namespace CRA.ClientLibrary
             _craClient.DisableDynamicLoading();
         }
 
-        private void RestoreVerticesAndConnections()
+        private async Task RestoreVerticesAndConnections()
         {
-            var rows = VertexTable.GetAllRowsForInstance(_workerInstanceTable, _workerinstanceName);
+            var rows = await _vertexInfoProvider.GetAllRowsForInstance(_workerinstanceName);
 
             foreach (var _row in rows)
             {
@@ -877,22 +872,23 @@ namespace CRA.ClientLibrary
         private async void RestoreVertexAndConnections(VertexTable _row)
         {
             await _craClient.LoadVertexAsync(_row.VertexName, _row.VertexDefinition, _row.VertexParameter, _workerinstanceName, _localVertexTable);
-            RestoreConnections(_row);
+            await RestoreConnections(_row);
         }
 
-        private void RestoreConnections(VertexTable _row)
+        private async Task RestoreConnections(VertexTable _row)
         {
             // Decide what to do if connection creation fails
-            var outRows = ConnectionTable.GetAllConnectionsFromVertex(_connectionTable, _row.VertexName).ToList();
+            var outRows = await _connectionInfoProvider.GetAllConnectionsFromVertex(_row.VertexName);
+
             foreach (var row in outRows)
             {
-                Task.Run(() => RetryRestoreConnection(row.FromVertex, row.FromEndpoint, row.ToVertex, row.ToEndpoint, false));
+                await RetryRestoreConnection(row.FromVertex, row.FromEndpoint, row.ToVertex, row.ToEndpoint, false);
             }
 
-            var inRows = ConnectionTable.GetAllConnectionsToVertex(_connectionTable, _row.VertexName).ToList();
+            var inRows = await _connectionInfoProvider.GetAllConnectionsFromVertex(_row.VertexName);
             foreach (var row in inRows)
             {
-                Task.Run(() => RetryRestoreConnection(row.FromVertex, row.FromEndpoint, row.ToVertex, row.ToEndpoint, true));
+                await RetryRestoreConnection(row.FromVertex, row.FromEndpoint, row.ToVertex, row.ToEndpoint, true);
             }
         }
 
@@ -903,18 +899,34 @@ namespace CRA.ClientLibrary
             bool killRemote = false;
             while (!conn.ContainsKey(fromVertexName + ":" + fromVertexOutput + ":" + toVertexName + ":" + toVertexInput))
             {
-                if (!ConnectionTable.ContainsConnection(_connectionTable, fromVertexName, fromVertexOutput, toVertexName, toVertexInput))
+                if (!await _connectionInfoProvider.ContainsRow(
+                    new VertexConnectionInfo(
+                        fromVertex: fromVertexName,
+                        fromEndpoint: fromVertexOutput,
+                        toVertex: toVertexName,
+                        toEndpoint: toVertexInput)))
+                {
                     break;
+                }
+
 
                 Debug.WriteLine("Connecting " + fromVertexName + ":" + fromVertexOutput + ":" + toVertexName + ":" + toVertexInput);
                 Debug.WriteLine("Connecting with killRemote set to " + (killRemote ? "true" : "false"));
 
-                var result = Connect_InitiatorSide(fromVertexName, fromVertexOutput, toVertexName, toVertexInput, reverse, false, killRemote);
+                var result = await Connect_InitiatorSide(
+                    fromVertexName,
+                    fromVertexOutput,
+                    toVertexName,
+                    toVertexInput,
+                    reverse,
+                    false,
+                    killRemote);
 
                 if (result != 0)
                 {
                     if (result == CRAErrorCode.ServerRecovering)
-                        killRemote = true;
+                    { killRemote = true; }
+
                     await Task.Delay(5000);
                 }
                 else
