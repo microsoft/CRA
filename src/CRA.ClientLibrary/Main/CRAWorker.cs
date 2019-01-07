@@ -1,13 +1,11 @@
 ﻿using CRA.ClientLibrary.AzureProvider;
 using CRA.ClientLibrary.DataProvider;
 using Microsoft.WindowsAzure.Storage;
-using Microsoft.WindowsAzure.Storage.Blob;
 using Microsoft.WindowsAzure.Storage.Table;
 using System;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.IO;
-using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
@@ -21,37 +19,28 @@ namespace CRA.ClientLibrary
     /// </summary>
     public class CRAWorker : IDisposable
     {
+        string _address;
+
+        IVertexConnectionInfoProvider _connectionInfoProvider;
+
         // CRA library client
         CRAClientLibrary _craClient;
 
-        string _workerinstanceName;
-        string _address;
-        int _port;
-        int _streamsPoolSize;
-
-
-        // Azure storage clients
-        string _storageConnectionString;
-        IVertexConnectionInfoProvider _connectionInfoProvider;
-        IVertexInfoProvider _vertexInfoProvider;
-        CloudStorageAccount _storageAccount;
-        CloudTableClient _tableClient;
-
         // Timer updateTimer
-        ConcurrentDictionary<string, IVertex> _localVertexTable = new ConcurrentDictionary<string, IVertex>();
-        ConcurrentDictionary<string, CancellationTokenSource> inConnections = new ConcurrentDictionary<string, CancellationTokenSource>();
-        ConcurrentDictionary<string, CancellationTokenSource> outConnections = new ConcurrentDictionary<string, CancellationTokenSource>();
-        ConcurrentDictionary<string, ShardingInfo> shardingInfoTable = new ConcurrentDictionary<string, ShardingInfo>();
+        private readonly ConcurrentDictionary<string, IVertex> _localVertexTable = new ConcurrentDictionary<string, IVertex>();
 
-        /// <summary>
-        /// Instance name
-        /// </summary>
-        public string InstanceName { get { return _workerinstanceName; } }
+        private readonly int _port;
+        private readonly CloudStorageAccount _storageAccount;
+        // Azure storage clients
+        private readonly string _storageConnectionString;
 
-        /// <summary>
-        /// Streams pool size
-        /// </summary>
-        internal int StreamsPoolSize { get { return _streamsPoolSize; } }
+        private readonly int _streamsPoolSize;
+        private CloudTableClient _tableClient;
+        private IVertexInfoProvider _vertexInfoProvider;
+        private readonly string _workerinstanceName;
+        private ConcurrentDictionary<string, CancellationTokenSource> inConnections = new ConcurrentDictionary<string, CancellationTokenSource>();
+        private ConcurrentDictionary<string, CancellationTokenSource> outConnections = new ConcurrentDictionary<string, CancellationTokenSource>();
+        private ConcurrentDictionary<string, ShardingInfo> shardingInfoTable = new ConcurrentDictionary<string, ShardingInfo>();
 
         /// <summary>
         /// Define a new worker instance of Common Runtime for Applications (CRA)
@@ -62,7 +51,13 @@ namespace CRA.ClientLibrary
         /// <param name="storageConnectionString">Storage account to store metadata</param>
         /// <param name="streamsPoolSize">Maximum number of stream connections will be cached in the CRA client</param>
         /// <param name="descriptor">Secure stream connection callbacks</param>
-        public CRAWorker(string workerInstanceName, string address, int port, string storageConnectionString, ISecureStreamConnectionDescriptor descriptor = null, int streamsPoolSize = 0)
+        public CRAWorker(
+            string workerInstanceName,
+            string address,
+            int port,
+            string storageConnectionString,
+            ISecureStreamConnectionDescriptor descriptor = null,
+            int streamsPoolSize = 0)
         {
             Console.WriteLine("Starting CRA Worker instance [http://github.com/Microsoft/CRA]");
             Console.WriteLine("   Instance Name: " + workerInstanceName);
@@ -93,6 +88,43 @@ namespace CRA.ClientLibrary
         }
 
         /// <summary>
+        /// Instance name
+        /// </summary>
+        public string InstanceName { get { return _workerinstanceName; } }
+
+        /// <summary>
+        /// Streams pool size
+        /// </summary>
+        internal int StreamsPoolSize { get { return _streamsPoolSize; } }
+
+        public void DisableDynamicLoading()
+        {
+            Console.WriteLine("Disabling dynamic assembly loading");
+            _craClient.DisableDynamicLoading();
+        }
+
+        public void Dispose()
+        {
+            _craClient.Dispose();
+        }
+
+        /// <summary>
+        /// Kill the worker process (this process)
+        /// </summary>
+        /// <param name="killMessage">Kill message</param>
+        public void Kill(string killMessage)
+        {
+            Console.WriteLine("KILLING WORKER: " + killMessage);
+            Process.GetCurrentProcess().Kill();
+        }
+
+        public void SideloadVertex(IVertex vertex, string vertexName)
+        {
+            Console.WriteLine("Enabling sideload for vertex: " + vertexName + " (" + vertex.GetType().FullName + ")");
+            _craClient.SideloadVertex(vertex, vertexName);
+        }
+
+        /// <summary>
         /// Start the CRA worker. This method does not return.
         /// </summary>
         public void Start()
@@ -110,159 +142,14 @@ namespace CRA.ClientLibrary
             serverThread.Join();
         }
 
-        private async Task StartServer()
-        {
-            // Restore vertices on machine
-            await RestoreVerticesAndConnections();
-
-            var server = new TcpListener(IPAddress.Parse(_address), _port);
-
-            // Start listening for client requests.
-            server.Start();
-
-            while (true)
-            {
-                Debug.WriteLine("Waiting for a connection... ");
-                TcpClient client = server.AcceptTcpClient();
-                client.NoDelay = true;
-
-                Debug.WriteLine("Connected!");
-
-                // Get a stream object for reading and writing
-                Stream stream = _craClient.SecureStreamConnectionDescriptor.CreateSecureServer(client.GetStream());
-
-                // Handle a task message sent to the CRA instance
-                CRATaskMessageType message = (CRATaskMessageType)stream.ReadInt32();
-                HandleCRATaskMessage(message, stream);
-            }
-        }
-
-        private void HandleCRATaskMessage(CRATaskMessageType message, Stream stream)
-        {
-            switch (message)
-            {
-                case CRATaskMessageType.LOAD_VERTEX:
-                    Task.Run(() => LoadVertex(stream));
-                    break;
-
-                case CRATaskMessageType.CONNECT_VERTEX_INITIATOR:
-                    Task.Run(() => ConnectVertex_Initiator(stream, false));
-                    break;
-
-                case CRATaskMessageType.CONNECT_VERTEX_RECEIVER:
-                    Task.Run(() => ConnectVertex_Receiver(stream, false));
-                    break;
-
-                case CRATaskMessageType.CONNECT_VERTEX_INITIATOR_REVERSE:
-                    Task.Run(() => ConnectVertex_Initiator(stream, true));
-                    break;
-
-                case CRATaskMessageType.CONNECT_VERTEX_RECEIVER_REVERSE:
-                    Task.Run(() => ConnectVertex_Receiver(stream, true));
-                    break;
-
-                default:
-                    Console.WriteLine("Unknown message type: " + message);
-                    break;
-            }
-        }
-
-        private async Task TryReuseReceiverStream(Stream stream)
-        {
-            try
-            {
-                CRATaskMessageType message = (CRATaskMessageType)(await stream.ReadInt32Async());
-                if (message == CRATaskMessageType.PING)
-                {
-                    stream.WriteInt32(0);
-
-                    // Handle a task message sent to the CRA instance
-                    CRATaskMessageType newMessage = (CRATaskMessageType)stream.ReadInt32();
-                    HandleCRATaskMessage(newMessage, (NetworkStream)stream);
-                }
-                else
-                    stream.Close();
-            }
-            catch (Exception)
-            {
-                stream.Close();
-            }
-        }
-
-        private void LoadVertex(object streamObject)
-        {
-            var stream = (Stream)streamObject;
-
-            string vertexName = Encoding.UTF8.GetString(stream.ReadByteArray());
-            string vertexDefinition = Encoding.UTF8.GetString(stream.ReadByteArray());
-            string vertexParam = Encoding.UTF8.GetString(stream.ReadByteArray());
-
-            _craClient
-                .LoadVertexAsync(vertexName, vertexDefinition, vertexParam, _workerinstanceName, _localVertexTable)
-                .Wait();
-
-            stream.WriteInt32(0);
-
-            Task.Run(() => TryReuseReceiverStream(stream));
-        }
-
-        private async Task ConnectVertex_Initiator(object streamObject, bool reverse = false)
-        {
-            var stream = (Stream)streamObject;
-
-            string fromVertexName = Encoding.UTF8.GetString(stream.ReadByteArray());
-            string fromVertexOutput = Encoding.UTF8.GetString(stream.ReadByteArray());
-            string toVertexName = Encoding.UTF8.GetString(stream.ReadByteArray());
-            string toVertexInput = Encoding.UTF8.GetString(stream.ReadByteArray());
-
-            Debug.WriteLine("Processing request to initiate connection");
-
-            if (!reverse)
-            {
-                if (!_localVertexTable.ContainsKey(fromVertexName))
-                {
-                    stream.WriteInt32((int)CRAErrorCode.VertexNotFound);
-                    await TryReuseReceiverStream(stream);
-                    return;
-                }
-
-                var key = GetShardedVertexName(fromVertexOutput);
-                if (!_localVertexTable[fromVertexName].OutputEndpoints.ContainsKey(key) &&
-                    !_localVertexTable[fromVertexName].AsyncOutputEndpoints.ContainsKey(key)
-                   )
-                {
-                    stream.WriteInt32((int)CRAErrorCode.VertexInputNotFound);
-                    await TryReuseReceiverStream(stream);
-                    return;
-                }
-            }
-            else
-            {
-                if (!_localVertexTable.ContainsKey(toVertexName))
-                {
-                    stream.WriteInt32((int)CRAErrorCode.VertexNotFound);
-                    await TryReuseReceiverStream(stream);
-                    return;
-                }
-
-                if (!_localVertexTable[toVertexName].InputEndpoints.ContainsKey(toVertexInput) &&
-                    !_localVertexTable[toVertexName].AsyncInputEndpoints.ContainsKey(toVertexInput)
-                    )
-                {
-                    stream.WriteInt32((int)CRAErrorCode.VertexInputNotFound);
-                    await TryReuseReceiverStream(stream);
-                    return;
-                }
-            }
-
-            CRAErrorCode result = await Connect_InitiatorSide(fromVertexName, fromVertexOutput, toVertexName, toVertexInput, reverse);
-
-            stream.WriteInt32((int)result);
-
-            await TryReuseReceiverStream(stream);
-        }
-
-        internal async Task<CRAErrorCode> Connect_InitiatorSide(string fromVertexName, string fromVertexOutput, string toVertexName, string toVertexInput, bool reverse, bool killIfExists = true, bool killRemote = true)
+        internal async Task<CRAErrorCode> Connect_InitiatorSide(
+            string fromVertexName,
+            string fromVertexOutput,
+            string toVertexName,
+            string toVertexInput,
+            bool reverse,
+            bool killIfExists = true,
+            bool killRemote = true)
         {
             VertexInfo row;
 
@@ -359,7 +246,16 @@ namespace CRA.ClientLibrary
                 {
                     if (outConnections.TryAdd(fromVertexName + ":" + fromVertexOutput + ":" + toVertexName + ":" + toVertexInput, source))
                     {
-                        await EgressToStream(fromVertexName, fromVertexOutput, toVertexName, toVertexInput, reverse, ns, source, _row.Address, _row.Port);
+                        await EgressToStream(
+                            fromVertexName,
+                            fromVertexOutput,
+                            toVertexName,
+                            toVertexInput,
+                            reverse,
+                            ns,
+                            source,
+                            _row.Address,
+                            _row.Port);
                         return CRAErrorCode.Success;
                     }
                     else
@@ -374,7 +270,16 @@ namespace CRA.ClientLibrary
                 {
                     if (inConnections.TryAdd(fromVertexName + ":" + fromVertexOutput + ":" + toVertexName + ":" + toVertexInput, source))
                     {
-                        await IngressFromStream(fromVertexName, fromVertexOutput, toVertexName, toVertexInput, reverse, ns, source, _row.Address, _row.Port);
+                        await IngressFromStream(
+                            fromVertexName,
+                            fromVertexOutput,
+                            toVertexName,
+                            toVertexInput,
+                            reverse,
+                            ns,
+                            source,
+                            _row.Address,
+                            _row.Port);
                         return CRAErrorCode.Success;
                     }
                     else
@@ -388,62 +293,220 @@ namespace CRA.ClientLibrary
             }
         }
 
-        private bool TryFusedConnect(string otherInstance, string fromVertexName, string fromVertexOutput, string toVertexName, string toVertexInput)
+        private int Connect_ReceiverSide(
+            string fromVertexName,
+            string fromVertexOutput,
+            string toVertexName,
+            string toVertexInput,
+            Stream stream,
+            bool reverse,
+            bool killIfExists = true)
         {
-            if (otherInstance != InstanceName)
-                return false;
-
+            CancellationTokenSource oldSource;
+            var conn = reverse ? outConnections : inConnections;
+            if (conn.TryGetValue(fromVertexName + ":" + fromVertexOutput + ":" + toVertexName + ":" + toVertexInput, out oldSource))
+            {
+                if (killIfExists)
+                {
+                    Debug.WriteLine("Deleting prior connection - it will automatically reconnect");
+                    oldSource.Cancel();
+                }
+                else
+                {
+                    Debug.WriteLine("There exists prior connection - not killing");
+                }
+                stream.WriteInt32((int)CRAErrorCode.ServerRecovering);
+                return (int)CRAErrorCode.ServerRecovering;
+            }
+            else
+            {
+                stream.WriteInt32(0);
+            }
 
             CancellationTokenSource source = new CancellationTokenSource();
 
-            if (_localVertexTable[fromVertexName].OutputEndpoints.ContainsKey(fromVertexOutput) &&
-                _localVertexTable[toVertexName].InputEndpoints.ContainsKey(toVertexInput))
+            if (!reverse)
             {
-                var fromVertex = _localVertexTable[fromVertexName].OutputEndpoints[fromVertexOutput] as IFusableVertexOutputEndpoint;
-                var toVertex = _localVertexTable[toVertexName].InputEndpoints[toVertexInput] as IVertexInputEndpoint;
-
-                if (fromVertex != null && toVertex != null && fromVertex.CanFuseWith(toVertex, toVertexName, toVertexInput))
+                if (inConnections.TryAdd(fromVertexName + ":" + fromVertexOutput + ":" + toVertexName + ":" + toVertexInput, source))
                 {
-                    if (outConnections.TryAdd(fromVertexName + ":" + fromVertexOutput + ":" + toVertexName + ":" + toVertexInput, source))
-                    {
-                        Task.Run(() => EgressToVertexInput(fromVertexName, fromVertexOutput, toVertexName, toVertexInput, source));
-                        return true;
-                    }
-                    else
-                        return false;
-                }
-                else
-                    return false;
-            }
-            else if (_localVertexTable[fromVertexName].AsyncOutputEndpoints.ContainsKey(fromVertexOutput) &&
-                _localVertexTable[toVertexName].AsyncInputEndpoints.ContainsKey(toVertexInput))
-            {
-                var fromVertex = _localVertexTable[fromVertexName].AsyncOutputEndpoints[fromVertexOutput] as IAsyncFusableVertexOutputEndpoint;
-                var toVertex = _localVertexTable[toVertexName].AsyncInputEndpoints[toVertexInput] as IAsyncVertexInputEndpoint;
-
-                if (fromVertex != null && toVertex != null && fromVertex.CanFuseWith(toVertex, toVertexName, toVertexInput))
-                {
-                    if (outConnections.TryAdd(fromVertexName + ":" + fromVertexOutput + ":" + toVertexName + ":" + toVertexInput, source))
-                    {
-                        Task.Run(() => EgressToVertexInput(fromVertexName, fromVertexOutput, toVertexName, toVertexInput, source));
-                        return true;
-                    }
-                    else
-                        return false;
+                    Task.Run(() =>
+                        IngressFromStream(fromVertexName, fromVertexOutput, toVertexName, toVertexInput, reverse, stream, source));
+                    return (int)CRAErrorCode.Success;
                 }
                 else
                 {
-                    return false;
+                    source.Dispose();
+                    stream.Close();
+                    Debug.WriteLine("Race adding connection - deleting incoming stream");
+                    return (int)CRAErrorCode.ConnectionAdditionRace;
                 }
             }
             else
             {
-                return false;
+                if (outConnections.TryAdd(fromVertexName + ":" + fromVertexOutput + ":" + toVertexName + ":" + toVertexInput, source))
+                {
+                    Task.Run(() =>
+                        EgressToStream(fromVertexName, fromVertexOutput, toVertexName, toVertexInput, reverse, stream, source));
+                    return (int)CRAErrorCode.Success;
+                }
+                else
+                {
+                    source.Dispose();
+                    stream.Close();
+                    Debug.WriteLine("Race adding connection - deleting incoming stream");
+                    return (int)CRAErrorCode.ConnectionAdditionRace;
+                }
+            }
+
+        }
+
+        private async Task ConnectVertex_Initiator(object streamObject, bool reverse = false)
+        {
+            var stream = (Stream)streamObject;
+
+            string fromVertexName = Encoding.UTF8.GetString(stream.ReadByteArray());
+            string fromVertexOutput = Encoding.UTF8.GetString(stream.ReadByteArray());
+            string toVertexName = Encoding.UTF8.GetString(stream.ReadByteArray());
+            string toVertexInput = Encoding.UTF8.GetString(stream.ReadByteArray());
+
+            Debug.WriteLine("Processing request to initiate connection");
+
+            if (!reverse)
+            {
+                if (!_localVertexTable.ContainsKey(fromVertexName))
+                {
+                    stream.WriteInt32((int)CRAErrorCode.VertexNotFound);
+                    await TryReuseReceiverStream(stream);
+                    return;
+                }
+
+                var key = GetShardedVertexName(fromVertexOutput);
+                if (!_localVertexTable[fromVertexName].OutputEndpoints.ContainsKey(key) &&
+                    !_localVertexTable[fromVertexName].AsyncOutputEndpoints.ContainsKey(key)
+                   )
+                {
+                    stream.WriteInt32((int)CRAErrorCode.VertexInputNotFound);
+                    await TryReuseReceiverStream(stream);
+                    return;
+                }
+            }
+            else
+            {
+                if (!_localVertexTable.ContainsKey(toVertexName))
+                {
+                    stream.WriteInt32((int)CRAErrorCode.VertexNotFound);
+                    await TryReuseReceiverStream(stream);
+                    return;
+                }
+
+                if (!_localVertexTable[toVertexName].InputEndpoints.ContainsKey(toVertexInput) &&
+                    !_localVertexTable[toVertexName].AsyncInputEndpoints.ContainsKey(toVertexInput)
+                    )
+                {
+                    stream.WriteInt32((int)CRAErrorCode.VertexInputNotFound);
+                    await TryReuseReceiverStream(stream);
+                    return;
+                }
+            }
+
+            CRAErrorCode result = await Connect_InitiatorSide(
+                fromVertexName,
+                fromVertexOutput,
+                toVertexName,
+                toVertexInput,
+                reverse);
+
+            stream.WriteInt32((int)result);
+
+            await TryReuseReceiverStream(stream);
+        }
+
+        private void ConnectVertex_Receiver(object streamObject, bool reverse = false)
+        {
+            var stream = (Stream)streamObject;
+
+            string fromVertexName = Encoding.UTF8.GetString(stream.ReadByteArray());
+            string fromVertexOutput = Encoding.UTF8.GetString(stream.ReadByteArray());
+            string toVertexName = Encoding.UTF8.GetString(stream.ReadByteArray());
+            string toVertexInput = Encoding.UTF8.GetString(stream.ReadByteArray());
+            bool killIfExists = stream.ReadInt32() == 1 ? true : false;
+
+            if (!reverse)
+            {
+                if (!_localVertexTable.ContainsKey(toVertexName))
+                {
+                    stream.WriteInt32((int)CRAErrorCode.VertexNotFound);
+                    Task.Run(() => TryReuseReceiverStream(stream));
+                    return;
+                }
+
+                var key = GetShardedVertexName(toVertexInput);
+                if (!_localVertexTable[toVertexName].InputEndpoints.ContainsKey(key) &&
+                    !_localVertexTable[toVertexName].AsyncInputEndpoints.ContainsKey(key)
+                    )
+                {
+                    stream.WriteInt32((int)CRAErrorCode.VertexInputNotFound);
+                    Task.Run(() => TryReuseReceiverStream(stream));
+                    return;
+                }
+            }
+            else
+            {
+                if (!_localVertexTable.ContainsKey(fromVertexName))
+                {
+                    stream.WriteInt32((int)CRAErrorCode.VertexNotFound);
+                    Task.Run(() => TryReuseReceiverStream(stream));
+                    return;
+                }
+
+                if (!_localVertexTable[fromVertexName].OutputEndpoints.ContainsKey(fromVertexOutput) &&
+                    !_localVertexTable[fromVertexName].AsyncOutputEndpoints.ContainsKey(fromVertexOutput)
+                    )
+                {
+                    stream.WriteInt32((int)CRAErrorCode.VertexInputNotFound);
+                    Task.Run(() => TryReuseReceiverStream(stream));
+                    return;
+                }
+            }
+
+            int result = Connect_ReceiverSide(
+                fromVertexName,
+                fromVertexOutput,
+                toVertexName,
+                toVertexInput,
+                stream,
+                reverse,
+                killIfExists);
+
+            // Do not close and dispose stream because it is being reused for data
+            if (result != 0)
+            {
+                Task.Run(() => TryReuseReceiverStream(stream));
             }
         }
 
-        private async Task EgressToStream(string fromVertexName, string fromVertexOutput, string toVertexName, string toVertexInput,
-            bool reverse, Stream ns, CancellationTokenSource source, string address = null, int port = -1)
+        private CloudTable CreateTableIfNotExists(string tableName)
+        {
+            CloudTable table = _tableClient.GetTableReference(tableName);
+            try
+            {
+                table.CreateIfNotExistsAsync().Wait();
+            }
+            catch { }
+
+            return table;
+        }
+
+        private async Task EgressToStream(
+            string fromVertexName,
+            string fromVertexOutput,
+            string toVertexName,
+            string toVertexInput,
+            bool reverse,
+            Stream ns,
+            CancellationTokenSource source,
+            string address = null,
+            int port = -1)
         {
             try
             {
@@ -496,7 +559,7 @@ namespace CRA.ClientLibrary
                         await _localVertexTable[fromVertexName].AsyncOutputEndpoints[fromVertexOutput].ToStreamAsync(ns, toVertexName, toVertexInput, source.Token);
                     else
                         await ((IAsyncShardedVertexOutputEndpoint)_localVertexTable[fromVertexName].AsyncOutputEndpoints[key])
-                            .ToStreamAsync(ns, GetShardedVertexName(toVertexName), 
+                            .ToStreamAsync(ns, GetShardedVertexName(toVertexName),
                             shardId, GetShardedVertexName(toVertexInput), source.Token);
                 }
                 else
@@ -546,20 +609,6 @@ namespace CRA.ClientLibrary
                 RetryRestoreConnection(fromVertexName, fromVertexOutput, toVertexName, toVertexInput, false);
             }
         }
-        
-        private string GetShardedVertexName(string name)
-        {
-            if (name.Contains("$"))
-                return name.Split('$')[0];
-            return name;
-        }
-        private int GetShardedVertexShardId(string name)
-        {
-            if (name.Contains("$"))
-                return int.Parse(name.Split('$')[1]);
-            return -1;
-        }
-
 
         private async Task EgressToVertexInput(string fromVertexName, string fromVertexOutput, string toVertexName, string toVertexInput,
             CancellationTokenSource source)
@@ -628,125 +677,60 @@ namespace CRA.ClientLibrary
             }
         }
 
-        private void ConnectVertex_Receiver(object streamObject, bool reverse = false)
+        private string GetShardedVertexName(string name)
         {
-            var stream = (Stream)streamObject;
+            if (name.Contains("$"))
+                return name.Split('$')[0];
+            return name;
+        }
 
-            string fromVertexName = Encoding.UTF8.GetString(stream.ReadByteArray());
-            string fromVertexOutput = Encoding.UTF8.GetString(stream.ReadByteArray());
-            string toVertexName = Encoding.UTF8.GetString(stream.ReadByteArray());
-            string toVertexInput = Encoding.UTF8.GetString(stream.ReadByteArray());
-            bool killIfExists = stream.ReadInt32() == 1 ? true : false;
+        private int GetShardedVertexShardId(string name)
+        {
+            if (name.Contains("$"))
+                return int.Parse(name.Split('$')[1]);
+            return -1;
+        }
 
-            if (!reverse)
+        private void HandleCRATaskMessage(CRATaskMessageType message, Stream stream)
+        {
+            switch (message)
             {
-                if (!_localVertexTable.ContainsKey(toVertexName))
-                {
-                    stream.WriteInt32((int)CRAErrorCode.VertexNotFound);
-                    Task.Run(() => TryReuseReceiverStream(stream));
-                    return;
-                }
+                case CRATaskMessageType.LOAD_VERTEX:
+                    Task.Run(() => LoadVertex(stream));
+                    break;
 
-                var key = GetShardedVertexName(toVertexInput);
-                if (!_localVertexTable[toVertexName].InputEndpoints.ContainsKey(key) &&
-                    !_localVertexTable[toVertexName].AsyncInputEndpoints.ContainsKey(key)
-                    )
-                {
-                    stream.WriteInt32((int)CRAErrorCode.VertexInputNotFound);
-                    Task.Run(() => TryReuseReceiverStream(stream));
-                    return;
-                }
-            }
-            else
-            {
-                if (!_localVertexTable.ContainsKey(fromVertexName))
-                {
-                    stream.WriteInt32((int)CRAErrorCode.VertexNotFound);
-                    Task.Run(() => TryReuseReceiverStream(stream));
-                    return;
-                }
+                case CRATaskMessageType.CONNECT_VERTEX_INITIATOR:
+                    Task.Run(() => ConnectVertex_Initiator(stream, false));
+                    break;
 
-                if (!_localVertexTable[fromVertexName].OutputEndpoints.ContainsKey(fromVertexOutput) &&
-                    !_localVertexTable[fromVertexName].AsyncOutputEndpoints.ContainsKey(fromVertexOutput)
-                    )
-                {
-                    stream.WriteInt32((int)CRAErrorCode.VertexInputNotFound);
-                    Task.Run(() => TryReuseReceiverStream(stream));
-                    return;
-                }
-            }
+                case CRATaskMessageType.CONNECT_VERTEX_RECEIVER:
+                    Task.Run(() => ConnectVertex_Receiver(stream, false));
+                    break;
 
-            int result = Connect_ReceiverSide(fromVertexName, fromVertexOutput, toVertexName, toVertexInput, stream, reverse, killIfExists);
+                case CRATaskMessageType.CONNECT_VERTEX_INITIATOR_REVERSE:
+                    Task.Run(() => ConnectVertex_Initiator(stream, true));
+                    break;
 
-            // Do not close and dispose stream because it is being reused for data
-            if (result != 0)
-            {
-                Task.Run(() => TryReuseReceiverStream(stream));
+                case CRATaskMessageType.CONNECT_VERTEX_RECEIVER_REVERSE:
+                    Task.Run(() => ConnectVertex_Receiver(stream, true));
+                    break;
+
+                default:
+                    Console.WriteLine("Unknown message type: " + message);
+                    break;
             }
         }
 
-
-        private int Connect_ReceiverSide(string fromVertexName, string fromVertexOutput, string toVertexName, string toVertexInput, Stream stream, bool reverse, bool killIfExists = true)
-        {
-            CancellationTokenSource oldSource;
-            var conn = reverse ? outConnections : inConnections;
-            if (conn.TryGetValue(fromVertexName + ":" + fromVertexOutput + ":" + toVertexName + ":" + toVertexInput, out oldSource))
-            {
-                if (killIfExists)
-                {
-                    Debug.WriteLine("Deleting prior connection - it will automatically reconnect");
-                    oldSource.Cancel();
-                }
-                else
-                {
-                    Debug.WriteLine("There exists prior connection - not killing");
-                }
-                stream.WriteInt32((int)CRAErrorCode.ServerRecovering);
-                return (int)CRAErrorCode.ServerRecovering;
-            }
-            else
-            {
-                stream.WriteInt32(0);
-            }
-
-            CancellationTokenSource source = new CancellationTokenSource();
-
-            if (!reverse)
-            {
-                if (inConnections.TryAdd(fromVertexName + ":" + fromVertexOutput + ":" + toVertexName + ":" + toVertexInput, source))
-                {
-                    Task.Run(() =>
-                        IngressFromStream(fromVertexName, fromVertexOutput, toVertexName, toVertexInput, reverse, stream, source));
-                    return (int)CRAErrorCode.Success;
-                }
-                else
-                {
-                    source.Dispose();
-                    stream.Close();
-                    Debug.WriteLine("Race adding connection - deleting incoming stream");
-                    return (int)CRAErrorCode.ConnectionAdditionRace;
-                }
-            }
-            else
-            {
-                if (outConnections.TryAdd(fromVertexName + ":" + fromVertexOutput + ":" + toVertexName + ":" + toVertexInput, source))
-                {
-                    Task.Run(() =>
-                        EgressToStream(fromVertexName, fromVertexOutput, toVertexName, toVertexInput, reverse, stream, source));
-                    return (int)CRAErrorCode.Success;
-                }
-                else
-                {
-                    source.Dispose();
-                    stream.Close();
-                    Debug.WriteLine("Race adding connection - deleting incoming stream");
-                    return (int)CRAErrorCode.ConnectionAdditionRace;
-                }
-            }
-
-        }
-
-        private async Task IngressFromStream(string fromVertexName, string fromVertexOutput, string toVertexName, string toVertexInput, bool reverse, Stream ns, CancellationTokenSource source, string address = null, int port = -1)
+        private async Task IngressFromStream(
+            string fromVertexName,
+            string fromVertexOutput,
+            string toVertexName,
+            string toVertexInput,
+            bool reverse,
+            Stream ns,
+            CancellationTokenSource source,
+            string address = null,
+            int port = -1)
         {
             try
             {
@@ -797,7 +781,7 @@ namespace CRA.ClientLibrary
                         await _localVertexTable[toVertexName].AsyncInputEndpoints[toVertexInput].FromStreamAsync(ns, fromVertexName, fromVertexOutput, source.Token);
                     else
                         await ((IAsyncShardedVertexInputEndpoint)_localVertexTable[toVertexName].AsyncInputEndpoints[key])
-                            .FromStreamAsync(ns, GetShardedVertexName(fromVertexName), 
+                            .FromStreamAsync(ns, GetShardedVertexName(fromVertexName),
                             shardId, GetShardedVertexName(fromVertexOutput), source.Token);
                 }
                 else
@@ -846,33 +830,21 @@ namespace CRA.ClientLibrary
             }
         }
 
-        public void SideloadVertex(IVertex vertex, string vertexName)
+        private void LoadVertex(object streamObject)
         {
-            Console.WriteLine("Enabling sideload for vertex: " + vertexName + " (" + vertex.GetType().FullName + ")");
-            _craClient.SideloadVertex(vertex, vertexName);
-        }
+            var stream = (Stream)streamObject;
 
-        public void DisableDynamicLoading()
-        {
-            Console.WriteLine("Disabling dynamic assembly loading");
-            _craClient.DisableDynamicLoading();
-        }
+            string vertexName = Encoding.UTF8.GetString(stream.ReadByteArray());
+            string vertexDefinition = Encoding.UTF8.GetString(stream.ReadByteArray());
+            string vertexParam = Encoding.UTF8.GetString(stream.ReadByteArray());
 
-        private async Task RestoreVerticesAndConnections()
-        {
-            var rows = await _vertexInfoProvider.GetAllRowsForInstance(_workerinstanceName);
+            _craClient
+                .LoadVertexAsync(vertexName, vertexDefinition, vertexParam, _workerinstanceName, _localVertexTable)
+                .Wait();
 
-            foreach (var _row in rows)
-            {
-                if (string.IsNullOrEmpty(_row.VertexName)) continue;
-                RestoreVertexAndConnections(_row);
-            }
-        }
+            stream.WriteInt32(0);
 
-        private async void RestoreVertexAndConnections(VertexTable _row)
-        {
-            await _craClient.LoadVertexAsync(_row.VertexName, _row.VertexDefinition, _row.VertexParameter, _workerinstanceName, _localVertexTable);
-            await RestoreConnections(_row);
+            Task.Run(() => TryReuseReceiverStream(stream));
         }
 
         private async Task RestoreConnections(VertexTable _row)
@@ -892,7 +864,29 @@ namespace CRA.ClientLibrary
             }
         }
 
-        private async Task RetryRestoreConnection(string fromVertexName, string fromVertexOutput, string toVertexName, string toVertexInput, bool reverse)
+        private async void RestoreVertexAndConnections(VertexTable _row)
+        {
+            await _craClient.LoadVertexAsync(_row.VertexName, _row.VertexDefinition, _row.VertexParameter, _workerinstanceName, _localVertexTable);
+            await RestoreConnections(_row);
+        }
+
+        private async Task RestoreVerticesAndConnections()
+        {
+            var rows = await _vertexInfoProvider.GetAllRowsForInstance(_workerinstanceName);
+
+            foreach (var _row in rows)
+            {
+                if (string.IsNullOrEmpty(_row.VertexName)) continue;
+                RestoreVertexAndConnections(_row);
+            }
+        }
+
+        private async Task RetryRestoreConnection(
+            string fromVertexName,
+            string fromVertexOutput,
+            string toVertexName,
+            string toVertexInput,
+            bool reverse)
         {
             var conn = reverse ? inConnections : outConnections;
 
@@ -934,32 +928,112 @@ namespace CRA.ClientLibrary
             }
         }
 
-        private CloudTable CreateTableIfNotExists(string tableName)
+        private async Task StartServer()
         {
-            CloudTable table = _tableClient.GetTableReference(tableName);
+            // Restore vertices on machine
+            await RestoreVerticesAndConnections();
+
+            var server = new TcpListener(IPAddress.Parse(_address), _port);
+
+            // Start listening for client requests.
+            server.Start();
+
+            while (true)
+            {
+                Debug.WriteLine("Waiting for a connection... ");
+                TcpClient client = server.AcceptTcpClient();
+                client.NoDelay = true;
+
+                Debug.WriteLine("Connected!");
+
+                // Get a stream object for reading and writing
+                Stream stream = _craClient.SecureStreamConnectionDescriptor.CreateSecureServer(client.GetStream());
+
+                // Handle a task message sent to the CRA instance
+                CRATaskMessageType message = (CRATaskMessageType)stream.ReadInt32();
+                HandleCRATaskMessage(message, stream);
+            }
+        }
+
+        private bool TryFusedConnect(
+            string otherInstance,
+            string fromVertexName,
+            string fromVertexOutput,
+            string toVertexName,
+            string toVertexInput)
+        {
+            if (otherInstance != InstanceName)
+                return false;
+
+
+            CancellationTokenSource source = new CancellationTokenSource();
+
+            if (_localVertexTable[fromVertexName].OutputEndpoints.ContainsKey(fromVertexOutput) &&
+                _localVertexTable[toVertexName].InputEndpoints.ContainsKey(toVertexInput))
+            {
+                var fromVertex = _localVertexTable[fromVertexName].OutputEndpoints[fromVertexOutput] as IFusableVertexOutputEndpoint;
+                var toVertex = _localVertexTable[toVertexName].InputEndpoints[toVertexInput] as IVertexInputEndpoint;
+
+                if (fromVertex != null && toVertex != null && fromVertex.CanFuseWith(toVertex, toVertexName, toVertexInput))
+                {
+                    if (outConnections.TryAdd(fromVertexName + ":" + fromVertexOutput + ":" + toVertexName + ":" + toVertexInput, source))
+                    {
+                        Task.Run(() => EgressToVertexInput(fromVertexName, fromVertexOutput, toVertexName, toVertexInput, source));
+                        return true;
+                    }
+                    else
+                        return false;
+                }
+                else
+                    return false;
+            }
+            else if (_localVertexTable[fromVertexName].AsyncOutputEndpoints.ContainsKey(fromVertexOutput) &&
+                _localVertexTable[toVertexName].AsyncInputEndpoints.ContainsKey(toVertexInput))
+            {
+                var fromVertex = _localVertexTable[fromVertexName].AsyncOutputEndpoints[fromVertexOutput] as IAsyncFusableVertexOutputEndpoint;
+                var toVertex = _localVertexTable[toVertexName].AsyncInputEndpoints[toVertexInput] as IAsyncVertexInputEndpoint;
+
+                if (fromVertex != null && toVertex != null && fromVertex.CanFuseWith(toVertex, toVertexName, toVertexInput))
+                {
+                    if (outConnections.TryAdd(fromVertexName + ":" + fromVertexOutput + ":" + toVertexName + ":" + toVertexInput, source))
+                    {
+                        Task.Run(() => EgressToVertexInput(fromVertexName, fromVertexOutput, toVertexName, toVertexInput, source));
+                        return true;
+                    }
+                    else
+                        return false;
+                }
+                else
+                {
+                    return false;
+                }
+            }
+            else
+            {
+                return false;
+            }
+        }
+
+        private async Task TryReuseReceiverStream(Stream stream)
+        {
             try
             {
-                table.CreateIfNotExistsAsync().Wait();
+                CRATaskMessageType message = (CRATaskMessageType)(await stream.ReadInt32Async());
+                if (message == CRATaskMessageType.PING)
+                {
+                    stream.WriteInt32(0);
+
+                    // Handle a task message sent to the CRA instance
+                    CRATaskMessageType newMessage = (CRATaskMessageType)stream.ReadInt32();
+                    HandleCRATaskMessage(newMessage, (NetworkStream)stream);
+                }
+                else
+                    stream.Close();
             }
-            catch { }
-
-            return table;
-        }
-
-        public void Dispose()
-        {
-            _craClient.Dispose();
-        }
-
-
-        /// <summary>
-        /// Kill the worker process (this process)
-        /// </summary>
-        /// <param name="killMessage">Kill message</param>
-        public void Kill(string killMessage)
-        {
-            Console.WriteLine("KILLING WORKER: " + killMessage);
-            Process.GetCurrentProcess().Kill();
+            catch (Exception)
+            {
+                stream.Close();
+            }
         }
     }
 }
