@@ -21,7 +21,7 @@ namespace CRA.ClientLibrary.DataProvider
         Task<VertexInfo> GetRowForInstance(string instanceName);
         Task<IEnumerable<VertexInfo>> GetAllRowsForInstance(string instanceName);
         Task<VertexInfo> GetRowForInstanceVertex(string instanceName, string vertexName);
-        Task Delete();
+        Task DeleteStore();
         Task<VertexInfo> GetRowForVertexDefinition(string vertexDefinition);
         Task<VertexInfo> GetRowForVertex(string vertexName);
         Task<IEnumerable<VertexInfo>> GetVertices(string instanceName);

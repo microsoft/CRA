@@ -96,7 +96,7 @@ namespace CRA.ClientLibrary
                 _clientLibrary.RegisterInstance(_instanceName, "", 0);
             }
 
-            _clientLibrary._vertexTableManager.RegisterVertex(_vertexName, _instanceName);
+            _clientLibrary._vertexInfoManager.RegisterVertex(_vertexName, _instanceName);
 
             EndpointData = new EndpointData();
             ConnectionData = new ConnectionData();
@@ -303,7 +303,7 @@ namespace CRA.ClientLibrary
         {
             bool killRemote = true; // we have no way of receiving connections
 
-            var _vertexTableManager = _clientLibrary._vertexTableManager;
+            var _vertexTableManager = _clientLibrary._vertexInfoManager;
 
             // Need to get the latest address & port
             var row = reverse ? _vertexTableManager.GetRowForActiveVertex(fromVertexName) : _vertexTableManager.GetRowForActiveVertex(toVertexName);

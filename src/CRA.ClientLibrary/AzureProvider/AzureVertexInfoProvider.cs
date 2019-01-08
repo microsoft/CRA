@@ -84,7 +84,7 @@ namespace CRA.ClientLibrary.AzureProvider
         public async Task<bool> ContainsInstance(string instanceName)
             => (await GetAll()).Where(gn => instanceName == gn.InstanceName).Count() > 0;
 
-        public Task Delete()
+        public Task DeleteStore()
             => cloudTable.DeleteIfExistsAsync();
 
         public async Task<IEnumerable<VertexInfo>> GetRowsForVertex(string vertexName)

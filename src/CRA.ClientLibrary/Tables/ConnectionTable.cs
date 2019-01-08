@@ -1,4 +1,5 @@
-﻿using Microsoft.WindowsAzure.Storage.Table;
+﻿using CRA.ClientLibrary.DataProvider;
+using Microsoft.WindowsAzure.Storage.Table;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -93,6 +94,14 @@ namespace CRA.ClientLibrary
             TableQuery<ConnectionTable> query = new TableQuery<ConnectionTable>();
             return instanceTable.ExecuteQuery(query);
         }
+
+        public static implicit operator VertexConnectionInfo(ConnectionTable ct)
+            => new VertexConnectionInfo(
+                fromVertex: ct.FromVertex,
+                fromEndpoint: ct.FromEndpoint,
+                toVertex: ct.ToVertex,
+                toEndpoint: ct.ToEndpoint,
+                versionId: ct.ETag);
 
         /// <summary>
         /// Counts all nodes in the cluster regardless of their group

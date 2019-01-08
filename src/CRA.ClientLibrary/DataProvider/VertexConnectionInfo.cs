@@ -19,12 +19,14 @@ namespace CRA.ClientLibrary.DataProvider
             string fromVertex,
             string fromEndpoint,
             string toVertex,
-            string toEndpoint)
+            string toEndpoint,
+            string versionId = null)
         {
             FromVertex = fromVertex;
             FromEndpoint = fromEndpoint;
             ToVertex = toVertex;
             ToEndpoint = toEndpoint;
+            VersionId = versionId;
         }
 
         public string FromVertex { get; }
@@ -34,6 +36,8 @@ namespace CRA.ClientLibrary.DataProvider
         public string ToVertex { get; }
 
         public string ToEndpoint { get; }
+
+        public string VersionId { get; }
 
         public override string ToString()
         {

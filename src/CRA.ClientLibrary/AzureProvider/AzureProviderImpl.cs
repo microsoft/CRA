@@ -15,7 +15,7 @@ namespace CRA.ClientLibrary.AzureProvider
     /// <summary>
     /// Definition for AzureProviderImpl
     /// </summary>
-    public class AzureProviderImpl
+    public class AzureProviderImpl : IDataProvider
     {
         private readonly CloudStorageAccount _storageAccount;
         private readonly CloudTableClient _tableClient;
@@ -31,10 +31,13 @@ namespace CRA.ClientLibrary.AzureProvider
         public IVertexInfoProvider GetVertexInfoProvider()
             => new AzureVertexInfoProvider(CreateTableIfNotExists("cravertextable"));
 
+        public IEndpointInfoProvider GetEndpointInfoProvider()
+            => new AzureEndpointInfoProvider(CreateTableIfNotExists("craendpointtable"));
+
         public IVertexConnectionInfoProvider GetVertexConnectionInfoProvider()
             => new AzureVertexConnectionInfoProvider(CreateTableIfNotExists("cravertextable"));
 
-        public IShardedVertexInfoProvider GetShardedInfoProvider()
+        public IShardedVertexInfoProvider GetShardedVertexInfoProvider()
             => new AzureShardedVertexInfoProvider(CreateTableIfNotExists("crashardedvertextable"));
 
         private CloudTable CreateTableIfNotExists(string tableName)
@@ -48,5 +51,6 @@ namespace CRA.ClientLibrary.AzureProvider
 
             return table;
         }
+
     }
 }

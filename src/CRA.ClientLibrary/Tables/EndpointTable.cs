@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
+using CRA.ClientLibrary.DataProvider;
 using Microsoft.WindowsAzure.Storage.Table;
 
 namespace CRA.ClientLibrary
@@ -96,5 +97,21 @@ namespace CRA.ClientLibrary
             var query = new TableQuery<EndpointTable>();
             return instanceTable.ExecuteQuery(query);
         }
+
+        public static implicit operator EndpointInfo(EndpointTable et)
+            => new EndpointInfo(
+                vertexName: et.VertexName,
+                endpointName: et.EndpointName,
+                isInput: et.IsInput,
+                isAsync: et.IsAsync,
+                versionId: et.ETag);
+
+        public static implicit operator EndpointTable(EndpointInfo ei)
+            => new EndpointTable(
+                vertexName: ei.VertexName,
+                endpointName: ei.EndpointName,
+                isInput: ei.IsInput,
+                isAsync: ei.IsAsync)
+            { ETag = ei.VersionId };
     }
 }

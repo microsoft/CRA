@@ -3,6 +3,7 @@ using System.Linq;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Table;
 using System.Diagnostics;
+using CRA.ClientLibrary.DataProvider;
 
 namespace CRA.ClientLibrary
 {
@@ -11,13 +12,11 @@ namespace CRA.ClientLibrary
     /// </summary>
     public class ConnectionTableManager
     {
-        private CloudTable _connectionTable;
+        private IVertexConnectionInfoProvider _connectionProvider;
 
-        internal ConnectionTableManager(string storageConnectionString)
+        internal ConnectionTableManager(IDataProvider dataProvider)
         {
-            var _storageAccount = CloudStorageAccount.Parse(storageConnectionString);
-            var _tableClient = _storageAccount.CreateCloudTableClient();
-            _connectionTable = CreateTableIfNotExists("craconnectiontable", _tableClient);
+            _connectionProvider = dataProvider.GetVertexConnectionInfoProvider();
         }
 
         internal void DeleteTable()

@@ -1,9 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using Microsoft.WindowsAzure.Storage;
-using Microsoft.WindowsAzure.Storage.Table;
-using System.Diagnostics;
+using CRA.ClientLibrary.DataProvider;
+using System.Threading.Tasks;
 
 namespace CRA.ClientLibrary
 {
@@ -12,160 +11,65 @@ namespace CRA.ClientLibrary
     /// </summary>
     public class EndpointTableManager
     {
-        private CloudTable _endpointTable;
+        private IEndpointInfoProvider _endpointDataProvider;
 
-        internal EndpointTableManager(string storageConnectionString)
+        internal EndpointTableManager(IDataProvider dataProvider)
         {
-            var _storageAccount = CloudStorageAccount.Parse(storageConnectionString);
-            var _tableClient = _storageAccount.CreateCloudTableClient();
-            _endpointTable = CreateTableIfNotExists("craendpointtable", _tableClient);
+            _endpointDataProvider = dataProvider.GetEndpointInfoProvider();
         }
 
-        public CloudTable EndpointTable
+        internal Task DeleteTable()
+            => _endpointDataProvider.DeleteStore();
+
+        internal Task<bool> ExistsEndpoint(string vertexName, string endPoint)
+            => _endpointDataProvider.ExistsEndpoint(vertexName, endPoint);
+
+        internal Task AddEndpoint(string vertexName, string endpointName, bool isInput, bool isAsync)
+            => _endpointDataProvider.AddEndpoint(
+                new EndpointInfo(
+                    vertexName: vertexName,
+                    endpointName: endpointName,
+                    isInput: isInput,
+                    isAsync: isAsync));
+
+        internal Task DeleteEndpoint(string vertexName, string endpointName)
+            => _endpointDataProvider.DeleteEndpoint(vertexName, endpointName);
+
+        internal async Task RemoveEndpoint(string vertexName, string endpointName)
         {
-            get
-            {
-                return _endpointTable;
-            }
-        }
+            var endpointInfo = await _endpointDataProvider.GetEndpoint(vertexName, endpointName);
 
-        internal void DeleteTable()
-        {
-            _endpointTable.DeleteIfExistsAsync().Wait();
-        }
-
-        internal bool ExistsEndpoint(string vertexName, string endPoint)
-        {
-            TableQuery<EndpointTable> query = new TableQuery<EndpointTable>()
-                .Where(TableQuery.CombineFilters(
-                            TableQuery.GenerateFilterCondition("PartitionKey", QueryComparisons.Equal, vertexName),
-                            TableOperators.And,
-                            TableQuery.GenerateFilterCondition("RowKey", QueryComparisons.Equal, endPoint)));
-            return _endpointTable.ExecuteQuery(query).Any();
-        }
-
-        internal void AddEndpoint(string vertexName, string endpointName, bool isInput, bool isAsync)
-        {
-            // Make the connection information stable
-            var newRow = new EndpointTable(vertexName, endpointName, isInput, isAsync);
-            TableOperation insertOperation = TableOperation.InsertOrReplace(newRow);
-            _endpointTable.ExecuteAsync(insertOperation).Wait();
-        }
-
-        internal void DeleteEndpoint(string vertexName, string endpointName)
-        {
-            // Make the connection information stable
-            var newRow = new DynamicTableEntity(vertexName, endpointName);
-            newRow.ETag = "*";
-            TableOperation deleteOperation = TableOperation.Delete(newRow);
-            _endpointTable.ExecuteAsync(deleteOperation).GetAwaiter().GetResult();
-        }
-
-        internal void RemoveEndpoint(string vertexName, string endpointName)
-        {
-            var op = TableOperation.Retrieve<EndpointTable>(vertexName, endpointName);
-            TableResult retrievedResult = _endpointTable.ExecuteAsync(op).GetAwaiter().GetResult();
-
-            // Assign the result to a CustomerEntity.
-            var deleteEntity = (EndpointTable)retrievedResult.Result;
-
-            // Create the Delete TableOperation.
-            if (deleteEntity != null)
-            {
-                TableOperation deleteOperation = TableOperation.Delete(deleteEntity);
-
-                // Execute the operation.
-                _endpointTable.ExecuteAsync(deleteOperation).Wait();
-            }
+            if (endpointInfo != null)
+            { await _endpointDataProvider.DeleteEndpoint(vertexName, endpointName, endpointInfo.Value.VersionId); }
             else
+            { Console.WriteLine("Could not retrieve the entity."); }
+        }
+
+        internal async Task<List<string>> GetInputEndpoints(string vertexName)
+            => (await _endpointDataProvider.GetEndpoints(vertexName))
+            .Where(e => e.IsInput)
+            .Select(e => e.EndpointName)
+            .ToList();
+
+        internal async Task<List<string>> GetOutputEndpoints(string vertexName)
+            => (await _endpointDataProvider.GetEndpoints(vertexName))
+            .Where(e => !e.IsInput)
+            .Select(e => e.EndpointName)
+            .ToList();
+
+        internal async Task DeleteContents()
+        {
+            var pendingTasks = new List<Task>();
+            foreach(var ei in (await _endpointDataProvider.GetAll()))
             {
-                Console.WriteLine("Could not retrieve the entity.");
+                pendingTasks.Add(
+                    _endpointDataProvider.DeleteEndpoint(
+                        ei.VertexName,
+                        ei.EndpointName,
+                        ei.VersionId));
             }
-        }
 
-        internal List<string> GetInputEndpoints(string vertexName)
-        {
-            TableQuery<EndpointTable> query = new TableQuery<EndpointTable>()
-                .Where(TableQuery.GenerateFilterCondition("PartitionKey", QueryComparisons.Equal, vertexName));
-            return _endpointTable.ExecuteQuery(query).Where(e => e.IsInput).Select(e => e.EndpointName).ToList();
-        }
-
-        internal List<string> GetOutputEndpoints(string vertexName)
-        {
-            TableQuery<EndpointTable> query = new TableQuery<EndpointTable>()
-                .Where(TableQuery.GenerateFilterCondition("PartitionKey", QueryComparisons.Equal, vertexName));
-            return _endpointTable.ExecuteQuery(query).Where(e => !e.IsInput).Select(e => e.EndpointName).ToList();
-        }
-
-        private CloudTable CreateTableIfNotExists(string tableName, CloudTableClient _tableClient)
-        {
-            CloudTable table = _tableClient.GetTableReference(tableName);
-            try
-            {
-                Debug.WriteLine("Creating table " + tableName);
-                table.CreateIfNotExistsAsync().Wait();
-            }
-            catch { }
-
-            return table;
-        }
-
-        /// <summary>
-        /// Delete contents of the table.
-        /// </summary>
-        internal void DeleteContents()
-        {
-            DeleteContents(_endpointTable);
-        }
-
-        /// <summary>
-        /// Delete contents of a cloud table
-        /// </summary>
-        /// <param name="_table"></param>
-        private static void DeleteContents(CloudTable table)
-        {
-            Action<IEnumerable<DynamicTableEntity>> vertexor = entities =>
-            {
-                var batches = new Dictionary<string, TableBatchOperation>();
-
-                foreach (var entity in entities)
-                {
-                    TableBatchOperation batch = null;
-
-                    if (batches.TryGetValue(entity.PartitionKey, out batch) == false)
-                    {
-                        batches[entity.PartitionKey] = batch = new TableBatchOperation();
-                    }
-
-                    batch.Add(TableOperation.Delete(entity));
-
-                    if (batch.Count == 100)
-                    {
-                        table.ExecuteBatchAsync(batch).Wait();
-                        batches[entity.PartitionKey] = new TableBatchOperation();
-                    }
-                }
-
-                foreach (var batch in batches.Values)
-                {
-                    if (batch.Count > 0)
-                    {
-                        table.ExecuteBatchAsync(batch).Wait();
-                    }
-                }
-            };
-
-            VertexEntities(table, vertexor);
-        }
-
-        /// <summary>
-        /// Vertex all entities in a cloud table using the given vertexor lambda.
-        /// </summary>
-        /// <param name="table"></param>
-        /// <param name="vertexor"></param>
-        private static void VertexEntities(CloudTable table, Action<IEnumerable<DynamicTableEntity>> vertexor)
-        {
-            vertexor(table.ExecuteQuery(new TableQuery<DynamicTableEntity>()));
+            await Task.WhenAll(pendingTasks);
         }
     }
 }

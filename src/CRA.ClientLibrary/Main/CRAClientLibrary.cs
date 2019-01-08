@@ -1,4 +1,5 @@
-﻿using Microsoft.WindowsAzure.Storage;
+﻿using CRA.ClientLibrary.AzureProvider;
+using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Microsoft.WindowsAzure.Storage.Table;
 using System;
@@ -32,8 +33,8 @@ namespace CRA.ClientLibrary
         CloudTable _vertexTable;
         CloudTable _connectionTable;
 
-        internal VertexTableManager _vertexTableManager;
-        internal ShardedVertexTableManager _shardedVertexTableManager;
+        internal VertexInfoManager _vertexInfoManager;
+        internal ShardedVertexInfoManager _shardedVertexTableManager;
         EndpointTableManager _endpointTableManager;
         ConnectionTableManager _connectionTableManager;
 
@@ -94,8 +95,10 @@ namespace CRA.ClientLibrary
             _blobClient = _storageAccount.CreateCloudBlobClient();
             _tableClient = _storageAccount.CreateCloudTableClient();
 
-            _vertexTableManager = new VertexTableManager(_storageConnectionString);
-            _shardedVertexTableManager = new ShardedVertexTableManager(_storageConnectionString);
+            var tmp = new AzureProviderImpl(storageConnectionString);
+
+            _vertexInfoManager = new VertexInfoManager(tmp);
+            _shardedVertexTableManager = new ShardedVertexInfoManager(tmp);
 
             _endpointTableManager = new EndpointTableManager(_storageConnectionString);
             _connectionTableManager = new ConnectionTableManager(_storageConnectionString);
@@ -145,7 +148,7 @@ namespace CRA.ClientLibrary
         /// <param name="instanceName"></param>
         public void ActivateVertex(string vertexName, string instanceName)
         {
-            _vertexTableManager.ActivateVertexOnInstance(vertexName, instanceName);
+            _vertexInfoManager.ActivateVertexOnInstance(vertexName, instanceName);
         }
 
         /// <summary>
@@ -155,7 +158,7 @@ namespace CRA.ClientLibrary
         /// <param name="instanceName"></param>
         public void DeactivateVertex(string vertexName, string instanceName)
         {
-            _vertexTableManager.DeactivateVertexOnInstance(vertexName, instanceName);
+            _vertexInfoManager.DeactivateVertexOnInstance(vertexName, instanceName);
         }
 
         /// <summary>
@@ -166,7 +169,7 @@ namespace CRA.ClientLibrary
         public void ActivateVertex(string vertexName)
         {
             if (_localWorker != null)
-                _vertexTableManager.ActivateVertexOnInstance(vertexName, _localWorker.InstanceName);
+                _vertexInfoManager.ActivateVertexOnInstance(vertexName, _localWorker.InstanceName);
             else
                 throw new Exception("No local worker found to activate vertex on");
         }
@@ -177,7 +180,7 @@ namespace CRA.ClientLibrary
         public void Reset()
         {
             _connectionTable.DeleteIfExistsAsync().Wait();
-            _vertexTable.DeleteIfExistsAsync().Wait();
+            _vertexInfoManager.DeleteStore().Wait();
             _endpointTableManager.DeleteTable();
         }
 
@@ -346,7 +349,7 @@ namespace CRA.ClientLibrary
         /// <param name="port"></param>
         public void RegisterInstance(string instanceName, string address, int port)
         {
-            _vertexTableManager.RegisterInstance(instanceName, address, port);
+            _vertexInfoManager.RegisterInstance(instanceName, address, port);
         }
 
         /// <summary>
@@ -355,7 +358,7 @@ namespace CRA.ClientLibrary
         /// <param name="instanceName"></param>
         public void DeleteInstance(string instanceName)
         {
-            _vertexTableManager.DeleteInstance(instanceName);
+            _vertexInfoManager.DeleteInstance(instanceName);
         }
 
         /// <summary>
@@ -444,7 +447,7 @@ namespace CRA.ClientLibrary
         public async Task<IVertex> LoadVertexAsync(string vertexName, string vertexDefinition, string vertexParameter, string instanceName, ConcurrentDictionary<string, IVertex> table)
         {
             // Deactivate vertex
-            _vertexTableManager.DeactivateVertexOnInstance(vertexName, instanceName);
+            _vertexInfoManager.DeactivateVertexOnInstance(vertexName, instanceName);
 
             CloudBlobContainer container = _blobClient.GetContainerReference("cra");
             container.CreateIfNotExistsAsync().Wait();
@@ -682,15 +685,15 @@ namespace CRA.ClientLibrary
             // Send request to CRA instance
 
             // Check that vertex and endpoints are valid and existing
-            if (!_vertexTableManager.ExistsVertex(fromVertexName) || !_vertexTableManager.ExistsVertex(toVertexName))
+            if (!_vertexInfoManager.ExistsVertex(fromVertexName) || !_vertexInfoManager.ExistsVertex(toVertexName))
             {
                 // Check for sharded vertices
                 List<int> fromVertexShards, toVertexShards;
 
-                if (!_vertexTableManager.ExistsShardedVertex(fromVertexName, out fromVertexShards))
+                if (!_vertexInfoManager.ExistsShardedVertex(fromVertexName, out fromVertexShards))
                     return CRAErrorCode.VertexNotFound;
 
-                if (!_vertexTableManager.ExistsShardedVertex(toVertexName, out toVertexShards))
+                if (!_vertexInfoManager.ExistsShardedVertex(toVertexName, out toVertexShards))
                     return CRAErrorCode.VertexNotFound;
 
                 return ConnectSharded(fromVertexName, fromVertexShards, fromEndpoint, toVertexName, toVertexShards, toEndpoint, direction);
@@ -787,7 +790,7 @@ namespace CRA.ClientLibrary
 
         public string GetDefaultInstanceName()
         {
-            return _vertexTableManager.GetRowForDefaultInstance().InstanceName;
+            return _vertexInfoManager.GetRowForDefaultInstance().InstanceName;
         }
 
         /// <summary>
@@ -839,7 +842,7 @@ namespace CRA.ClientLibrary
         {
             get
             {
-                return _vertexTableManager.GetVertexNames();
+                return _vertexInfoManager.GetVertexNames();
             }
         }
 
@@ -851,7 +854,7 @@ namespace CRA.ClientLibrary
         {
             get
             {
-                return _vertexTableManager.GetVertexDefinitions();
+                return _vertexInfoManager.GetVertexDefinitions();
             }
         }
 
@@ -863,7 +866,7 @@ namespace CRA.ClientLibrary
         {
             get
             {
-                return _vertexTableManager.GetInstanceNames();
+                return _vertexInfoManager.GetInstanceNames();
             }
         }
 
