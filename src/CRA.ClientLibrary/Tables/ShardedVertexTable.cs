@@ -9,6 +9,7 @@ using System.Configuration;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Microsoft.WindowsAzure.Storage.Table;
+using CRA.ClientLibrary.DataProvider;
 
 namespace CRA.ClientLibrary
 {
@@ -71,6 +72,27 @@ namespace CRA.ClientLibrary
         /// </summary>
         public ShardedVertexTable() { }
 
+        public static implicit operator ShardedVertexTable(ShardedVertexInfo vertexInfo)
+            => new ShardedVertexTable
+            {
+                PartitionKey = vertexInfo.VertexName,
+                RowKey = vertexInfo.EpochId,
+                AllInstances = vertexInfo.AllInstances,
+                AllShards = vertexInfo.AllShards,
+                AddedShards = vertexInfo.AddedShards,
+                RemovedShards = vertexInfo.RemovedShards,
+                ShardLocator = vertexInfo.ShardLocator
+            };
+
+        public static implicit operator ShardedVertexInfo(ShardedVertexTable vertexInfo)
+            => new ShardedVertexInfo(
+                vertexName: vertexInfo.VertexName,
+                epochId: vertexInfo.EpochId,
+                allInstances: vertexInfo.AllInstances,
+                allShards: vertexInfo.AllShards,
+                addedShards: vertexInfo.AddedShards,
+                removedShards: vertexInfo.RemovedShards,
+                shardLocator: vertexInfo.ShardLocator);
 
         /// <summary>
         /// ToString
@@ -113,7 +135,6 @@ namespace CRA.ClientLibrary
             var expr = SerializationHelper.Deserialize(ShardLocator);
             return (Expression<Func<int, int>>) expr;
         }
-
 
         /// <summary>
         /// Returns a list of all visible nodes in all groups

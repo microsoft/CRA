@@ -1,7 +1,5 @@
 ﻿using CRA.ClientLibrary.AzureProvider;
 using CRA.ClientLibrary.DataProvider;
-using Microsoft.WindowsAzure.Storage;
-using Microsoft.WindowsAzure.Storage.Table;
 using System;
 using System.Collections.Concurrent;
 using System.Diagnostics;
@@ -30,12 +28,8 @@ namespace CRA.ClientLibrary
         private readonly ConcurrentDictionary<string, IVertex> _localVertexTable = new ConcurrentDictionary<string, IVertex>();
 
         private readonly int _port;
-        private readonly CloudStorageAccount _storageAccount;
-        // Azure storage clients
-        private readonly string _storageConnectionString;
 
         private readonly int _streamsPoolSize;
-        private readonly CloudTableClient _tableClient;
         private readonly IVertexInfoProvider _vertexInfoProvider;
         private readonly string _workerinstanceName;
         private readonly ConcurrentDictionary<string, CancellationTokenSource> inConnections = new ConcurrentDictionary<string, CancellationTokenSource>();
@@ -55,7 +49,7 @@ namespace CRA.ClientLibrary
             string workerInstanceName,
             string address,
             int port,
-            string storageConnectionString,
+            IDataProvider azureDataProvider,
             ISecureStreamConnectionDescriptor descriptor = null,
             int streamsPoolSize = 0)
         {
@@ -77,11 +71,8 @@ namespace CRA.ClientLibrary
             _port = port;
             _streamsPoolSize = streamsPoolSize;
 
-            _storageConnectionString = storageConnectionString;
-            _storageAccount = CloudStorageAccount.Parse(_storageConnectionString);
-            _tableClient = _storageAccount.CreateCloudTableClient();
-            _vertexInfoProvider = new AzureVertexInfoProvider(CreateTableIfNotExists("cravertextable"));
-            _connectionInfoProvider = new AzureVertexConnectionInfoProvider(CreateTableIfNotExists("craconnectiontable"));
+            _vertexInfoProvider = azureDataProvider.GetVertexInfoProvider();
+            _connectionInfoProvider = azureDataProvider.GetVertexConnectionInfoProvider();
 
             if (descriptor != null)
             { _craClient.SecureStreamConnectionDescriptor = descriptor; }
@@ -483,18 +474,6 @@ namespace CRA.ClientLibrary
             {
                 Task.Run(() => TryReuseReceiverStream(stream));
             }
-        }
-
-        private CloudTable CreateTableIfNotExists(string tableName)
-        {
-            CloudTable table = _tableClient.GetTableReference(tableName);
-            try
-            {
-                table.CreateIfNotExistsAsync().Wait();
-            }
-            catch { }
-
-            return table;
         }
 
         private async Task EgressToStream(

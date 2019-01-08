@@ -40,6 +40,7 @@ namespace CRA.ClientLibrary.AzureProvider
 
         public async Task<VertexInfo> GetRowForInstance(string instanceName)
             => (await GetAll()).Where(gn => instanceName == gn.InstanceName && string.IsNullOrEmpty(gn.VertexName)).First();
+
         public async Task<IEnumerable<VertexInfo>> GetAllRowsForInstance(string instanceName)
             => (await GetAll()).Where(gn => instanceName == gn.InstanceName);
 
@@ -59,12 +60,97 @@ namespace CRA.ClientLibrary.AzureProvider
             => (await GetAll()).Where(gn => instanceName == gn.InstanceName && !string.IsNullOrEmpty(gn.VertexName));
 
         public async Task<IEnumerable<VertexInfo>> GetRowsForShardedVertex(string vertexName)
-            => (await GetAll()).Where(gn => gn.VertexName.StartsWith(vertexName + "$") && !string.IsNullOrEmpty(gn.VertexName));
+        {
+            var query = new TableQuery<VertexTable>()
+                .Where(
+                TableQuery.CombineFilters(
+            TableQuery.GenerateFilterCondition("RowKey",
+                QueryComparisons.GreaterThanOrEqual,
+                vertexName + "$"),
+            TableOperators.And,
+            TableQuery.GenerateFilterCondition("RowKey",
+                QueryComparisons.LessThan,
+                vertexName + "$9999999999999")
+            ));
+
+            return (await cloudTable.ExecuteQueryAsync(query))
+                .Select(e => (VertexInfo)e)
+                .ToList();
+        }
 
         public async Task<bool> ContainsRow(VertexInfo entity)
             => (await GetAll()).Where(gn => entity.Equals(gn)).Count() > 0;
 
         public async Task<bool> ContainsInstance(string instanceName)
             => (await GetAll()).Where(gn => instanceName == gn.InstanceName).Count() > 0;
-}
+
+        public Task Delete()
+            => cloudTable.DeleteIfExistsAsync();
+
+        public async Task<IEnumerable<VertexInfo>> GetRowsForVertex(string vertexName)
+            => (await cloudTable.ExecuteQueryAsync(
+                    new TableQuery<VertexTable>()
+                        .Where(
+                            TableQuery.GenerateFilterCondition(
+                                "RowKey",
+                                QueryComparisons.Equal,
+                                vertexName))))
+            .Select(vt => (VertexInfo)vt);
+
+        public async Task<List<string>> GetVertexNames()
+            => (await cloudTable.ExecuteQueryAsync(
+                new TableQuery<VertexTable>()
+                 .Where(
+                    TableQuery.GenerateFilterCondition(
+                        "PartitionKey",
+                        QueryComparisons.NotEqual,
+                        ""))))
+                .Select(e => e.VertexName)
+                .ToList();
+
+        public async Task<List<string>> GetVertexDefinitions()
+            => (await cloudTable.ExecuteQueryAsync(
+                new TableQuery<VertexTable>()
+                 .Where(
+                    TableQuery.GenerateFilterCondition(
+                        "PartitionKey",
+                        QueryComparisons.Equal,
+                        ""))))
+                .Select(e => e.VertexName)
+                .ToList();
+
+        public async Task<List<string>> GetInstanceNames()
+        {
+            TableQuery<VertexTable> query = new TableQuery<VertexTable>()
+                .Where(TableQuery.GenerateFilterCondition("RowKey", QueryComparisons.Equal, ""));
+
+            return (await cloudTable.ExecuteQueryAsync(
+                new TableQuery<VertexTable>()
+                    .Where(
+                        TableQuery.GenerateFilterCondition(
+                            "RowKey",
+                            QueryComparisons.Equal,
+                            ""))))
+                .Select(e => e.InstanceName)
+                .ToList();
+        }
+
+        public Task RegisterVertexInfo(VertexInfo vertexInfo)
+             => cloudTable.ExecuteAsync(
+                 TableOperation.InsertOrReplace(
+                     (VertexTable)vertexInfo));
+
+        public Task UpdateVertex(VertexInfo newActiveVertex)
+            => cloudTable.ExecuteAsync(
+                TableOperation.InsertOrReplace(
+                    (VertexTable)newActiveVertex));
+
+        public Task DeleteVertexInfo(string instanceName, string vertexName)
+        {
+            var newRow = new DynamicTableEntity(instanceName, "");
+            newRow.ETag = "*";
+            TableOperation deleteOperation = TableOperation.Delete(newRow);
+            return cloudTable.ExecuteAsync(deleteOperation);
+        }
+    }
 }

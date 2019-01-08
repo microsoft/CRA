@@ -30,5 +30,18 @@ namespace CRA.ClientLibrary.DataProvider
             return Expression.Lambda<Func<IVertex>>
                  (converted, expression.Parameters);
         }
+
+        internal static Func<int, int> GetShardLocator(this ShardedVertexInfo vertexInfo)
+        {
+            var expr = SerializationHelper.Deserialize(vertexInfo.ShardLocator);
+            var actionExpr = (Expression<Func<int, int>>)expr;
+            return actionExpr.Compile();
+        }
+
+        internal static Expression<Func<int, int>> GetShardLocatorExpr(this ShardedVertexInfo vertexInfo)
+        {
+            var expr = SerializationHelper.Deserialize(vertexInfo.ShardLocator);
+            return (Expression<Func<int, int>>) expr;
+        }
     }
 }

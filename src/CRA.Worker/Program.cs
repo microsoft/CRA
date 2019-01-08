@@ -5,6 +5,7 @@ using System.Configuration;
 using System.Diagnostics;
 using CRA.ClientLibrary;
 using System.Reflection;
+using CRA.ClientLibrary.AzureProvider;
 
 namespace CRA.Worker
 {
@@ -89,7 +90,9 @@ namespace CRA.Worker
 
             var worker = new CRAWorker
                 (args[0], ipAddress, Convert.ToInt32(args[1]),
-                storageConnectionString, descriptor, connectionsPoolPerWorker);
+                new AzureProviderImpl(storageConnectionString),
+                descriptor,
+                connectionsPoolPerWorker);
 
             worker.Start();
         }

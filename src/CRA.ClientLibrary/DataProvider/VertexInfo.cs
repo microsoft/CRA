@@ -125,6 +125,34 @@ namespace CRA.ClientLibrary.DataProvider
 
         public bool IsSharded { get; }
 
+        public VertexInfo Deactivate()
+        {
+            return new VertexInfo(
+                instanceName: this.InstanceName,
+                address: this.Address,
+                port: this.Port,
+                vertexName: this.VertexName,
+                vertexDefinition: this.VertexDefinition,
+                vertexCreateAction: this.VertexCreateAction,
+                vertexParameter: this.VertexParameter,
+                isActive: false,
+                isSharded: this.IsSharded);
+        }
+
+        public VertexInfo Activate()
+        {
+            return new VertexInfo(
+                instanceName: this.InstanceName,
+                address: this.Address,
+                port: this.Port,
+                vertexName: this.VertexName,
+                vertexDefinition: this.VertexDefinition,
+                vertexCreateAction: this.VertexCreateAction,
+                vertexParameter: this.VertexParameter,
+                isActive: true,
+                isSharded: this.IsSharded);
+        }
+
         public override string ToString()
         {
             return string.Format(

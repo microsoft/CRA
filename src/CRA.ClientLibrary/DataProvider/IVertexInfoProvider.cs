@@ -21,11 +21,19 @@ namespace CRA.ClientLibrary.DataProvider
         Task<VertexInfo> GetRowForInstance(string instanceName);
         Task<IEnumerable<VertexInfo>> GetAllRowsForInstance(string instanceName);
         Task<VertexInfo> GetRowForInstanceVertex(string instanceName, string vertexName);
+        Task Delete();
         Task<VertexInfo> GetRowForVertexDefinition(string vertexDefinition);
         Task<VertexInfo> GetRowForVertex(string vertexName);
         Task<IEnumerable<VertexInfo>> GetVertices(string instanceName);
         Task<IEnumerable<VertexInfo>> GetRowsForShardedVertex(string vertexName);
+        Task<IEnumerable<VertexInfo>> GetRowsForVertex(string vertexName);
         Task<bool> ContainsRow(VertexInfo entity);
         Task<bool> ContainsInstance(string instanceName);
+        Task<List<string>> GetVertexNames();
+        Task<List<string>> GetVertexDefinitions();
+        Task<List<string>> GetInstanceNames();
+        Task RegisterVertexInfo(VertexInfo vertexInfo);
+        Task UpdateVertex(VertexInfo newActiveVertex);
+        Task DeleteVertexInfo(string instanceName, string vertexName);
     }
 }
