@@ -20,6 +20,11 @@ namespace CRA.ClientLibrary.AzureProvider
         public AzureVertexConnectionInfoProvider(CloudTable cloudTable)
         { _cloudTable = cloudTable; }
 
+        public Task Add(VertexConnectionInfo vertexConnectionInfo)
+            => _cloudTable.ExecuteAsync(
+                TableOperation.InsertOrReplace(
+                    (ConnectionTable)vertexConnectionInfo));
+
         public async Task<bool> ContainsRow(VertexConnectionInfo entity)
         {
             var temp = await GetAll();
@@ -35,18 +40,37 @@ namespace CRA.ClientLibrary.AzureProvider
             return (await _cloudTable.ExecuteQueryAsync(query)).Count();
         }
 
+        public Task Delete(VertexConnectionInfo vci)
+            => _cloudTable.ExecuteAsync(
+                TableOperation.Delete((ConnectionTable)vci));
+
+        public Task DeleteStore()
+            => _cloudTable.DeleteIfExistsAsync();
+
+        public async Task<VertexConnectionInfo?> Get(string fromVertex, string fromOutput, string toConnection, string toInput)
+        {
+            var connectionTable = new ConnectionTable(
+                fromVertex,
+                fromOutput,
+                toConnection,
+                toInput);
+
+            TableOperation retrieveOperation = TableOperation.Retrieve<ConnectionTable>(
+                connectionTable.PartitionKey,
+                connectionTable.RowKey);
+
+            TableResult retrievedResult = await _cloudTable.ExecuteAsync(retrieveOperation);
+            if (retrievedResult.Result == null)
+            { return null; }
+
+            return (VertexConnectionInfo)retrievedResult.Result;
+        }
+
         public async Task<IEnumerable<VertexConnectionInfo>> GetAll()
         {
             var query = new TableQuery<ConnectionTable>();
             return (await _cloudTable.ExecuteQueryAsync(query))
-                .Select(_ =>
-                    new VertexConnectionInfo
-                    {
-                        FromEndpoint = _.FromEndpoint,
-                        FromVertex = _.FromVertex,
-                        ToEndpoint = _.ToEndpoint,
-                        ToVertex = _.ToVertex
-                    });
+                .Select(_ => (VertexConnectionInfo)_);
         }
 
         public async Task<IEnumerable<VertexConnectionInfo>> GetAllConnectionsFromVertex(string fromVertex)

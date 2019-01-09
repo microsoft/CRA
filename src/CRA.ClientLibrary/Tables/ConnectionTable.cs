@@ -103,6 +103,14 @@ namespace CRA.ClientLibrary
                 toEndpoint: ct.ToEndpoint,
                 versionId: ct.ETag);
 
+        public static implicit operator ConnectionTable(VertexConnectionInfo vci)
+            => new ConnectionTable(
+                fromVertex: vci.FromVertex,
+                fromEndpoint: vci.FromEndpoint,
+                toVertex: vci.ToVertex,
+                toEndpoint: vci.ToEndpoint)
+            { ETag = vci.VersionId };
+
         /// <summary>
         /// Counts all nodes in the cluster regardless of their group
         /// </summary>
