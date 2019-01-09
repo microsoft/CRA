@@ -20,6 +20,9 @@ namespace CRA.ClientLibrary
             _vertexInfoProvider = dataProvider.GetVertexInfoProvider();
         }
 
+        public IVertexInfoProvider VertexInfoProvider
+            => _vertexInfoProvider;
+
         internal Task DeleteTable()
             => _vertexInfoProvider.DeleteStore();
 
@@ -61,12 +64,22 @@ namespace CRA.ClientLibrary
                     isActive: false,
                     isSharded: false));
 
-        internal async Task DeactivateVertexOnInstance(string vertexName, string instanceName)
+        internal async Task ActivateVertexOnInstance(string vertexName, string instanceName)
         {
             var newActiveVertex = (await _vertexInfoProvider.GetAll())
                 .Where(gn => instanceName == gn.InstanceName && vertexName == gn.VertexName)
                 .First()
                 .Activate();
+
+            await _vertexInfoProvider.UpdateVertex(newActiveVertex);
+        }
+
+        internal async Task DeactivateVertexOnInstance(string vertexName, string instanceName)
+        {
+            var newActiveVertex = (await _vertexInfoProvider.GetAll())
+                .Where(gn => instanceName == gn.InstanceName && vertexName == gn.VertexName)
+                .First()
+                .Deactivate();
 
             await _vertexInfoProvider.UpdateVertex(newActiveVertex);
         }
@@ -96,18 +109,18 @@ namespace CRA.ClientLibrary
         internal Task<VertexInfo> GetRowForInstanceVertex(string instanceName, string vertexName)
             => _vertexInfoProvider.GetRowForInstanceVertex(instanceName, vertexName);
 
-        internal async Task<VertexTable> GetRowForDefaultInstance()
+        internal async Task<VertexInfo> GetRowForDefaultInstance()
             => (await _vertexInfoProvider.GetAll())
                 .Where(gn => string.IsNullOrEmpty(gn.VertexName))
                 .First();
 
-        internal Task<List<string>> GetVertexNames()
+        internal Task<IEnumerable<string>> GetVertexNames()
             => _vertexInfoProvider.GetVertexNames();
 
-        internal Task<List<string>> GetVertexDefinitions()
+        internal Task<IEnumerable<string>> GetVertexDefinitions()
             => _vertexInfoProvider.GetVertexDefinitions();
 
-        internal Task<List<string>> GetInstanceNames()
+        internal Task<IEnumerable<string>> GetInstanceNames()
             => _vertexInfoProvider.GetInstanceNames();
     }
 }

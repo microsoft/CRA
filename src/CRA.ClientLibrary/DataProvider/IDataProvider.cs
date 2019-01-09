@@ -14,6 +14,7 @@ namespace CRA.ClientLibrary.DataProvider
     /// </summary>
     public interface IDataProvider
     {
+        IBlobStorageProvider GetBlobStorageProvider();
         IVertexInfoProvider GetVertexInfoProvider();
         IEndpointInfoProvider GetEndpointInfoProvider();
         IShardedVertexInfoProvider GetShardedVertexInfoProvider();

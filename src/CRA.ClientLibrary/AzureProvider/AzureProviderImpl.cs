@@ -52,5 +52,8 @@ namespace CRA.ClientLibrary.AzureProvider
             return table;
         }
 
+        public IBlobStorageProvider GetBlobStorageProvider()
+            => new AzureBlobProvider(_storageAccount.CreateCloudBlobClient(), "cra");
+
     }
 }

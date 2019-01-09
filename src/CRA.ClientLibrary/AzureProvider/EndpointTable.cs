@@ -4,7 +4,7 @@ using System.Globalization;
 using CRA.ClientLibrary.DataProvider;
 using Microsoft.WindowsAzure.Storage.Table;
 
-namespace CRA.ClientLibrary
+namespace CRA.ClientLibrary.AzureProvider
 {
     /// <summary>
     /// An assignment of one machine to a group

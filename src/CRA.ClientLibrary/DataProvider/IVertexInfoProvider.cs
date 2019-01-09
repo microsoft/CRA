@@ -35,5 +35,7 @@ namespace CRA.ClientLibrary.DataProvider
         Task RegisterVertexInfo(VertexInfo vertexInfo);
         Task UpdateVertex(VertexInfo newActiveVertex);
         Task DeleteVertexInfo(string instanceName, string vertexName);
+        Task DeleteVertexInfo(VertexInfo vertexInfo);
+        Task InsertOrReplace(VertexInfo newInfo);
     }
 }

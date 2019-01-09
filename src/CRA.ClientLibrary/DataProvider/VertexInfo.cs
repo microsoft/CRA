@@ -46,7 +46,8 @@ namespace CRA.ClientLibrary.DataProvider
             int port,
             Expression<Func<IVertex>> vertexCreateAction,
             object vertexParameter,
-            bool isActive)
+            bool isActive,
+            bool isSharded)
         {
             string vertexCreateActionStr = null;
             if (vertexCreateAction != null)
@@ -69,7 +70,7 @@ namespace CRA.ClientLibrary.DataProvider
                 vertexCreateAction: vertexCreateActionStr,
                 vertexParameter: vertexParameterStr,
                 isActive: isActive,
-                isSharded: false);
+                isSharded: isSharded);
         }
 
         public static VertexInfo Create(
@@ -80,7 +81,8 @@ namespace CRA.ClientLibrary.DataProvider
             int port,
             Expression<Func<IShardedVertex>> vertexCreateAction,
             object vertexParameter,
-            bool isActive)
+            bool isActive,
+            bool isSharded)
         {
             string vertexCreateActionStr = null;
             if (vertexCreateAction != null)
@@ -103,7 +105,7 @@ namespace CRA.ClientLibrary.DataProvider
                 vertexCreateAction: vertexCreateActionStr,
                 vertexParameter: vertexParameterStr,
                 isActive: isActive,
-                isSharded: false);
+                isSharded: isSharded);
         }
 
 

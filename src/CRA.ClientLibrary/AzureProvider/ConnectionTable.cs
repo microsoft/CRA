@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 
-namespace CRA.ClientLibrary
+namespace CRA.ClientLibrary.AzureProvider
 {
     /// <summary>
     /// An assignment of one machine to a group

@@ -57,7 +57,6 @@ namespace CRA.ClientLibrary
             Console.WriteLine("   Instance Name: " + workerInstanceName);
             Console.WriteLine("   IP address: " + address);
             Console.WriteLine("   Port: " + port);
-            Console.WriteLine("   Azure connection string: " + storageConnectionString);
 
             if (descriptor != null)
             { Console.WriteLine("   Secure network connections: Enabled using assembly " + descriptor.GetType().FullName); }

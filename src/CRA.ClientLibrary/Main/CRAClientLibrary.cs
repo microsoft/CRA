@@ -1,11 +1,7 @@
-﻿using CRA.ClientLibrary.AzureProvider;
-using Microsoft.WindowsAzure.Storage;
-using Microsoft.WindowsAzure.Storage.Blob;
-using Microsoft.WindowsAzure.Storage.Table;
+﻿using CRA.ClientLibrary.DataProvider;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Configuration;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -21,22 +17,13 @@ namespace CRA.ClientLibrary
     /// </summary>
     public partial class CRAClientLibrary
     {
-        CRAWorker _localWorker;
-
         // Azure storage clients
-        string _storageConnectionString;
-        CloudStorageAccount _storageAccount;
-
-        CloudBlobClient _blobClient;
-        CloudTableClient _tableClient;
-
-        CloudTable _vertexTable;
-        CloudTable _connectionTable;
-
-        internal VertexInfoManager _vertexInfoManager;
-        internal ShardedVertexInfoManager _shardedVertexTableManager;
-        EndpointTableManager _endpointTableManager;
-        ConnectionTableManager _connectionTableManager;
+        internal CRAWorker _localWorker;
+        internal IBlobStorageProvider _blobStorage;
+        internal VertexTableManager _vertexInfoManager;
+        internal ShardedVertexTableManager _shardedVertexTableManager;
+        internal EndpointTableManager _endpointTableManager;
+        internal ConnectionTableManager _connectionTableManager;
 
         Type aquaType = typeof(Aqua.TypeSystem.ConstructorInfo);
 
@@ -49,16 +36,9 @@ namespace CRA.ClientLibrary
         /// <summary>
         /// Create an instance of the client library for Common Runtime for Applications (CRA)
         /// </summary>
-        public CRAClientLibrary() : this("", null)
-        {
-        }
-
-        /// <summary>
-        /// Create an instance of the client library for Common Runtime for Applications (CRA)
-        /// </summary>
         /// <param name="storageConnectionString">Optional storage account to use for CRA metadata, if
         /// not specified, it will use the appSettings key named StorageConnectionString in app.config</param>
-        public CRAClientLibrary(string storageConnectionString) : this(storageConnectionString, null)
+        public CRAClientLibrary(IDataProvider dataProvider) : this(dataProvider, null)
         {
         }
 
@@ -68,43 +48,15 @@ namespace CRA.ClientLibrary
         /// <param name="storageConnectionString">Optional storage account to use for CRA metadata, if
         /// not specified, it will use the appSettings key named StorageConnectionString in app.config</param>
         /// <param name = "localWorker" >Local worker if any</param>
-        public CRAClientLibrary(string storageConnectionString, CRAWorker localWorker)
+        public CRAClientLibrary(IDataProvider dataProvider, CRAWorker localWorker)
         {
             _localWorker = localWorker;
 
-            if (storageConnectionString == "" || storageConnectionString == null)
-            {
-                _storageConnectionString = null;
-#if !DOTNETCORE
-                _storageConnectionString = ConfigurationManager.AppSettings.Get("AZURE_STORAGE_CONN_STRING");
-#endif
-                if (_storageConnectionString == null)
-                {
-                    _storageConnectionString = Environment.GetEnvironmentVariable("AZURE_STORAGE_CONN_STRING");
-                }
-                if (_storageConnectionString == null)
-                {
-                    throw new InvalidOperationException("Azure storage connection string not found. Use appSettings in your app.config to provide this using the key AZURE_STORAGE_CONN_STRING, or use the environment variable AZURE_STORAGE_CONN_STRING.");
-                }
-            }
-            else
-                _storageConnectionString = storageConnectionString;
-
-            _storageAccount = CloudStorageAccount.Parse(_storageConnectionString);
-
-            _blobClient = _storageAccount.CreateCloudBlobClient();
-            _tableClient = _storageAccount.CreateCloudTableClient();
-
-            var tmp = new AzureProviderImpl(storageConnectionString);
-
-            _vertexInfoManager = new VertexInfoManager(tmp);
-            _shardedVertexTableManager = new ShardedVertexInfoManager(tmp);
-
-            _endpointTableManager = new EndpointTableManager(_storageConnectionString);
-            _connectionTableManager = new ConnectionTableManager(_storageConnectionString);
-
-            _vertexTable = CreateTableIfNotExists("cravertextable");
-            _connectionTable = CreateTableIfNotExists("craconnectiontable");
+            _blobStorage = dataProvider.GetBlobStorageProvider();
+            _vertexInfoManager = new VertexTableManager(dataProvider);
+            _shardedVertexTableManager = new ShardedVertexTableManager(dataProvider);
+            _endpointTableManager = new EndpointTableManager(dataProvider);
+            _connectionTableManager = new ConnectionTableManager(dataProvider);
         }
 
         /// <summary>
@@ -121,22 +73,28 @@ namespace CRA.ClientLibrary
         /// </summary>
         /// <param name="vertexDefinition">Name of the vertex type</param>
         /// <param name="creator">Lambda that describes how to instantiate the vertex, taking in an object as parameter</param>
-        public CRAErrorCode DefineVertex(string vertexDefinition, Expression<Func<IVertex>> creator)
+        public async Task<CRAErrorCode> DefineVertex(string vertexDefinition, Expression<Func<IVertex>> creator)
         {
             if (_artifactUploading)
             {
-                CloudBlobContainer container = _blobClient.GetContainerReference("cra");
-                container.CreateIfNotExistsAsync().Wait();
-                var blockBlob = container.GetBlockBlobReference(vertexDefinition + "/binaries");
-                CloudBlobStream blobStream = blockBlob.OpenWriteAsync().GetAwaiter().GetResult();
-                AssemblyUtils.WriteAssembliesToStream(blobStream);
-                blobStream.Close();
+                using (var stream = await _blobStorage.GetWriteStream(vertexDefinition + "/binaries"))
+                {
+                    AssemblyUtils.WriteAssembliesToStream(stream);
+                }
             }
             
-            // Add metadata
-            var newRow = new VertexTable("", vertexDefinition, vertexDefinition, "", 0, creator, null, true);
-            TableOperation insertOperation = TableOperation.InsertOrReplace(newRow);
-            _vertexTable.ExecuteAsync(insertOperation).Wait();
+            var newInfo = VertexInfo.Create(
+                "",
+                vertexDefinition,
+                vertexDefinition,
+                "",
+                0,
+                creator,
+                null,
+                true,
+                false);
+
+            await _vertexInfoManager.VertexInfoProvider.InsertOrReplace(newInfo);
 
             return CRAErrorCode.Success;
         }
@@ -146,93 +104,40 @@ namespace CRA.ClientLibrary
         /// </summary>
         /// <param name="vertexName"></param>
         /// <param name="instanceName"></param>
-        public void ActivateVertex(string vertexName, string instanceName)
-        {
-            _vertexInfoManager.ActivateVertexOnInstance(vertexName, instanceName);
-        }
+        public Task ActivateVertex(string vertexName, string instanceName)
+            => _vertexInfoManager.ActivateVertexOnInstance(vertexName, instanceName);
 
         /// <summary>
         /// Make this vertex the current "inactive".
         /// </summary>
         /// <param name="vertexName"></param>
         /// <param name="instanceName"></param>
-        public void DeactivateVertex(string vertexName, string instanceName)
-        {
-            _vertexInfoManager.DeactivateVertexOnInstance(vertexName, instanceName);
-        }
+        public Task DeactivateVertex(string vertexName, string instanceName)
+            => _vertexInfoManager.DeactivateVertexOnInstance(vertexName, instanceName);
 
         /// <summary>
         /// Make this vertex the current "active" on local worker.
         /// </summary>
         /// <param name="vertexName"></param>
         /// <param name="instanceName"></param>
-        public void ActivateVertex(string vertexName)
+        public Task ActivateVertex(string vertexName)
         {
-            if (_localWorker != null)
-                _vertexInfoManager.ActivateVertexOnInstance(vertexName, _localWorker.InstanceName);
-            else
-                throw new Exception("No local worker found to activate vertex on");
+            if (_localWorker == null)
+            { throw new Exception("No local worker found to activate vertex on"); }
+
+            return _vertexInfoManager.ActivateVertexOnInstance(
+                vertexName,
+                _localWorker.InstanceName);
         }
 
         /// <summary>
         /// Resets the cluster and deletes all knowledge of any CRA instances
         /// </summary>
-        public void Reset()
-        {
-            _connectionTable.DeleteIfExistsAsync().Wait();
-            _vertexInfoManager.DeleteStore().Wait();
-            _endpointTableManager.DeleteTable();
-        }
-
-        /// <summary>
-        /// Delete contents of a cloud table
-        /// </summary>
-        /// <param name="_table"></param>
-        private static void DeleteContents(CloudTable table)
-        {
-            Action<IEnumerable<DynamicTableEntity>> vertexor = entities =>
-            {
-                var batches = new Dictionary<string, TableBatchOperation>();
-
-                foreach (var entity in entities)
-                {
-                    TableBatchOperation batch = null;
-
-                    if (batches.TryGetValue(entity.PartitionKey, out batch) == false)
-                    {
-                        batches[entity.PartitionKey] = batch = new TableBatchOperation();
-                    }
-
-                    batch.Add(TableOperation.Delete(entity));
-
-                    if (batch.Count == 100)
-                    {
-                        table.ExecuteBatchAsync(batch).Wait();
-                        batches[entity.PartitionKey] = new TableBatchOperation();
-                    }
-                }
-
-                foreach (var batch in batches.Values)
-                {
-                    if (batch.Count > 0)
-                    {
-                        table.ExecuteBatchAsync(batch).Wait();
-                    }
-                }
-            };
-
-            VertexEntities(table, vertexor);
-        }
-
-        /// <summary>
-        /// Vertex all entities in a cloud table using the given vertexor lambda.
-        /// </summary>
-        /// <param name="table"></param>
-        /// <param name="vertexor"></param>
-        private static void VertexEntities(CloudTable table, Action<IEnumerable<DynamicTableEntity>> vertexor)
-        {
-            vertexor(table.ExecuteQuery(new TableQuery<DynamicTableEntity>()));
-        }
+        public Task Reset()
+            => Task.WhenAll(
+                _connectionTableManager.DeleteTable(),
+                _vertexInfoManager.DeleteTable(),
+                _endpointTableManager.DeleteTable());
 
         /// <summary>
         /// Not yet implemented
@@ -251,42 +156,56 @@ namespace CRA.ClientLibrary
         /// <param name="vertexDefinition">Definition of the vertex (type)</param>
         /// <param name="vertexParameter">Parameters to be passed to the vertex in its constructor (serializable object)</param>
         /// <returns>Status of the command</returns>
-        public CRAErrorCode InstantiateVertex(string instanceName, string vertexName, string vertexDefinition, object vertexParameter)
-        {
-            return InstantiateVertex(instanceName, vertexName, vertexDefinition, vertexParameter, false);
-        }
+        public Task<CRAErrorCode> InstantiateVertex(
+            string instanceName,
+            string vertexName,
+            string vertexDefinition,
+            object vertexParameter)
+            => InstantiateVertex(
+                instanceName,
+                vertexName,
+                vertexDefinition,
+                vertexParameter,
+                false);
 
-        internal CRAErrorCode InstantiateVertex(string instanceName, string vertexName, string vertexDefinition, object vertexParameter, bool sharded)
+        internal async Task<CRAErrorCode> InstantiateVertex(
+            string instanceName,
+            string vertexName,
+            string vertexDefinition,
+            object vertexParameter,
+            bool sharded)
         { 
-            var procDefRow = VertexTable.GetRowForVertexDefinition(_vertexTable, vertexDefinition);
+            var procDefRow = await _vertexInfoManager.VertexInfoProvider.GetRowForVertexDefinition(vertexDefinition);
 
             string blobName = vertexName + "-" + instanceName;
 
-            // Serialize and write the vertex parameters to a blob
-            CloudBlobContainer container = _blobClient.GetContainerReference("cra");
-            container.CreateIfNotExistsAsync().Wait();
-            var blockBlob = container.GetBlockBlobReference(vertexDefinition + "/" + blobName);
-            CloudBlobStream blobStream = blockBlob.OpenWriteAsync().GetAwaiter().GetResult();
-            byte[] parameterBytes = Encoding.UTF8.GetBytes(
-                        SerializationHelper.SerializeObject(vertexParameter));
-            blobStream.WriteByteArray(parameterBytes);
-            blobStream.Close();
+            using (var blobStream = await _blobStorage.GetWriteStream(vertexDefinition + "/" + blobName))
+            {
+                byte[] parameterBytes = Encoding.UTF8.GetBytes(
+                            SerializationHelper.SerializeObject(vertexParameter));
+                blobStream.WriteByteArray(parameterBytes);
+            }
 
-            // Add metadata
-            var newRow = new VertexTable(instanceName, vertexName, vertexDefinition, "", 0,
-                procDefRow.VertexCreateAction,
-                blobName,
-                false, sharded);
-            TableOperation insertOperation = TableOperation.InsertOrReplace(newRow);
-            _vertexTable.ExecuteAsync(insertOperation).Wait();
+            var newInfo = new VertexInfo(
+                instanceName: instanceName,
+                address: "",
+                port: 0,
+                vertexName: vertexName,
+                vertexDefinition: vertexDefinition,
+                vertexCreateAction: procDefRow.VertexCreateAction,
+                vertexParameter: blobName,
+                isActive: false,
+                isSharded:  sharded);
+
+            await _vertexInfoManager.VertexInfoProvider.InsertOrReplace(newInfo);
 
             CRAErrorCode result = CRAErrorCode.Success;
 
             // Send request to CRA instance
-            VertexTable instanceRow;
+            VertexInfo instanceRow;
             try
             {
-                instanceRow = VertexTable.GetRowForInstance(_vertexTable, instanceName);
+                instanceRow = await _vertexInfoManager.GetRowForInstance(instanceName);
 
                 // Get a stream connection from the pool if available
                 Stream stream;
@@ -303,7 +222,8 @@ namespace CRA.ClientLibrary
                 stream.WriteInt32((int)CRATaskMessageType.LOAD_VERTEX);
                 stream.WriteByteArray(Encoding.UTF8.GetBytes(vertexName));
                 stream.WriteByteArray(Encoding.UTF8.GetBytes(vertexDefinition));
-                stream.WriteByteArray(Encoding.UTF8.GetBytes(newRow.VertexParameter));
+                stream.WriteByteArray(Encoding.UTF8.GetBytes(newInfo.VertexParameter));
+
                 result = (CRAErrorCode)stream.ReadInt32();
                 if (result != 0)
                 {
@@ -366,50 +286,33 @@ namespace CRA.ClientLibrary
         /// </summary>
         /// <param name="vertexName"></param>
         /// <param name="instanceName"></param>
-        public void DeleteVertex(string vertexName)
+        public async Task DeleteVertex(string vertexName)
         {
-            foreach (var endpt in GetInputEndpoints(vertexName))
-            {
-                DeleteEndpoint(vertexName, endpt);
-            }
-            foreach (var endpt in GetOutputEndpoints(vertexName))
-            {
-                DeleteEndpoint(vertexName, endpt);
-            }
+            foreach (var endpt in await GetInputEndpoints(vertexName))
+            { DeleteEndpoint(vertexName, endpt); }
 
-            foreach (var conn in GetConnectionsFromVertex(vertexName))
-            {
-                DeleteConnectionInfo(conn);
-            }
-            foreach (var conn in GetConnectionsToVertex(vertexName))
-            {
-                DeleteConnectionInfo(conn);
-            }
+            foreach (var endpt in await GetOutputEndpoints(vertexName))
+            { DeleteEndpoint(vertexName, endpt); }
 
-            var query = new TableQuery<VertexTable>()
-                   .Where(TableQuery.GenerateFilterCondition("RowKey", QueryComparisons.Equal, vertexName));
+            foreach (var conn in await GetConnectionsFromVertex(vertexName))
+            { await DeleteConnectionInfo(conn); }
 
-            foreach (var item in _vertexTable.ExecuteQuery(query))
-            {
-                var oper = TableOperation.Delete(item);
-                _vertexTable.ExecuteAsync(oper).Wait();
-            }
+            foreach (var conn in await GetConnectionsToVertex(vertexName))
+            { await DeleteConnectionInfo(conn); }
+
+            foreach (var item in await _vertexInfoManager.VertexInfoProvider.GetRowsForVertex(vertexName))
+            { await _vertexInfoManager.VertexInfoProvider.DeleteVertexInfo(item); }
         }
 
         /// <summary>
         /// Delete vertex definition with given name
         /// </summary>
         /// <param name="vertexDefinition"></param>
-        public void DeleteVertexDefinition(string vertexDefinition)
+        public async Task DeleteVertexDefinition(string vertexDefinition)
         {
-            var entity = new DynamicTableEntity("", vertexDefinition);
-            entity.ETag = "*";
-            TableOperation deleteOperation = TableOperation.Delete(entity);
-            _vertexTable.ExecuteAsync(deleteOperation).Wait();
-            CloudBlobContainer container = _blobClient.GetContainerReference("cra");
-            container.CreateIfNotExistsAsync().Wait();
-            var blockBlob = container.GetBlockBlobReference(vertexDefinition + "/binaries");
-            blockBlob.DeleteIfExistsAsync().Wait();
+            await _vertexInfoManager.DeleteInstanceVertex("", vertexDefinition);
+
+            await _blobStorage.Delete(vertexDefinition + "/binaries");
         }
 
 
@@ -447,12 +350,9 @@ namespace CRA.ClientLibrary
         public async Task<IVertex> LoadVertexAsync(string vertexName, string vertexDefinition, string vertexParameter, string instanceName, ConcurrentDictionary<string, IVertex> table)
         {
             // Deactivate vertex
-            _vertexInfoManager.DeactivateVertexOnInstance(vertexName, instanceName);
+            await _vertexInfoManager.DeactivateVertexOnInstance(vertexName, instanceName);
 
-            CloudBlobContainer container = _blobClient.GetContainerReference("cra");
-            container.CreateIfNotExistsAsync().Wait();
-
-            var vertex = CreateVertex(vertexDefinition, container);
+            var vertex = await CreateVertex(vertexDefinition);
             if (vertex == null)
             {
                 if (_verticesToSideload.ContainsKey(vertexName))
@@ -468,38 +368,44 @@ namespace CRA.ClientLibrary
 
             try
             {
-                await InitializeVertexAsync(vertexName, vertexDefinition, instanceName, table, container, vertex);
+                await InitializeVertexAsync(
+                    vertexName,
+                    vertexDefinition,
+                    instanceName,
+                    table,
+                    vertex);
             }
             catch (Exception e)
             {
                 Console.WriteLine("INFO: Unable to initialize vertex " + vertexName + ". Check if runtime is compatible (uploaded vertex and worker should be same .NET runtime). Exception:\n" + e.ToString());
             }
+
             return vertex;
         }
 
-        public IVertex CreateVertex(string vertexDefinition, CloudBlobContainer container)
+        public async Task<IVertex> CreateVertex(string vertexDefinition)
         {
             if (_dynamicLoadingEnabled)
             {
-                var blockBlob = container.GetBlockBlobReference(vertexDefinition + "/binaries");
-                Stream blobStream = blockBlob.OpenReadAsync().GetAwaiter().GetResult();
-                try
+                using (Stream blobStream = await _blobStorage.GetReadStream(vertexDefinition + "/binaries"))
                 {
-                    AssemblyUtils.LoadAssembliesFromStream(blobStream);
+                    try
+                    {
+                        AssemblyUtils.LoadAssembliesFromStream(blobStream);
+                    }
+                    catch (FileLoadException e)
+                    {
+                        Debug.WriteLine("Ignoring exception from assembly loading: " + e.Message);
+                        Debug.WriteLine("If vertex creation fails, the caller will need to sideload the vertex.");
+                    }
                 }
-                catch (FileLoadException e)
-                {
-                    Debug.WriteLine("Ignoring exception from assembly loading: " + e.Message);
-                    Debug.WriteLine("If vertex creation fails, the caller will need to sideload the vertex.");
-                }
-                blobStream.Close();
             }
             else
             {
                 Debug.WriteLine("Dynamic assembly loading is disabled. The caller will need to sideload the vertex.");
             }
 
-            var row = VertexTable.GetRowForVertexDefinition(_vertexTable, vertexDefinition);
+            var row = await _vertexInfoManager.VertexInfoProvider.GetRowForVertexDefinition(vertexDefinition);
 
             // CREATE THE VERTEX
             IVertex vertex = null;
@@ -515,7 +421,12 @@ namespace CRA.ClientLibrary
             return vertex;
         }
 
-        public async Task InitializeVertexAsync(string vertexName, string vertexDefinition, string instanceName, ConcurrentDictionary<string, IVertex> table, CloudBlobContainer container, IVertex vertex)
+        public async Task InitializeVertexAsync(
+            string vertexName,
+            string vertexDefinition,
+            string instanceName,
+            ConcurrentDictionary<string, IVertex> table,
+            IVertex vertex)
         {
             // INITIALIZE
             if ((VertexBase)vertex != null)
@@ -560,28 +471,30 @@ namespace CRA.ClientLibrary
                     {
                         Console.WriteLine("Unable to remove vertex on disposal");
                     }
-                    var entity = new DynamicTableEntity(instanceName, vertexName);
-                    entity.ETag = "*";
-                    TableOperation deleteOperation = TableOperation.Delete(entity);
-                    _vertexTable.ExecuteAsync(deleteOperation).Wait();
+
+                    Task.Run(() =>
+                        _vertexInfoManager.DeleteInstanceVertex(
+                            instanceName,
+                            vertexName));
                 });
             }
 
 
             string blobName = vertexName + "-" + instanceName;
+            string parameterString;
 
-            var parametersBlob = container.GetBlockBlobReference(vertexDefinition + "/" + blobName);
-            Stream parametersStream = parametersBlob.OpenReadAsync().GetAwaiter().GetResult();
-            byte[] parametersBytes = parametersStream.ReadByteArray();
-            string parameterString = Encoding.UTF8.GetString(parametersBytes);
-            parametersStream.Close();
+            using(var parametersStream = await _blobStorage.GetReadStream(vertexDefinition + "/" + blobName))
+            {
+                byte[] parametersBytes = parametersStream.ReadByteArray();
+                parameterString = Encoding.UTF8.GetString(parametersBytes);
+            }
 
             var par = SerializationHelper.DeserializeObject(parameterString);
             vertex.Initialize(par);
             await vertex.InitializeAsync(par);
 
             // Activate vertex
-            ActivateVertex(vertexName, instanceName);
+            await ActivateVertex(vertexName, instanceName);
         }
 
         public void SideloadVertex(IVertex vertex, string vertexName)
@@ -605,10 +518,12 @@ namespace CRA.ClientLibrary
         /// </summary>
         /// <param name="thisInstanceName"></param>
         /// <returns></returns>
-        public ConcurrentDictionary<string, IVertex> LoadAllVertices(string thisInstanceName)
+        public async Task<ConcurrentDictionary<string, IVertex>> LoadAllVertices(string thisInstanceName)
         {
             ConcurrentDictionary<string, IVertex> result = new ConcurrentDictionary<string, IVertex>();
-            var rows = VertexTable.GetAllRowsForInstance(_vertexTable, thisInstanceName);
+            var rows = await _vertexInfoManager
+                .VertexInfoProvider
+                .GetAllRowsForInstance(thisInstanceName);
 
             List<Task> t = new List<Task>();
             foreach (var row in rows)
@@ -641,19 +556,15 @@ namespace CRA.ClientLibrary
         /// <param name="fromEndpoint"></param>
         /// <param name="toVertexName"></param>
         /// <param name="toEndpoint"></param>
-        public void DeleteConnectionInfo(string fromVertexName, string fromEndpoint, string toVertexName, string toEndpoint)
-        {
-            _connectionTableManager.DeleteConnection(fromVertexName, fromEndpoint, toVertexName, toEndpoint);
-        }
+        public Task DeleteConnectionInfo(string fromVertexName, string fromEndpoint, string toVertexName, string toEndpoint)
+            => _connectionTableManager.DeleteConnection(fromVertexName, fromEndpoint, toVertexName, toEndpoint);
 
         /// <summary>
         /// Delete connection info from metadata table
         /// </summary>
         /// <param name="connInfo">Connection info as a struct</param>
-        public void DeleteConnectionInfo(ConnectionInfo connInfo)
-        {
-            _connectionTableManager.DeleteConnection(connInfo.FromVertex, connInfo.FromEndpoint, connInfo.ToVertex, connInfo.ToEndpoint);
-        }
+        public Task DeleteConnectionInfo(ConnectionInfo connInfo)
+            => _connectionTableManager.DeleteConnection(connInfo.FromVertex, connInfo.FromEndpoint, connInfo.ToVertex, connInfo.ToEndpoint);
 
         /// <summary>
         /// Connect one CRA vertex to another, via pre-defined endpoints. We contact the "from" vertex
@@ -664,10 +575,8 @@ namespace CRA.ClientLibrary
         /// <param name="toVertexName">Name of the vertex to which connection is being made</param>
         /// <param name="toEndpoint">Name of the endpoint on the toVertex, to which connection is being made</param>
         /// <returns>Status of the Connect operation</returns>
-        public CRAErrorCode Connect(string fromVertexName, string fromEndpoint, string toVertexName, string toEndpoint)
-        {
-            return Connect(fromVertexName, fromEndpoint, toVertexName, toEndpoint, ConnectionInitiator.FromSide);
-        }
+        public Task<CRAErrorCode> Connect(string fromVertexName, string fromEndpoint, string toVertexName, string toEndpoint)
+            => Connect(fromVertexName, fromEndpoint, toVertexName, toEndpoint, ConnectionInitiator.FromSide);
 
         /// <summary>
         /// Connect one CRA vertex to another, via pre-defined endpoints. We contact the "from" vertex
@@ -679,39 +588,40 @@ namespace CRA.ClientLibrary
         /// <param name="toEndpoint">Name of the endpoint on the toVertex, to which connection is being made</param>
         /// <param name="direction">Which vertex initiates the connection</param>
         /// <returns>Status of the Connect operation</returns>
-        public CRAErrorCode Connect(string fromVertexName, string fromEndpoint, string toVertexName, string toEndpoint, ConnectionInitiator direction)
+        public async Task<CRAErrorCode> Connect(string fromVertexName, string fromEndpoint, string toVertexName, string toEndpoint, ConnectionInitiator direction)
         {
             // Tell from vertex to establish connection
             // Send request to CRA instance
 
             // Check that vertex and endpoints are valid and existing
-            if (!_vertexInfoManager.ExistsVertex(fromVertexName) || !_vertexInfoManager.ExistsVertex(toVertexName))
+            if (!await _vertexInfoManager.ExistsVertex(fromVertexName)
+                || !await _vertexInfoManager.ExistsVertex(toVertexName))
             {
                 // Check for sharded vertices
                 List<int> fromVertexShards, toVertexShards;
 
-                if (!_vertexInfoManager.ExistsShardedVertex(fromVertexName, out fromVertexShards))
-                    return CRAErrorCode.VertexNotFound;
+                if ((fromVertexShards = await _vertexInfoManager.ExistsShardedVertex(fromVertexName)).Count == 0)
+                { return CRAErrorCode.VertexNotFound; }
 
-                if (!_vertexInfoManager.ExistsShardedVertex(toVertexName, out toVertexShards))
-                    return CRAErrorCode.VertexNotFound;
+                if ((toVertexShards = await _vertexInfoManager.ExistsShardedVertex(toVertexName)).Count == 0)
+                { return CRAErrorCode.VertexNotFound; }
 
                 return ConnectSharded(fromVertexName, fromVertexShards, fromEndpoint, toVertexName, toVertexShards, toEndpoint, direction);
             }
 
             // Make the connection information stable
-            _connectionTableManager.AddConnection(fromVertexName, fromEndpoint, toVertexName, toEndpoint);
+            await _connectionTableManager.AddConnection(fromVertexName, fromEndpoint, toVertexName, toEndpoint);
 
             // We now try best-effort to tell the CRA instance of this connection
-            CRAErrorCode result = CRAErrorCode.Success;
+            var result = CRAErrorCode.Success;
 
-            VertexTable _row;
+            VertexInfo _row;
             try
             {
                 // Get instance for source vertex
-                _row = direction == ConnectionInitiator.FromSide ?
-                                        VertexTable.GetRowForVertex(_vertexTable, fromVertexName) :
-                                        VertexTable.GetRowForVertex(_vertexTable, toVertexName);
+                _row = await (direction == ConnectionInitiator.FromSide
+                    ? _vertexInfoManager.VertexInfoProvider.GetRowForVertex(fromVertexName)
+                    : _vertexInfoManager.VertexInfoProvider.GetRowForVertex(toVertexName));
             }
             catch
             {
@@ -725,8 +635,12 @@ namespace CRA.ClientLibrary
                 {
                     if (_localWorker.InstanceName == _row.InstanceName)
                     {
-                        return _localWorker.Connect_InitiatorSide(fromVertexName, fromEndpoint,
-                                toVertexName, toEndpoint, direction == ConnectionInitiator.ToSide);
+                        return await _localWorker.Connect_InitiatorSide(
+                            fromVertexName,
+                            fromEndpoint,
+                            toVertexName,
+                            toEndpoint,
+                            direction == ConnectionInitiator.ToSide);
                     }
                 }
 
@@ -734,11 +648,14 @@ namespace CRA.ClientLibrary
                 // Send request to CRA instance
                 TcpClient client = null;
                 // Get address and port for instance, using row with vertex = ""
-                var row = VertexTable.GetRowForInstance(_vertexTable, _row.InstanceName);
+                var row = await _vertexInfoManager.GetRowForInstance(_row.InstanceName);
 
                 // Get a stream connection from the pool if available
                 Stream stream;
-                if (!TryGetSenderStreamFromPool(row.Address, row.Port.ToString(), out stream))
+                if (!TryGetSenderStreamFromPool(
+                    row.Address,
+                    row.Port.ToString(),
+                    out stream))
                 {
                     client = new TcpClient(row.Address, row.Port);
                     client.NoDelay = true;
@@ -750,9 +667,9 @@ namespace CRA.ClientLibrary
                 }
 
                 if (direction == ConnectionInitiator.FromSide)
-                    stream.WriteInt32((int)CRATaskMessageType.CONNECT_VERTEX_INITIATOR);
+                { stream.WriteInt32((int)CRATaskMessageType.CONNECT_VERTEX_INITIATOR); }
                 else
-                    stream.WriteInt32((int)CRATaskMessageType.CONNECT_VERTEX_INITIATOR_REVERSE);
+                { stream.WriteInt32((int)CRATaskMessageType.CONNECT_VERTEX_INITIATOR_REVERSE); }
 
                 stream.WriteByteArray(Encoding.UTF8.GetBytes(fromVertexName));
                 stream.WriteByteArray(Encoding.UTF8.GetBytes(fromEndpoint));
@@ -761,9 +678,7 @@ namespace CRA.ClientLibrary
 
                 result = (CRAErrorCode)stream.ReadInt32();
                 if (result != 0)
-                {
-                    Console.WriteLine("Connection was logically established. However, the client received an error code from the connection-initiating CRA instance: " + result);
-                }
+                { Console.WriteLine("Connection was logically established. However, the client received an error code from the connection-initiating CRA instance: " + result); }
                 else
                 {
                     // Add/Return a stream connection to the pool
@@ -774,6 +689,7 @@ namespace CRA.ClientLibrary
             {
                 Console.WriteLine("The connection-initiating CRA instance appears to be down or could not be found. Restart it and this connection will be completed automatically");
             }
+
             return result;
         }
 
@@ -788,99 +704,74 @@ namespace CRA.ClientLibrary
                 ConnectShardedVerticesWithFullMesh(fromVertexNames, fromEndpoints, toVertexNames, toEndpoints, direction);
         }
 
-        public string GetDefaultInstanceName()
-        {
-            return _vertexInfoManager.GetRowForDefaultInstance().InstanceName;
-        }
+        public async Task<string> GetDefaultInstanceName()
+            => (await _vertexInfoManager.GetRowForDefaultInstance()).InstanceName;
 
         /// <summary>
         /// Get a list of all output endpoint names for a given vertex
         /// </summary>
         /// <param name="vertexName"></param>
         /// <returns></returns>
-        public IEnumerable<string> GetOutputEndpoints(string vertexName)
-        {
-            return _endpointTableManager.GetOutputEndpoints(vertexName);
-        }
+        public Task<IEnumerable<string>> GetOutputEndpoints(string vertexName)
+            => _endpointTableManager.GetOutputEndpoints(vertexName);
 
         /// <summary>
         /// Get a list of all input endpoint names for a given vertex
         /// </summary>
         /// <param name="vertexName"></param>
         /// <returns></returns>
-        public IEnumerable<string> GetInputEndpoints(string vertexName)
-        {
-            return _endpointTableManager.GetInputEndpoints(vertexName);
-        }
+        public Task<IEnumerable<string>> GetInputEndpoints(string vertexName)
+            => _endpointTableManager.GetInputEndpoints(vertexName);
 
         /// <summary>
         /// Get all outgoing connection from a given vertex
         /// </summary>
         /// <param name="vertexName"></param>
         /// <returns></returns>
-        public IEnumerable<ConnectionInfo> GetConnectionsFromVertex(string vertexName)
-        {
-            return _connectionTableManager.GetConnectionsFromVertex(vertexName);
-        }
+        public async Task<IEnumerable<ConnectionInfo>> GetConnectionsFromVertex(string vertexName)
+            => (await _connectionTableManager.GetConnectionsFromVertex(vertexName))
+            .Select(_ =>
+                new ConnectionInfo(
+                    fromVertex: _.FromVertex,
+                    fromEndpoint: _.FromEndpoint,
+                    toVertex: _.ToVertex,
+                    toEndpoint: _.ToEndpoint));
 
         /// <summary>
         /// Get all incoming connections to a given vertex
         /// </summary>
         /// <param name="vertexName"></param>
         /// <returns></returns>
-        public IEnumerable<ConnectionInfo> GetConnectionsToVertex(string vertexName)
-        {
-            return _connectionTableManager.GetConnectionsToVertex(vertexName);
-        }
+        public async Task<IEnumerable<ConnectionInfo>> GetConnectionsToVertex(string vertexName)
+            => (await _connectionTableManager.GetConnectionsToVertex(vertexName))
+            .Select(_ =>
+                new ConnectionInfo(
+                    fromVertex: _.FromVertex,
+                    fromEndpoint: _.FromEndpoint,
+                    toVertex: _.ToVertex,
+                    toEndpoint: _.ToEndpoint));
 
 
         /// <summary>
         /// Gets a list of all vertices registered with CRA
         /// </summary>
         /// <returns></returns>
-        public IEnumerable<string> VertexNames
-        {
-            get
-            {
-                return _vertexInfoManager.GetVertexNames();
-            }
-        }
+        public Task<IEnumerable<string>> GetVertexNames()
+            => _vertexInfoManager.GetVertexNames();
 
         /// <summary>
         /// Gets a list of all vertex definitions registered with CRA
         /// </summary>
         /// <returns></returns>
-        public IEnumerable<string> VertexDefinitions
-        {
-            get
-            {
-                return _vertexInfoManager.GetVertexDefinitions();
-            }
-        }
+        public Task<IEnumerable<string>> GetVertexDefinitions()
+            => _vertexInfoManager.GetVertexDefinitions();
 
         /// <summary>
         /// Gets a list of all registered CRA instances
         /// </summary>
         /// <returns></returns>
-        public IEnumerable<string> InstanceNames
-        {
-            get
-            {
-                return _vertexInfoManager.GetInstanceNames();
-            }
-        }
-
-        private CloudTable CreateTableIfNotExists(string tableName)
-        {
-            CloudTable table = _tableClient.GetTableReference(tableName);
-            try
-            {
-                table.CreateIfNotExistsAsync().Wait();
-            }
-            catch { }
-
-            return table;
-        }
+        public Task<IEnumerable<string>> GetInstanceNames()
+            => _vertexInfoManager.GetInstanceNames();
 
         /// <summary>
         /// Disconnect a CRA connection
@@ -889,10 +780,8 @@ namespace CRA.ClientLibrary
         /// <param name="fromVertexOutput"></param>
         /// <param name="toVertexName"></param>
         /// <param name="toVertexInput"></param>
-        public void Disconnect(string fromVertexName, string fromVertexOutput, string toVertexName, string toVertexInput)
-        {
-            _connectionTableManager.DeleteConnection(fromVertexName, fromVertexOutput, toVertexName, toVertexInput);
-        }
+        public Task Disconnect(string fromVertexName, string fromVertexOutput, string toVertexName, string toVertexInput)
+            => _connectionTableManager.DeleteConnection(fromVertexName, fromVertexOutput, toVertexName, toVertexInput);
 
         /// <summary>
         /// Terminal local worker process.

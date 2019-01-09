@@ -45,13 +45,13 @@ namespace CRA.ClientLibrary
             { Console.WriteLine("Could not retrieve the entity."); }
         }
 
-        internal async Task<List<string>> GetInputEndpoints(string vertexName)
+        internal async Task<IEnumerable<string>> GetInputEndpoints(string vertexName)
             => (await _endpointDataProvider.GetEndpoints(vertexName))
             .Where(e => e.IsInput)
             .Select(e => e.EndpointName)
             .ToList();
 
-        internal async Task<List<string>> GetOutputEndpoints(string vertexName)
+        internal async Task<IEnumerable<string>> GetOutputEndpoints(string vertexName)
             => (await _endpointDataProvider.GetEndpoints(vertexName))
             .Where(e => !e.IsInput)
             .Select(e => e.EndpointName)
