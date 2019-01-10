@@ -2,7 +2,6 @@
 using System.Net;
 using System.Net.Sockets;
 using System.Configuration;
-using System.Diagnostics;
 using CRA.ClientLibrary;
 using System.Reflection;
 using CRA.ClientLibrary.AzureProvider;

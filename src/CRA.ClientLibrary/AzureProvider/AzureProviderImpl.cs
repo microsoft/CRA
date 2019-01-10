@@ -21,11 +21,30 @@ namespace CRA.ClientLibrary.AzureProvider
         private readonly CloudTableClient _tableClient;
         private readonly string _storageConnectionString;
 
-        public AzureProviderImpl(string storageConnectionString)
+        public AzureProviderImpl()
         {
+            _storageConnectionString = null;
+#if !DOTNETCORE
+            _storageConnectionString = ConfigurationManager.AppSettings.Get("AZURE_STORAGE_CONN_STRING");
+#endif
+            if (_storageConnectionString == null)
+            {
+                _storageConnectionString = Environment.GetEnvironmentVariable("AZURE_STORAGE_CONN_STRING");
+            }
+            if (_storageConnectionString == null)
+            {
+                throw new InvalidOperationException("Azure storage connection string not found. Use appSettings in your app.config to provide this using the key AZURE_STORAGE_CONN_STRING, or use the environment variable AZURE_STORAGE_CONN_STRING.");
+            }
+
             _storageAccount = CloudStorageAccount.Parse(_storageConnectionString);
             _tableClient = _storageAccount.CreateCloudTableClient();
+        }
+
+        public AzureProviderImpl(string storageConnectionString)
+        {
             _storageConnectionString = storageConnectionString;
+            _storageAccount = CloudStorageAccount.Parse(_storageConnectionString);
+            _tableClient = _storageAccount.CreateCloudTableClient();
         }
 
         public IVertexInfoProvider GetVertexInfoProvider()

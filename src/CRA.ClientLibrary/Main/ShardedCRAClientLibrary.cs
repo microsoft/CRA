@@ -1,4 +1,5 @@
-﻿using Microsoft.WindowsAzure.Storage.Blob;
+﻿using CRA.ClientLibrary.DataProvider;
+using Microsoft.WindowsAzure.Storage.Blob;
 using Microsoft.WindowsAzure.Storage.Table;
 using System;
 using System.Collections.Concurrent;
@@ -19,30 +20,35 @@ namespace CRA.ClientLibrary
         /// </summary>
         /// <param name="vertexDefinition">Name of the vertex type</param>
         /// <param name="creator">Lambda that describes how to instantiate the vertex, taking in an object as parameter</param>
-        public CRAErrorCode DefineVertex(string vertexDefinition, Expression<Func<IShardedVertex>> creator)
+        public async Task<CRAErrorCode> DefineVertex(
+            string vertexDefinition,
+            Expression<Func<IShardedVertex>> creator)
         {
             if (_artifactUploading)
             {
-                CloudBlobContainer container = _blobClient.GetContainerReference("cra");
-                container.CreateIfNotExistsAsync().Wait();
-                var blockBlob = container.GetBlockBlobReference(vertexDefinition + "/binaries");
-                CloudBlobStream blobStream = blockBlob.OpenWriteAsync().GetAwaiter().GetResult();
-                AssemblyUtils.WriteAssembliesToStream(blobStream);
-                blobStream.Close();
+                using (var blobStream = await _blobStorage.GetWriteStream(vertexDefinition + "/binaries"))
+                { AssemblyUtils.WriteAssembliesToStream(blobStream); }
             }
             
             // Add metadata
-            var newRow = new VertexTable("", vertexDefinition, vertexDefinition, "", 0, creator, null, true);
-            TableOperation insertOperation = TableOperation.InsertOrReplace(newRow);
-            _vertexTable.ExecuteAsync(insertOperation).Wait();
+            var newRow = VertexInfo.Create(
+                instanceName: "",
+                vertexName: vertexDefinition,
+                vertexDefinition: vertexDefinition,
+                address: "",
+                port: 0,
+                vertexCreateAction: creator,
+                vertexParameter: null,
+                isActive: true,
+                isSharded: false);
+
+            await _vertexInfoManager.VertexInfoProvider.InsertOrReplace(newRow);
 
             return CRAErrorCode.Success;
         }
 
-        public ShardingInfo GetShardingInfo(string vertexName)
-        {
-            return _shardedVertexTableManager.GetLatestShardingInfo(vertexName);
-        }
+        public Task<ShardingInfo> GetShardingInfo(string vertexName)
+            => _shardedVertexTableManager.GetLatestShardingInfo(vertexName);
 
         /// <summary>
         /// Instantiate a sharded vertex on a set of CRA instances.
@@ -52,8 +58,12 @@ namespace CRA.ClientLibrary
         /// <param name="vertexParameter">Parameters to be passed to each vertex of the sharded vertex in its constructor (serializable object)</param>
         /// <param name="vertexShards"> A map that holds the number of vertices from a sharded vertex needs to be instantiated for each CRA instance </param>
         /// <returns>Status of the command</returns>
-        public CRAErrorCode InstantiateVertex(string[] instanceNames, string vertexName, 
-            string vertexDefinition, object vertexParameter, int numShardsPerInstance = 1,
+        public async Task<CRAErrorCode> InstantiateVertex(
+            string[] instanceNames,
+            string vertexName,
+            string vertexDefinition,
+            object vertexParameter,
+            int numShardsPerInstance = 1,
             Expression<Func<int, int>> shardLocator = null)
         {
             var allInstances = new List<string>();
@@ -79,8 +89,8 @@ namespace CRA.ClientLibrary
                 }
             }
 
-            _shardedVertexTableManager.DeleteShardedVertex(vertexName);
-            _shardedVertexTableManager.RegisterShardedVertex(vertexName, allInstances, allShards, addedShards, removedShards, shardLocator);
+            await _shardedVertexTableManager.DeleteShardedVertex(vertexName);
+            await _shardedVertexTableManager.RegisterShardedVertex(vertexName, allInstances, allShards, addedShards, removedShards, shardLocator);
 
             CRAErrorCode[] results = Task.WhenAll(tasks).Result;
 
@@ -124,8 +134,10 @@ namespace CRA.ClientLibrary
                     tasks[threadIndex] = InstantiateShardedVertexAsync(currInstanceName, vertexName + "$" + threadIndex,
                                                                         vertexDefinition, new Tuple<int, VertexParameterType>(threadIndex, vertexParameter));
                 }
+
                 currentCount += vertexShards[key];
             }
+
             CRAErrorCode[] results = Task.WhenAll(tasks).Result;
 
             // Check for the status of instantiated vertices
@@ -142,16 +154,24 @@ namespace CRA.ClientLibrary
             }
 
             if (result != CRAErrorCode.Success)
+            {
                 Console.WriteLine("All CRA instances appear to be down. Restart them and this sharded vertex will be automatically instantiated");
+            }
 
             return result;
         }
 
-        internal Task<CRAErrorCode> InstantiateShardedVertexAsync(string instanceName, string vertexName, string vertexDefinition, object vertexParameter)
-        {
-            return Task.Factory.StartNew(
-                () => { return InstantiateVertex(instanceName, vertexName, vertexDefinition, vertexParameter, true); });
-        }
+        internal Task<CRAErrorCode> InstantiateShardedVertexAsync(
+            string instanceName,
+            string vertexName,
+            string vertexDefinition,
+            object vertexParameter)
+            => InstantiateVertex(
+                instanceName,
+                vertexName,
+                vertexDefinition,
+                vertexParameter,
+                true);
 
         internal int CountVertexShards(ConcurrentDictionary<string, int> verticesPerInstanceMap)
         {
@@ -231,13 +251,24 @@ namespace CRA.ClientLibrary
                 () => { DeleteVerticesFromInstance(vertexName, instanceName); });
         }
 
-        private void DeleteVerticesFromInstance(string vertexName, string instanceName)
+        private async Task DeleteVerticesFromInstance(string vertexName, string instanceName)
         {
-            Expression<Func<DynamicTableEntity, bool>> verticesFilter = (e => e.PartitionKey == instanceName && e.RowKey.StartsWith(vertexName + "$"));
-            FilterAndDeleteEntitiesInBatches(_vertexTable, verticesFilter);
+            var tasks = new List<Task>();
+            foreach(var vertex in 
+                await _vertexInfoManager.VertexInfoProvider.GetRowsForShardedInstanceVertex(
+                    instanceName,
+                    vertexName))
+            {
+                tasks.Add(
+                    _vertexInfoManager.VertexInfoProvider.DeleteVertexInfo(vertex));
+            }
+
+            await Task.WhenAll(tasks);
         }
 
-        private void FilterAndDeleteEntitiesInBatches(CloudTable table, Expression<Func<DynamicTableEntity, bool>> filter)
+        private void FilterAndDeleteEntitiesInBatches(
+            CloudTable table,
+            Expression<Func<DynamicTableEntity, bool>> filter)
         {
             Action<IEnumerable<DynamicTableEntity>> deleteProcessor = entities =>
             {
@@ -294,11 +325,8 @@ namespace CRA.ClientLibrary
             DeleteEndpointsFromAllVertices(vertexName, endpointName);
         }
 
-        private void DeleteEndpointsFromAllVertices(string vertexName, string endpointName)
-        {
-            Expression<Func<DynamicTableEntity, bool>> filters = (e => e.PartitionKey.StartsWith(vertexName + "$") && e.RowKey == endpointName);
-            FilterAndDeleteEntitiesInBatches(_endpointTableManager.EndpointTable, filters);
-        }
+        private Task DeleteEndpointsFromAllVertices(string vertexName, string endpointName)
+            => _endpointTableManager.RemoveShardedEndpoints(vertexName, endpointName);
 
         /// <summary>
         /// Connect a set of (fromVertex, outputEndpoint) pairs to another set of (toVertex, inputEndpoint) pairs. We contact the "from" vertex
@@ -340,11 +368,18 @@ namespace CRA.ClientLibrary
             return result;
         }
 
-        internal Task<CRAErrorCode> ConnectAsync(string fromVertexName, string fromEndpoint, string toVertexName, string toEndpoint, ConnectionInitiator direction)
-        {
-            return Task.Factory.StartNew(
-                () => { return Connect(fromVertexName, fromEndpoint, toVertexName, toEndpoint, direction); });
-        }
+        internal Task<CRAErrorCode> ConnectAsync(
+            string fromVertexName,
+            string fromEndpoint,
+            string toVertexName,
+            string toEndpoint,
+            ConnectionInitiator direction)
+            => Connect(
+                fromVertexName,
+                fromEndpoint,
+                toVertexName,
+                toEndpoint,
+                direction);
 
 
         /// <summary>
@@ -356,9 +391,12 @@ namespace CRA.ClientLibrary
         /// <param name="toVertexName"></param>
         /// <param name="toEndpoints"></param>
         /// <returns></returns>
-        public CRAErrorCode ConnectShardedVerticesWithFullMesh(string fromVertexName, string[] fromEndpoints, string toVertexName, string[] toEndpoints)
+        public async Task<CRAErrorCode> ConnectShardedVerticesWithFullMesh(string fromVertexName, string[] fromEndpoints, string toVertexName, string[] toEndpoints)
         {
-            var fromVerticesRows = VertexTable.GetRowsForShardedVertex(_vertexTable, fromVertexName);
+            var fromVerticesRows = await _vertexInfoManager
+                .VertexInfoProvider
+                .GetRowsForShardedVertex(fromVertexName);
+
             string[] fromVerticesNames = new string[fromVerticesRows.Count()];
 
             int i = 0;
@@ -368,7 +406,10 @@ namespace CRA.ClientLibrary
                 i++;
             }
 
-            var toVerticesRows = VertexTable.GetRowsForShardedVertex(_vertexTable, toVertexName);
+            var toVerticesRows = await _vertexInfoManager
+                .VertexInfoProvider
+                .GetRowsForShardedVertex(toVertexName);
+
             string[] toVerticesNames = new string[toVerticesRows.Count()];
 
             i = 0;
@@ -378,7 +419,12 @@ namespace CRA.ClientLibrary
                 i++;
             }
 
-            return ConnectShardedVerticesWithFullMesh(fromVerticesNames, fromEndpoints, toVerticesNames, toEndpoints, ConnectionInitiator.FromSide);
+            return ConnectShardedVerticesWithFullMesh(
+                fromVerticesNames,
+                fromEndpoints,
+                toVerticesNames,
+                toEndpoints,
+                ConnectionInitiator.FromSide);
         }
 
         /// <summary>
@@ -391,7 +437,12 @@ namespace CRA.ClientLibrary
         /// <param name="toEndpoints"></param>
         /// <param name="direction"></param>
         /// <returns></returns>
-        public CRAErrorCode ConnectShardedVerticesWithFullMesh(string[] fromVerticesNames, string[] fromEndpoints, string[] toVerticesNames, string[] toEndpoints, ConnectionInitiator direction)
+        public CRAErrorCode ConnectShardedVerticesWithFullMesh(
+            string[] fromVerticesNames,
+            string[] fromEndpoints,
+            string[] toVerticesNames,
+            string[] toEndpoints,
+            ConnectionInitiator direction)
         {
             // Check if the number of output endpoints in any fromVertex is equal to 
             // the number of toVertices
@@ -444,9 +495,11 @@ namespace CRA.ClientLibrary
         /// <param name="toVertexName"></param>
         /// <param name="toEndpoints"></param>
         /// <returns></returns>
-        public void DisconnectShardedVertices(string fromVertexName, string[] fromEndpoints, string toVertexName, string[] toEndpoints)
+        public async Task DisconnectShardedVertices(string fromVertexName, string[] fromEndpoints, string toVertexName, string[] toEndpoints)
         {
-            var fromVerticesRows = VertexTable.GetRowsForShardedVertex(_vertexTable, fromVertexName);
+            var fromVerticesRows = await _vertexInfoManager
+                .VertexInfoProvider
+                .GetRowsForShardedVertex(fromVertexName);
             string[] fromVerticesNames = new string[fromVerticesRows.Count()];
 
             int i = 0;
@@ -456,7 +509,10 @@ namespace CRA.ClientLibrary
                 i++;
             }
 
-            var toVerticesRows = VertexTable.GetRowsForShardedVertex(_vertexTable, toVertexName);
+            var toVerticesRows = await _vertexInfoManager
+                .VertexInfoProvider
+                .GetRowsForShardedVertex(toVertexName);
+
             string[] toVerticesNames = new string[toVerticesRows.Count()];
 
             i = 0;
@@ -466,7 +522,11 @@ namespace CRA.ClientLibrary
                 i++;
             }
 
-            DisconnectShardedVertices(fromVerticesNames, fromEndpoints, toVerticesNames, toEndpoints);
+            await DisconnectShardedVertices(
+                fromVerticesNames,
+                fromEndpoints,
+                toVerticesNames,
+                toEndpoints);
         }
 
         /// <summary>
@@ -476,7 +536,11 @@ namespace CRA.ClientLibrary
         /// <param name="fromVerticesOutputs"></param>
         /// <param name="toVerticesNames"></param>
         /// <param name="toVerticesInputs"></param>
-        public void DisconnectShardedVertices(string[] fromVerticesNames, string[] fromVerticesOutputs, string[] toVerticesNames, string[] toVerticesInputs)
+        public async Task DisconnectShardedVertices(
+            string[] fromVerticesNames,
+            string[] fromVerticesOutputs,
+            string[] toVerticesNames,
+            string[] toVerticesInputs)
         {
             // Check if the number of output endpoints in any fromVertex is equal to 
             // the number of toVertices, and the number of input endpoints in any toVertex 
@@ -491,21 +555,29 @@ namespace CRA.ClientLibrary
                     {
                         int fromEndpointIndex = i;
                         int fromVertexIndex = j;
-                        tasks.Add(DisconnectAsync(fromVerticesNames[fromVertexIndex], fromVerticesOutputs[fromEndpointIndex],
-                                  toVerticesNames[fromEndpointIndex], toVerticesInputs[fromVertexIndex]));
+                        tasks.Add(
+                            DisconnectAsync(
+                                fromVerticesNames[fromVertexIndex],
+                                fromVerticesOutputs[fromEndpointIndex],
+                                toVerticesNames[fromEndpointIndex],
+                                toVerticesInputs[fromVertexIndex]));
                     }
                 }
 
-                Task.WhenAll(tasks.ToArray());
+                await Task.WhenAll(tasks);
             }
         }
 
 
-        internal Task DisconnectAsync(string fromVertexName, string fromVertexOutput, string toVertexName, string toVertexInput)
-        {
-            return Task.Factory.StartNew(
-                () => { Disconnect(fromVertexName, fromVertexOutput, toVertexName, toVertexInput); });
-        }
-
+        internal Task DisconnectAsync(
+            string fromVertexName,
+            string fromVertexOutput,
+            string toVertexName,
+            string toVertexInput)
+            => Disconnect(
+                fromVertexName,
+                fromVertexOutput,
+                toVertexName,
+                toVertexInput);
     }
 }

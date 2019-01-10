@@ -1,4 +1,5 @@
 ﻿using CRA.ClientLibrary;
+using System.Threading.Tasks;
 
 namespace FusableConnectionPair
 {
@@ -8,11 +9,11 @@ namespace FusableConnectionPair
         {
         }
 
-        public override void Initialize(object vertexParameter)
+        public override Task InitializeAsync(object vertexParameter)
         {
             AddAsyncInputEndpoint("input", new MyAsyncFusableInput(this));
             AddAsyncOutputEndpoint("output", new MyAsyncFusableOutput(this));
-            base.Initialize(vertexParameter);
+            return base.InitializeAsync(vertexParameter);
         }
     }
 }

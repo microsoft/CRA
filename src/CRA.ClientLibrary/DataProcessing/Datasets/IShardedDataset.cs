@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Linq.Expressions;
+using System.Threading.Tasks;
 
 namespace CRA.ClientLibrary.DataProcessing
 {
@@ -26,12 +27,12 @@ namespace CRA.ClientLibrary.DataProcessing
         IShardedDataset<TKey2, TPayload, TDataset2> ReKey<TKey2, TDataset2>(Expression<Func<TPayload, TKey2>> selector)
             where TDataset2 : IDataset<TKey2, TPayload>;
 
-        IShardedDataset<TKey, TPayload, TDataset> Deploy();
+        Task<IShardedDataset<TKey, TPayload, TDataset>> Deploy();
 
-        void Subscribe<TDatasetObserver>(Expression<Func<TDatasetObserver>> observer);
+        Task Subscribe<TDatasetObserver>(Expression<Func<TDatasetObserver>> observer);
 
-        void MultiSubscribe<TDatasetObserver>(Expression<Func<TDatasetObserver>> observer, int runsCount);
+        Task MultiSubscribe<TDatasetObserver>(Expression<Func<TDatasetObserver>> observer, int runsCount);
 
-        void Consume<TDatasetConsumer>(Expression<Func<TDatasetConsumer>> consumer);
+        Task Consume<TDatasetConsumer>(Expression<Func<TDatasetConsumer>> consumer);
     }
 }

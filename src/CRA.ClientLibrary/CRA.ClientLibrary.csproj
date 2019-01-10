@@ -11,6 +11,7 @@
   <ItemGroup>
     <PackageReference Include="Newtonsoft.Json" Version="11.0.2" />
     <PackageReference Include="Remote.Linq" Version="5.8.1" />
+    <PackageReference Include="System.ValueTuple" Version="4.5.0" />
     <PackageReference Include="WindowsAzure.Storage" Version="9.3.2" />
   </ItemGroup>
   <ItemGroup Condition="'$(TargetFramework)' == 'net46'">
@@ -21,6 +22,11 @@
     <Reference Include="System">
       <HintPath>System</HintPath>
     </Reference>
+  </ItemGroup>
+  <ItemGroup Condition="'$(TargetFramework)' == 'netcoreapp2.0'">
+    <PackageReference Include="AsyncLazy">
+      <Version>1.6.4</Version>
+    </PackageReference>
   </ItemGroup>
 
   <PropertyGroup Condition="'$(TargetFramework)' != 'net46'">

@@ -25,7 +25,8 @@ namespace CRA.ClientLibrary.DataProvider
             string vertexCreateAction,
             string vertexParameter,
             bool isActive,
-            bool isSharded)
+            bool isSharded,
+            string versionId = null)
         {
             this.InstanceName = instanceName;
             this.Address = address;
@@ -36,6 +37,7 @@ namespace CRA.ClientLibrary.DataProvider
             this.VertexParameter = vertexParameter;
             this.IsActive = isActive;
             this.IsSharded = isSharded;
+            this.VersionId = versionId;
         }
 
         public static VertexInfo Create(
@@ -126,6 +128,8 @@ namespace CRA.ClientLibrary.DataProvider
         public bool IsActive { get; }
 
         public bool IsSharded { get; }
+
+        public string VersionId { get; }
 
         public VertexInfo Deactivate()
         {

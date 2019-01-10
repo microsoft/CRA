@@ -33,6 +33,12 @@ namespace CRA.ClientLibrary.AzureProvider
                     new DynamicTableEntity(vertexName, endpointName)
                     { ETag = versionId }));
 
+        public Task DeleteEndpoint(EndpointInfo endpointInfo)
+            => DeleteEndpoint(
+                endpointInfo.VertexName,
+                endpointInfo.EndpointName,
+                endpointInfo.VersionId);
+
         public Task DeleteStore()
             => _cloudTable.DeleteIfExistsAsync();
 
@@ -79,5 +85,17 @@ namespace CRA.ClientLibrary.AzureProvider
                         vertexName))))
             .Select(et => (EndpointInfo)et)
             .ToList();
+
+        public async Task<List<EndpointInfo>> GetShardedEndpoints(string vertexName, string endpointName)
+            => (await _cloudTable.ExecuteQueryAsync(
+                new TableQuery<EndpointTable>()
+                 .Where(
+                    TableQuery.GenerateFilterCondition(
+                        "RowKey",
+                        QueryComparisons.Equal,
+                        endpointName))))
+                .Where(e => e.VertexName.StartsWith(vertexName + "$"))
+                .Select(e => (EndpointInfo)e)
+                .ToList();
     }
 }

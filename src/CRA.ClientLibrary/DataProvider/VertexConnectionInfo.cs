@@ -52,12 +52,13 @@ namespace CRA.ClientLibrary.DataProvider
 
         public override bool Equals(object obj)
         {
-            ConnectionTable other = obj as ConnectionTable;
-            return other != null
-                && this.FromEndpoint == other.FromEndpoint
-                && this.FromVertex == other.FromVertex
-                && this.ToEndpoint == other.ToEndpoint
-                && this.ToVertex == other.ToVertex;
+            switch (obj)
+            {
+                case VertexConnectionInfo other:
+                    return this == other;
+            }
+
+            return false;
         }
 
         public override int GetHashCode()
@@ -69,12 +70,19 @@ namespace CRA.ClientLibrary.DataProvider
                 ^ (this.ToEndpoint.GetHashCode() << 3);
         }
 
-        public static bool operator ==(VertexConnectionInfo left, VertexConnectionInfo right)
+        public static bool operator ==(
+            VertexConnectionInfo left,
+            VertexConnectionInfo right)
         {
-            return left.Equals(right);
+            return left.FromEndpoint == right.FromEndpoint
+                && left.FromVertex == right.FromVertex
+                && left.ToEndpoint == right.ToEndpoint
+                && left.ToVertex == right.ToVertex;
         }
 
-        public static bool operator !=(VertexConnectionInfo left, VertexConnectionInfo right)
+        public static bool operator !=(
+            VertexConnectionInfo left,
+            VertexConnectionInfo right)
         {
             return !(left == right);
         }

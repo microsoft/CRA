@@ -63,7 +63,7 @@ namespace CRA.ClientLibrary
             else
             { Console.WriteLine("   Secure network connections: Disabled"); }
 
-            _craClient = new CRAClientLibrary(storageConnectionString, this);
+            _craClient = new CRAClientLibrary(azureDataProvider, this);
 
             _workerinstanceName = workerInstanceName;
             _address = address;

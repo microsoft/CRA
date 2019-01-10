@@ -1,4 +1,5 @@
 ﻿using CRA.ClientLibrary;
+using System.Threading.Tasks;
 
 namespace ConnectionPair
 {
@@ -8,11 +9,11 @@ namespace ConnectionPair
         {
         }
 
-        public override void Initialize(object vertexParameter)
+        public override Task InitializeAsync(object vertexParameter)
         {
             AddAsyncInputEndpoint("input", new MyAsyncInput(this));
             AddAsyncOutputEndpoint("output", new MyAsyncOutput(this));
-            base.Initialize(vertexParameter);
+            return base.InitializeAsync(vertexParameter);
         }
     }
 }

@@ -1,9 +1,12 @@
-﻿using System;
+﻿using CRA.ClientLibrary.DataProvider;
+using System;
 using System.Linq.Expressions;
+using System.Threading.Tasks;
 
 namespace CRA.ClientLibrary.DataProcessing
 {
-    public class ClientSideShardedDataset<TKey, TPayload, TDataset> : ShardedDatasetBase<TKey, TPayload, TDataset>, IDeployable, IDisposable
+    public class ClientSideShardedDataset<TKey, TPayload, TDataset>
+        : ShardedDatasetBase<TKey, TPayload, TDataset>, IDeployable, IDisposable
         where TDataset : IDataset<TKey, TPayload>
     {
         string _shardedDatasetId;
@@ -11,13 +14,18 @@ namespace CRA.ClientLibrary.DataProcessing
 
         bool _isDeployed = false;
         private CRAClientLibrary _craClient = null;
+        private readonly IDataProvider _dataProvider;
 
-        public ClientSideShardedDataset(Expression<Func<int, TDataset>> producer)
+        public ClientSideShardedDataset(
+            IDataProvider dataProvider,
+            Expression<Func<int, TDataset>> producer)
+            : base(dataProvider)
         {
             if (producer != null)
                 _producer = new ClosureEliminator().Visit(producer) as Expression<Func<int, TDataset>>;
             else
                 Console.WriteLine("The producer expression of the ShardedDataset should be provided !!");
+            _dataProvider = dataProvider;
         }
 
         public void Deploy(ref TaskBase task, ref OperatorsToplogy operatorsTopology, ref OperatorTransforms operandTransforms)
@@ -45,7 +53,7 @@ namespace CRA.ClientLibrary.DataProcessing
             task.IsRightOperandInput = false;
         }
 
-        public override IShardedDataset<TKey, TPayload, TDataset> Deploy()
+        public override async Task<IShardedDataset<TKey, TPayload, TDataset>> Deploy()
         {
             if (!_isDeployed)
             {
@@ -53,8 +61,8 @@ namespace CRA.ClientLibrary.DataProcessing
 
                 GenerateProduceTask(ref operatorsTopology);
 
-                _craClient = new CRAClientLibrary();
-                _isDeployed =  DeploymentUtils.DeployOperators(_craClient, operatorsTopology);
+                _craClient = new CRAClientLibrary(_dataProvider);
+                _isDeployed =  await DeploymentUtils.DeployOperators(_craClient, operatorsTopology);
                 if (!_isDeployed) return null;
             }
 
@@ -81,15 +89,19 @@ namespace CRA.ClientLibrary.DataProcessing
             operatorsTopology.AddOperatorBase(produceTask.OutputId, produceTask);
         }
 
-        public override void Subscribe<TDatasetObserver>(Expression<Func<TDatasetObserver>> observer)
+        public override Task Subscribe<TDatasetObserver>(Expression<Func<TDatasetObserver>> observer)
         {
-            if (!_isDeployed) Deploy();
+            if (!_isDeployed) return Deploy();
+
+            return Task.FromResult(true);
             //TODO: to be implemented here
         }
 
-        public override void MultiSubscribe<TDatasetObserver>(Expression<Func<TDatasetObserver>> observer, int runsCount)
+        public override Task MultiSubscribe<TDatasetObserver>(Expression<Func<TDatasetObserver>> observer, int runsCount)
         {
-            if (!_isDeployed) Deploy();
+            if (!_isDeployed) return Deploy();
+
+            return Task.FromResult(true);
             //TODO: to be implemented here
         }
 
@@ -108,9 +120,9 @@ namespace CRA.ClientLibrary.DataProcessing
             }
         }
 
-        public override void Consume<TDatasetConsumer>(Expression<Func<TDatasetConsumer>> consumer)
+        public override Task Consume<TDatasetConsumer>(Expression<Func<TDatasetConsumer>> consumer)
         {
-            if (!_isDeployed) Deploy();
+            if (!_isDeployed) return Deploy();
             throw new NotImplementedException();
         }
     }

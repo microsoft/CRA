@@ -659,8 +659,9 @@ namespace CRA.ClientLibrary
 
         public static void WriteAssembliesToStream(Stream stream)
         {
-            var relatedAssemblies = GetRelatedApplicationAssemblies("",
-                                                                    GetExcludedAssemblies());
+            var relatedAssemblies = GetRelatedApplicationAssemblies(
+                "",
+                GetExcludedAssemblies());
 
             stream.WriteInt32(relatedAssemblies.Length);
 

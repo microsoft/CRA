@@ -16,9 +16,7 @@ namespace CRA.ClientLibrary
         private IVertexInfoProvider _vertexInfoProvider;
 
         internal VertexTableManager(IDataProvider dataProvider)
-        {
-            _vertexInfoProvider = dataProvider.GetVertexInfoProvider();
-        }
+            => _vertexInfoProvider = dataProvider.GetVertexInfoProvider();
 
         public IVertexInfoProvider VertexInfoProvider
             => _vertexInfoProvider;
@@ -27,11 +25,9 @@ namespace CRA.ClientLibrary
             => _vertexInfoProvider.DeleteStore();
 
         internal async Task<bool> ExistsVertex(string vertexName)
-        {
-            TableQuery<VertexTable> query = new TableQuery<VertexTable>()
-                .Where(TableQuery.GenerateFilterCondition("RowKey", QueryComparisons.Equal, vertexName));
-            return (await _vertexInfoProvider.GetRowsForVertex(vertexName)).Any();
-        }
+            => (await _vertexInfoProvider
+                .GetRowsForVertex(vertexName))
+                .Any();
 
         internal async Task<List<int>> ExistsShardedVertex(string vertexName)
             => (await _vertexInfoProvider.GetRowsForShardedVertex(vertexName))
@@ -39,7 +35,7 @@ namespace CRA.ClientLibrary
                 .ToList();
 
         internal Task RegisterInstance(string instanceName, string address, int port)
-            => _vertexInfoProvider.RegisterVertexInfo(
+            => _vertexInfoProvider.InsertOrReplace(
                 new VertexInfo(
                     instanceName: instanceName,
                     address: address,
@@ -52,7 +48,7 @@ namespace CRA.ClientLibrary
                     isSharded: false));
 
         internal void RegisterVertex(string vertexName, string instanceName)
-            => _vertexInfoProvider.RegisterVertexInfo(
+            => _vertexInfoProvider.InsertOrReplace(
                 new VertexInfo(
                     instanceName: instanceName,
                     address: string.Empty,
@@ -71,17 +67,20 @@ namespace CRA.ClientLibrary
                 .First()
                 .Activate();
 
-            await _vertexInfoProvider.UpdateVertex(newActiveVertex);
+            await _vertexInfoProvider.InsertOrReplace(newActiveVertex);
         }
 
-        internal async Task DeactivateVertexOnInstance(string vertexName, string instanceName)
+        internal async Task DeactivateVertexOnInstance(
+            string vertexName,
+            string instanceName)
         {
             var newActiveVertex = (await _vertexInfoProvider.GetAll())
-                .Where(gn => instanceName == gn.InstanceName && vertexName == gn.VertexName)
+                .Where(gn => instanceName == gn.InstanceName
+                    && vertexName == gn.VertexName)
                 .First()
                 .Deactivate();
 
-            await _vertexInfoProvider.UpdateVertex(newActiveVertex);
+            await _vertexInfoProvider.InsertOrReplace(newActiveVertex);
         }
 
         internal void DeleteInstance(string instanceName)
@@ -93,11 +92,14 @@ namespace CRA.ClientLibrary
         internal async Task DeleteShardedVertex(string vertexName)
         {
             foreach (var row in await _vertexInfoProvider.GetRowsForShardedVertex(vertexName))
-            {
-                await _vertexInfoProvider.DeleteVertexInfo(
-                    row.InstanceName,
-                    row.VertexName);
-            }
+            { await _vertexInfoProvider.DeleteVertexInfo(row); }
+        }
+
+        internal async Task DeleteShardedVertex(string vertexName, string instanceName)
+        {
+            foreach (var row in (await _vertexInfoProvider.GetRowsForShardedVertex(vertexName))
+                .Where(vi => vi.InstanceName == instanceName))
+            { await _vertexInfoProvider.DeleteVertexInfo(row); }
         }
 
         internal Task<VertexInfo> GetRowForActiveVertex(string vertexName)
@@ -106,8 +108,12 @@ namespace CRA.ClientLibrary
         internal Task<VertexInfo> GetRowForInstance(string instanceName)
             => GetRowForInstanceVertex(instanceName, "");
 
-        internal Task<VertexInfo> GetRowForInstanceVertex(string instanceName, string vertexName)
-            => _vertexInfoProvider.GetRowForInstanceVertex(instanceName, vertexName);
+        internal Task<VertexInfo> GetRowForInstanceVertex(
+            string instanceName,
+            string vertexName)
+            => _vertexInfoProvider.GetRowForInstanceVertex(
+                instanceName,
+                vertexName);
 
         internal async Task<VertexInfo> GetRowForDefaultInstance()
             => (await _vertexInfoProvider.GetAll())

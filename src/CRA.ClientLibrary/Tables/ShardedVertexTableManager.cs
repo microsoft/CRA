@@ -85,7 +85,7 @@ namespace CRA.ClientLibrary
 
         public async Task DeleteShardedVertex(string vertexName)
         {
-            await _vertexTableManager.DeleteShardedVertex(vertexName);
+            await _vertexTableManager.DeleteShardedVertex(vertexName, "");
 
             foreach (var entry in await _shardedVertexInfoProvider.GetEntriesForVertex(vertexName))
             { await _shardedVertexInfoProvider.Delete(entry); }

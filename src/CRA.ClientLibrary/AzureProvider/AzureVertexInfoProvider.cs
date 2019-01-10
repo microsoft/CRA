@@ -97,7 +97,7 @@ namespace CRA.ClientLibrary.AzureProvider
                                 vertexName))))
             .Select(vt => (VertexInfo)vt);
 
-        public async Task<List<string>> GetVertexNames()
+        public async Task<IEnumerable<string>> GetVertexNames()
             => (await cloudTable.ExecuteQueryAsync(
                 new TableQuery<VertexTable>()
                  .Where(
@@ -108,7 +108,7 @@ namespace CRA.ClientLibrary.AzureProvider
                 .Select(e => e.VertexName)
                 .ToList();
 
-        public async Task<List<string>> GetVertexDefinitions()
+        public async Task<IEnumerable<string>> GetVertexDefinitions()
             => (await cloudTable.ExecuteQueryAsync(
                 new TableQuery<VertexTable>()
                  .Where(
@@ -119,12 +119,8 @@ namespace CRA.ClientLibrary.AzureProvider
                 .Select(e => e.VertexName)
                 .ToList();
 
-        public async Task<List<string>> GetInstanceNames()
-        {
-            TableQuery<VertexTable> query = new TableQuery<VertexTable>()
-                .Where(TableQuery.GenerateFilterCondition("RowKey", QueryComparisons.Equal, ""));
-
-            return (await cloudTable.ExecuteQueryAsync(
+        public async Task<IEnumerable<string>> GetInstanceNames()
+            => (await cloudTable.ExecuteQueryAsync(
                 new TableQuery<VertexTable>()
                     .Where(
                         TableQuery.GenerateFilterCondition(
@@ -133,17 +129,6 @@ namespace CRA.ClientLibrary.AzureProvider
                             ""))))
                 .Select(e => e.InstanceName)
                 .ToList();
-        }
-
-        public Task RegisterVertexInfo(VertexInfo vertexInfo)
-             => cloudTable.ExecuteAsync(
-                 TableOperation.InsertOrReplace(
-                     (VertexTable)vertexInfo));
-
-        public Task UpdateVertex(VertexInfo newActiveVertex)
-            => cloudTable.ExecuteAsync(
-                TableOperation.InsertOrReplace(
-                    (VertexTable)newActiveVertex));
 
         public Task DeleteVertexInfo(string instanceName, string vertexName)
         {
@@ -152,5 +137,26 @@ namespace CRA.ClientLibrary.AzureProvider
             TableOperation deleteOperation = TableOperation.Delete(newRow);
             return cloudTable.ExecuteAsync(deleteOperation);
         }
+
+        public Task DeleteVertexInfo(VertexInfo vertexInfo)
+            => cloudTable.ExecuteAsync(
+                TableOperation.Delete((VertexTable)vertexInfo));
+
+        public Task InsertOrReplace(VertexInfo newActiveVertex)
+            => cloudTable.ExecuteAsync(
+                TableOperation.InsertOrReplace(
+                    (VertexTable)newActiveVertex));
+
+        public async Task<IEnumerable<VertexInfo>> GetRowsForShardedInstanceVertex(string instanceName, string vertexName)
+            => (await cloudTable.ExecuteQueryAsync(
+                new TableQuery<VertexTable>()
+                 .Where(
+                    TableQuery.GenerateFilterCondition(
+                        "PartitionKey",
+                        QueryComparisons.Equal,
+                        instanceName))))
+                .Where(e => e.VertexName.StartsWith(vertexName + "$"))
+                .Select(e => (VertexInfo)e)
+                .ToList();
     }
 }

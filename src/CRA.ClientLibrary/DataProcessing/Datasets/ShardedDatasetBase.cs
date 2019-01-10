@@ -1,19 +1,31 @@
-﻿using System;
+﻿using CRA.ClientLibrary.DataProvider;
+using System;
 using System.Linq.Expressions;
+using System.Threading.Tasks;
 
 namespace CRA.ClientLibrary.DataProcessing
 {
-    public abstract class ShardedDatasetBase<TKey, TPayload, TDataset> : IShardedDataset<TKey, TPayload, TDataset>
+    public abstract class ShardedDatasetBase<TKey, TPayload, TDataset> :
+        IShardedDataset<TKey, TPayload, TDataset>
             where TDataset : IDataset<TKey, TPayload>
     {
+        private readonly IDataProvider _dataProvider;
+
+        public ShardedDatasetBase(IDataProvider dataProvider)
+        {
+            _dataProvider = dataProvider;
+        }
+
         public IShardedDataset<TKey2, TPayload2, TDataset2> Transform<TKey2, TPayload2, TDataset2>(
-               Expression<Func<TDataset, TDataset2>> transformer)
-           where TDataset2 : IDataset<TKey2, TPayload2>
+            Expression<Func<TDataset, TDataset2>> transformer)
+            where TDataset2 : IDataset<TKey2, TPayload2>
         {
             transformer = new ClosureEliminator().Visit(transformer) as Expression<Func<TDataset, TDataset2>>;
 
-            return new DeployableShardedDataset<TKey, TPayload, TDataset,
-                        Empty, Empty, EmptyDataSet,TKey2, TPayload2, TDataset2>(this, transformer);
+            return new DeployableShardedDataset<TKey, TPayload, TDataset, Empty, Empty, EmptyDataSet,TKey2, TPayload2, TDataset2>(
+                _dataProvider,
+                this,
+                transformer);
         }
 
         public IShardedDataset<TKeyO, TPayloadO, TDatasetO> Transform<TKey2, TPayload2, TDataset2, TKeyO, TPayloadO, TDatasetO>(
@@ -24,8 +36,11 @@ namespace CRA.ClientLibrary.DataProcessing
         {
             transformer = new ClosureEliminator().Visit(transformer) as Expression<Func<TDataset, TDataset2, TDatasetO>>;
 
-            return new DeployableShardedDataset<TKey, TPayload, TDataset,
-                        TKey2, TPayload2, TDataset2, TKeyO, TPayloadO, TDatasetO>(this, input2, transformer);
+            return new DeployableShardedDataset<TKey, TPayload, TDataset, TKey2, TPayload2, TDataset2, TKeyO, TPayloadO, TDatasetO>(
+                _dataProvider,
+                this,
+                input2,
+                transformer);
         }
 
 
@@ -36,7 +51,11 @@ namespace CRA.ClientLibrary.DataProcessing
             where TDatasetO : IDataset<TKeyO, TPayloadO>
         {
             return new DeployableShardedDataset<TKey, TPayload, TDataset, TKey2, TPayload2, TDataset2, TKeyO, TPayloadO, TDatasetO>(
-                        this, mapper, reducer, moveDescriptor);
+                _dataProvider,
+                this,
+                mapper,
+                reducer,
+                moveDescriptor);
         }
 
         public IShardedDataset<TKey2, TPayload, TDataset2> ReKey<TKey2, TDataset2>(
@@ -46,12 +65,12 @@ namespace CRA.ClientLibrary.DataProcessing
             return Transform<TKey2, TPayload, TDataset2>(ds => (TDataset2)ds.ReKey(selector));
         }
 
-        public abstract IShardedDataset<TKey, TPayload, TDataset> Deploy();
+        public abstract Task<IShardedDataset<TKey, TPayload, TDataset>> Deploy();
 
-        public abstract void Subscribe<TDatasetObserver>(Expression<Func<TDatasetObserver>> observer);
+        public abstract Task Subscribe<TDatasetObserver>(Expression<Func<TDatasetObserver>> observer);
 
-        public abstract void MultiSubscribe<TDatasetObserver>(Expression<Func<TDatasetObserver>> observer, int runsCount);
+        public abstract Task MultiSubscribe<TDatasetObserver>(Expression<Func<TDatasetObserver>> observer, int runsCount);
 
-        public abstract void Consume<TDatasetConsumer>(Expression<Func<TDatasetConsumer>> observer);
+        public abstract Task Consume<TDatasetConsumer>(Expression<Func<TDatasetConsumer>> observer);
     }
 }

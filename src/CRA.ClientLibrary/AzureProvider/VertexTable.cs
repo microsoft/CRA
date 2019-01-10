@@ -180,7 +180,8 @@ namespace CRA.ClientLibrary.AzureProvider
                 vertexCreateAction: vertexInfo.VertexCreateAction,
                 vertexParameter: vertexInfo.VertexParameter,
                 isActive: vertexInfo.IsActive,
-                isSharded: vertexInfo.IsSharded);
+                isSharded: vertexInfo.IsSharded)
+            { ETag = vertexInfo.VersionId };
 
         public static implicit operator VertexInfo(VertexTable vertexInfo)
             => new VertexInfo(
@@ -192,7 +193,8 @@ namespace CRA.ClientLibrary.AzureProvider
                 vertexCreateAction: vertexInfo.VertexCreateAction,
                 vertexParameter: vertexInfo.VertexParameter,
                 isActive: vertexInfo.IsActive,
-                isSharded: vertexInfo.IsSharded);
+                isSharded: vertexInfo.IsSharded,
+                versionId: vertexInfo.ETag);
 
         /// <summary>
         /// ToString

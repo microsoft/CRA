@@ -25,15 +25,17 @@ namespace CRA.ClientLibrary.DataProvider
         Task<VertexInfo> GetRowForVertexDefinition(string vertexDefinition);
         Task<VertexInfo> GetRowForVertex(string vertexName);
         Task<IEnumerable<VertexInfo>> GetVertices(string instanceName);
+        Task<IEnumerable<VertexInfo>> GetRowsForShardedInstanceVertex(
+            string instanceName,
+            string vertexName);
+
         Task<IEnumerable<VertexInfo>> GetRowsForShardedVertex(string vertexName);
         Task<IEnumerable<VertexInfo>> GetRowsForVertex(string vertexName);
         Task<bool> ContainsRow(VertexInfo entity);
         Task<bool> ContainsInstance(string instanceName);
-        Task<List<string>> GetVertexNames();
-        Task<List<string>> GetVertexDefinitions();
-        Task<List<string>> GetInstanceNames();
-        Task RegisterVertexInfo(VertexInfo vertexInfo);
-        Task UpdateVertex(VertexInfo newActiveVertex);
+        Task<IEnumerable<string>> GetVertexNames();
+        Task<IEnumerable<string>> GetVertexDefinitions();
+        Task<IEnumerable<string>> GetInstanceNames();
         Task DeleteVertexInfo(string instanceName, string vertexName);
         Task DeleteVertexInfo(VertexInfo vertexInfo);
         Task InsertOrReplace(VertexInfo newInfo);

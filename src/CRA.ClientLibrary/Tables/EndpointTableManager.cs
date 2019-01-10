@@ -45,6 +45,17 @@ namespace CRA.ClientLibrary
             { Console.WriteLine("Could not retrieve the entity."); }
         }
 
+        internal async Task RemoveShardedEndpoints(string vertexName, string endpointName)
+        {
+            var endpointInfos = await _endpointDataProvider.GetShardedEndpoints(vertexName, endpointName);
+
+            var tasks = new List<Task>();
+            foreach(var endpoint in endpointInfos)
+            { tasks.Add(_endpointDataProvider.DeleteEndpoint(endpoint)); }
+
+            await Task.WhenAll(tasks);
+        }
+
         internal async Task<IEnumerable<string>> GetInputEndpoints(string vertexName)
             => (await _endpointDataProvider.GetEndpoints(vertexName))
             .Where(e => e.IsInput)

@@ -33,6 +33,9 @@ namespace CRA.ClientLibrary
         private bool _dynamicLoadingEnabled = true;
         private bool _artifactUploading = true;
 
+        public CRAClientLibrary() : this(new AzureProvider.AzureProviderImpl(), null)
+        { }
+
         /// <summary>
         /// Create an instance of the client library for Common Runtime for Applications (CRA)
         /// </summary>
@@ -57,7 +60,10 @@ namespace CRA.ClientLibrary
             _shardedVertexTableManager = new ShardedVertexTableManager(dataProvider);
             _endpointTableManager = new EndpointTableManager(dataProvider);
             _connectionTableManager = new ConnectionTableManager(dataProvider);
+            this.DataProvider = dataProvider;
         }
+
+        public IDataProvider DataProvider { get; }
 
         /// <summary>
         /// Define secure stream connections
@@ -566,29 +572,24 @@ namespace CRA.ClientLibrary
         public Task DeleteConnectionInfo(ConnectionInfo connInfo)
             => _connectionTableManager.DeleteConnection(connInfo.FromVertex, connInfo.FromEndpoint, connInfo.ToVertex, connInfo.ToEndpoint);
 
-        /// <summary>
-        /// Connect one CRA vertex to another, via pre-defined endpoints. We contact the "from" vertex
-        /// to initiate the creation of the link.
-        /// </summary>
-        /// <param name="fromVertexName">Name of the vertex from which connection is being made</param>
-        /// <param name="fromEndpoint">Name of the endpoint on the fromVertex, from which connection is being made</param>
-        /// <param name="toVertexName">Name of the vertex to which connection is being made</param>
-        /// <param name="toEndpoint">Name of the endpoint on the toVertex, to which connection is being made</param>
-        /// <returns>Status of the Connect operation</returns>
-        public Task<CRAErrorCode> Connect(string fromVertexName, string fromEndpoint, string toVertexName, string toEndpoint)
-            => Connect(fromVertexName, fromEndpoint, toVertexName, toEndpoint, ConnectionInitiator.FromSide);
+        public Task<CRAErrorCode> Connect(
+            string fromVertexName,
+            string fromEndpoint,
+            string toVertexName,
+            string toEndpoint)
+            => Connect(
+                fromVertexName,
+                fromEndpoint,
+                toVertexName,
+                toEndpoint,
+                ConnectionInitiator.FromSide);
 
-        /// <summary>
-        /// Connect one CRA vertex to another, via pre-defined endpoints. We contact the "from" vertex
-        /// to initiate the creation of the link.
-        /// </summary>
-        /// <param name="fromVertexName">Name of the vertex from which connection is being made</param>
-        /// <param name="fromEndpoint">Name of the endpoint on the fromVertex, from which connection is being made</param>
-        /// <param name="toVertexName">Name of the vertex to which connection is being made</param>
-        /// <param name="toEndpoint">Name of the endpoint on the toVertex, to which connection is being made</param>
-        /// <param name="direction">Which vertex initiates the connection</param>
-        /// <returns>Status of the Connect operation</returns>
-        public async Task<CRAErrorCode> Connect(string fromVertexName, string fromEndpoint, string toVertexName, string toEndpoint, ConnectionInitiator direction)
+        public async Task<CRAErrorCode> Connect(
+            string fromVertexName,
+            string fromEndpoint,
+            string toVertexName,
+            string toEndpoint,
+            ConnectionInitiator direction)
         {
             // Tell from vertex to establish connection
             // Send request to CRA instance
@@ -680,10 +681,7 @@ namespace CRA.ClientLibrary
                 if (result != 0)
                 { Console.WriteLine("Connection was logically established. However, the client received an error code from the connection-initiating CRA instance: " + result); }
                 else
-                {
-                    // Add/Return a stream connection to the pool
-                    TryAddSenderStreamToPool(row.Address, row.Port.ToString(), stream);
-                }
+                { TryAddSenderStreamToPool(row.Address, row.Port.ToString(), stream); }
             }
             catch
             {
@@ -693,15 +691,37 @@ namespace CRA.ClientLibrary
             return result;
         }
 
-        private CRAErrorCode ConnectSharded(string fromVertexName, List<int> fromVertexShards, string fromEndpoint, string toVertexName, List<int> toVertexShards, string toEndpoint, ConnectionInitiator direction)
+        private CRAErrorCode ConnectSharded(
+            string fromVertexName,
+            List<int> fromVertexShards,
+            string fromEndpoint,
+            string toVertexName,
+            List<int> toVertexShards,
+            string toEndpoint,
+            ConnectionInitiator direction)
         {
-            var fromVertexNames = fromVertexShards.Select(e => fromVertexName + "$" + e).ToArray();
-            var toVertexNames = toVertexShards.Select(e => toVertexName + "$" + e).ToArray();
-            var fromEndpoints = toVertexShards.Select(e => fromEndpoint + "$" + e).ToArray();
-            var toEndpoints = fromVertexShards.Select(e => toEndpoint + "$" + e).ToArray();
+            var fromVertexNames = fromVertexShards
+                .Select(e => fromVertexName + "$" + e)
+                .ToArray();
 
-            return
-                ConnectShardedVerticesWithFullMesh(fromVertexNames, fromEndpoints, toVertexNames, toEndpoints, direction);
+            var toVertexNames = toVertexShards
+                .Select(e => toVertexName + "$" + e)
+                .ToArray();
+
+            var fromEndpoints = toVertexShards
+                .Select(e => fromEndpoint + "$" + e)
+                .ToArray();
+
+            var toEndpoints = fromVertexShards
+                .Select(e => toEndpoint + "$" + e)
+                .ToArray();
+
+            return ConnectShardedVerticesWithFullMesh(
+                    fromVertexNames,
+                    fromEndpoints,
+                    toVertexNames,
+                    toEndpoints,
+                    direction);
         }
 
         public async Task<string> GetDefaultInstanceName()
