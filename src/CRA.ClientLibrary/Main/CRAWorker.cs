@@ -825,7 +825,7 @@ namespace CRA.ClientLibrary
             Task.Run(() => TryReuseReceiverStream(stream));
         }
 
-        private async Task RestoreConnections(VertexTable _row)
+        private async Task RestoreConnections(VertexInfo _row)
         {
             // Decide what to do if connection creation fails
             var outRows = await _connectionInfoProvider.GetAllConnectionsFromVertex(_row.VertexName);
@@ -842,7 +842,7 @@ namespace CRA.ClientLibrary
             }
         }
 
-        private async void RestoreVertexAndConnections(VertexTable _row)
+        private async void RestoreVertexAndConnections(VertexInfo _row)
         {
             await _craClient.LoadVertexAsync(_row.VertexName, _row.VertexDefinition, _row.VertexParameter, _workerinstanceName, _localVertexTable);
             await RestoreConnections(_row);

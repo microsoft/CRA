@@ -22,7 +22,8 @@ namespace CRA.ClientLibrary.DataProvider
             string allShards,
             string addedShards,
             string removedShards,
-            string shardLocator)
+            string shardLocator,
+            string versionId = null)
         {
             this.VertexName = vertexName;
             this.EpochId = epochId;
@@ -31,6 +32,7 @@ namespace CRA.ClientLibrary.DataProvider
             this.AddedShards = addedShards;
             this.RemovedShards = removedShards;
             this.ShardLocator = shardLocator;
+            this.VersionId = versionId;
         }
 
         public static ShardedVertexInfo Create(
@@ -73,6 +75,7 @@ namespace CRA.ClientLibrary.DataProvider
         public string AddedShards { get; }
         public string RemovedShards { get; }
         public string ShardLocator { get; }
+        public string VersionId { get; }
 
         public override string ToString()
             => string.Format("Vertex '{0}', EpochId '{1}'", this.VertexName, this.EpochId);

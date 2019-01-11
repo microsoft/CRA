@@ -46,7 +46,7 @@ namespace CRA.ClientLibrary
 
         public ShardedVertexTable(string vertexName, string epochId,
             List<string> allInstances,
-            List<int> allShards, List<int> addedShards, List<int> removedShards, 
+            List<int> allShards, List<int> addedShards, List<int> removedShards,
             Expression<Func<int, int>> shardLocator)
         {
             this.PartitionKey = vertexName;
@@ -65,7 +65,7 @@ namespace CRA.ClientLibrary
                 this.ShardLocator = SerializationHelper.Serialize(vertexedUserLambdaExpression);
             }
         }
-        
+
 
         /// <summary>
         /// Constructor
@@ -81,7 +81,8 @@ namespace CRA.ClientLibrary
                 AllShards = vertexInfo.AllShards,
                 AddedShards = vertexInfo.AddedShards,
                 RemovedShards = vertexInfo.RemovedShards,
-                ShardLocator = vertexInfo.ShardLocator
+                ShardLocator = vertexInfo.ShardLocator,
+                ETag = vertexInfo.VersionId
             };
 
         public static implicit operator ShardedVertexInfo(ShardedVertexTable vertexInfo)
@@ -92,7 +93,8 @@ namespace CRA.ClientLibrary
                 allShards: vertexInfo.AllShards,
                 addedShards: vertexInfo.AddedShards,
                 removedShards: vertexInfo.RemovedShards,
-                shardLocator: vertexInfo.ShardLocator);
+                shardLocator: vertexInfo.ShardLocator,
+                versionId: vertexInfo.ETag);
 
         /// <summary>
         /// ToString
