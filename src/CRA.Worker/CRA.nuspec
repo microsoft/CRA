@@ -22,18 +22,18 @@
     <dependencies>
       <group targetFramework="net46">
         <dependency id="Newtonsoft.Json" version="11.0.2" />
-        <dependency id="Remote.Linq" version="5.6.1" />
-        <dependency id="WindowsAzure.Storage" version="9.2.0" />
+        <dependency id="Remote.Linq" version="5.8.1" />
+        <dependency id="WindowsAzure.Storage" version="9.3.2" />
       </group>
       <group targetFramework="netstandard2.0">
         <dependency id="Newtonsoft.Json" version="11.0.2" />
-        <dependency id="Remote.Linq" version="5.6.1" />
-        <dependency id="WindowsAzure.Storage" version="9.2.0" />
+        <dependency id="Remote.Linq" version="5.8.1" />
+        <dependency id="WindowsAzure.Storage" version="9.3.2" />
       </group>
       <group targetFramework="netcoreapp2.0">
         <dependency id="Newtonsoft.Json" version="11.0.2" />
-        <dependency id="Remote.Linq" version="5.6.1" />
-        <dependency id="WindowsAzure.Storage" version="9.2.0" />
+        <dependency id="Remote.Linq" version="5.8.1" />
+        <dependency id="WindowsAzure.Storage" version="9.3.2" />
       </group>
     </dependencies>
   </metadata>
