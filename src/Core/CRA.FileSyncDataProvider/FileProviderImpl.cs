@@ -7,8 +7,6 @@
 namespace CRA.FileSyncDataProvider
 {
     using CRA.ClientLibrary.DataProvider;
-    using System;
-    using System.Collections.Generic;
     using System.IO;
 
     /// <summary>
@@ -36,10 +34,12 @@ namespace CRA.FileSyncDataProvider
                 Path.Combine(GetDirectory("Data"), "sharded_vertexes.json"));
 
         public IVertexConnectionInfoProvider GetVertexConnectionInfoProvider()
-            => throw new NotImplementedException();
+            => new FileVertexConnectionProvider(
+                Path.Combine(GetDirectory("Data"), "vertex_connections.json"));
 
         public IVertexInfoProvider GetVertexInfoProvider()
-            => throw new NotImplementedException();
+            => new FileVertexProvider(
+                Path.Combine(GetDirectory("Data"), "vertex.json"));
 
         private string GetDirectory(string subPath)
         {

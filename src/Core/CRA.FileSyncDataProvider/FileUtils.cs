@@ -129,7 +129,7 @@ namespace CRA.FileSyncDataProvider
         public static Task<bool> Exists<T>(
             string fileName,
             T itemToFind,
-            MatchForUpdate<T> updator)
+            MatchForUpdate<T> matcher)
         {
             var found = false;
             using (var stream = FileUtils.GetReadStream(fileName))
@@ -140,7 +140,7 @@ namespace CRA.FileSyncDataProvider
                 {
                     var item = list[idx];
                     bool shouldUpdate = false;
-                    (found, shouldUpdate) = updator(item, itemToFind);
+                    (found, shouldUpdate) = matcher(item, itemToFind);
                 }
             }
 
@@ -150,7 +150,7 @@ namespace CRA.FileSyncDataProvider
         public static Task InsertOrUpdate<T>(
             string _fileName,
             T itemToUpdate,
-            MatchForUpdate<T> updator,
+            MatchForUpdate<T> matcher,
             Func<T, T> cloneWithUpdateVersion)
         {
             using (var stream = FileUtils.GetReadWriteStream(_fileName))
@@ -162,7 +162,7 @@ namespace CRA.FileSyncDataProvider
                 {
                     var item = list[idx];
                     bool shouldUpdate = false;
-                    (found, shouldUpdate) = updator(item, itemToUpdate);
+                    (found, shouldUpdate) = matcher(item, itemToUpdate);
 
                     if (shouldUpdate)
                     { list[idx] =cloneWithUpdateVersion(itemToUpdate); }
