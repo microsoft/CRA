@@ -5,6 +5,7 @@ using System.Configuration;
 using CRA.ClientLibrary;
 using System.Reflection;
 using CRA.ClientLibrary.AzureProvider;
+using CRA.ClientLibrary.DataProvider;
 
 namespace CRA.Worker
 {
@@ -32,6 +33,7 @@ namespace CRA.Worker
 
 
             string storageConnectionString = null;
+            IDataProvider dataProvider = null;
 
 #if !DOTNETCORE
             storageConnectionString = ConfigurationManager.AppSettings.Get("AZURE_STORAGE_CONN_STRING");
@@ -42,10 +44,10 @@ namespace CRA.Worker
                 storageConnectionString = Environment.GetEnvironmentVariable("AZURE_STORAGE_CONN_STRING");
             }
 
-            if (storageConnectionString == null)
-            {
-                throw new InvalidOperationException("Azure storage connection string not found. Use appSettings in your app.config to provide this using the key AZURE_STORAGE_CONN_STRING, or use the environment variable AZURE_STORAGE_CONN_STRING.");
-            }
+            if (storageConnectionString != null)
+            { dataProvider = new AzureProviderImpl(storageConnectionString); }
+            else if (storageConnectionString == null)
+            { dataProvider = new FileSyncDataProvider.FileProviderImpl("."); }
 
             int connectionsPoolPerWorker;
             string connectionsPoolPerWorkerString = null;
@@ -87,9 +89,11 @@ namespace CRA.Worker
                 descriptor = (ISecureStreamConnectionDescriptor)Activator.CreateInstance(type);
             }
 
-            var worker = new CRAWorker
-                (args[0], ipAddress, Convert.ToInt32(args[1]),
-                new AzureProviderImpl(storageConnectionString),
+            var worker = new CRAWorker(
+                args[0],
+                ipAddress,
+                Convert.ToInt32(args[1]),
+                dataProvider,
                 descriptor,
                 connectionsPoolPerWorker);
 

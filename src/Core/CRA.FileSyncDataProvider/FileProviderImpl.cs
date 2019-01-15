@@ -44,7 +44,7 @@ namespace CRA.FileSyncDataProvider
         private string GetDirectory(string subPath)
         {
             string subDirectoryPath = Path.Combine(_directoryPath, subPath);
-            if (Directory.Exists(subDirectoryPath))
+            if (!Directory.Exists(subDirectoryPath))
             { Directory.CreateDirectory(subDirectoryPath); }
 
             return subDirectoryPath;

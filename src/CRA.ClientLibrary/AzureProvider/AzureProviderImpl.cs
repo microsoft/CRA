@@ -11,6 +11,7 @@ namespace CRA.ClientLibrary.AzureProvider
     using Microsoft.WindowsAzure.Storage.Table;
     using System;
     using System.Collections.Generic;
+    using System.Configuration;
 
     /// <summary>
     /// Definition for AzureProviderImpl

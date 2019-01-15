@@ -19,8 +19,8 @@
     <Reference Include="System.Management" />
   </ItemGroup>
   <ItemGroup>
-    <Reference Include="System">
-      <HintPath>System</HintPath>
+    <Reference Include="System.Configuration">
+      <HintPath>..\..\..\..\..\..\..\Program Files (x86)\Reference Assemblies\Microsoft\Framework\.NETFramework\v4.6\System.Configuration.dll</HintPath>
     </Reference>
   </ItemGroup>
   <ItemGroup Condition="'$(TargetFramework)' == 'netcoreapp2.0'">

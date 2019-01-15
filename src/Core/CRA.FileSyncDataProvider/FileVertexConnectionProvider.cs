@@ -17,9 +17,8 @@ namespace CRA.FileSyncDataProvider
     {
         private readonly string _fileName;
 
-        public FileVertexConnectionProvider(string fileName) {
-            _fileName = fileName;
-        }
+        public FileVertexConnectionProvider(string fileName)
+        { _fileName = fileName; }
 
         public Task Add(VertexConnectionInfo vertexConnectionInfo)
             => FileUtils.InsertOrUpdate<VertexConnectionInfo>(
