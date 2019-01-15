@@ -7,12 +7,13 @@ namespace BandwidthTest
     {
         static void Main(string[] args)
         {
-            var client = new CRAClientLibrary();
+            var client = new CRAClientLibrary(
+                new CRA.FileSyncDataProvider.FileProviderImpl());
+
             int chunkSize = 10*1024*1024;
             client.Reset();
 
             client.DefineVertex("bandwidthtestvertex", () => new BandwidthTestVertex()).Wait();
-
             client.InstantiateVertex("crainst01", "bwvertex1", "bandwidthtestvertex", chunkSize);
             client.InstantiateVertex("crainst02", "bwvertex2", "bandwidthtestvertex", chunkSize);
             //client.InstantiateVertex("crainst03", "bwvertex3", "bandwidthtestvertex", chunkSize);

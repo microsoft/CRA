@@ -26,7 +26,7 @@ namespace CRA.FileSyncDataProvider
             return File.Open(
                 fileName,
                 FileMode.OpenOrCreate,
-                FileAccess.Write,
+                FileAccess.ReadWrite,
                 FileShare.None);
         }
 

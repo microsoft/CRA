@@ -11,6 +11,7 @@
     <Reference Include="System.Management" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\..\Core\CRA.FileSyncDataProvider\CRA.FileSyncDataProvider.csproj" />
     <ProjectReference Include="..\..\CRA.ClientLibrary\CRA.ClientLibrary.csproj" />
   </ItemGroup>
 

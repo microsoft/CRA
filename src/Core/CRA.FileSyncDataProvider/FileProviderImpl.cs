@@ -7,6 +7,7 @@
 namespace CRA.FileSyncDataProvider
 {
     using CRA.ClientLibrary.DataProvider;
+    using System;
     using System.IO;
 
     /// <summary>
@@ -16,14 +17,15 @@ namespace CRA.FileSyncDataProvider
     {
         private readonly string _directoryPath;
 
+        public FileProviderImpl()
+        { _directoryPath = GetDefaultDirectory(); }
+
         public FileProviderImpl(string directoryPath)
         { _directoryPath = directoryPath; }
 
         public IBlobStorageProvider GetBlobStorageProvider()
-        {
-            return new FileBlobProvider(
+            => new FileBlobProvider(
                 GetDirectory("Blobs"));
-        }
 
         public IEndpointInfoProvider GetEndpointInfoProvider()
             => new FileEndpointProvider(
@@ -40,6 +42,11 @@ namespace CRA.FileSyncDataProvider
         public IVertexInfoProvider GetVertexInfoProvider()
             => new FileVertexProvider(
                 Path.Combine(GetDirectory("Data"), "vertex.json"));
+
+        public static string GetDefaultDirectory()
+            => Path.Combine(
+                Environment.GetEnvironmentVariable("TEMP"),
+                "CRA");
 
         private string GetDirectory(string subPath)
         {

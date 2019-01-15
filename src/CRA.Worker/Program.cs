@@ -11,6 +11,8 @@ namespace CRA.Worker
 {
     class Program
     {
+        private const string MaxConnectionIsWrong = "Maximum number of connections per CRA worker is wrong. Use appSettings in your app.config to provide this using the key CRA_WORKER_MAX_CONN_POOL.";
+
         static void Main(string[] args)
         {
             if (args.Length < 2)
@@ -21,19 +23,16 @@ namespace CRA.Worker
             }
 
             string ipAddress = "";
-
-            if (args.Length < 3 || args[2] == "null")
-            {
-                ipAddress = GetLocalIPAddress();
-            }
-            else
-            {
-                ipAddress = args[2];
-            }
-
-
             string storageConnectionString = null;
             IDataProvider dataProvider = null;
+            int connectionsPoolPerWorker;
+            string connectionsPoolPerWorkerString = null;
+
+            if (args.Length < 3 || args[2] == "null")
+            { ipAddress = GetLocalIPAddress(); }
+            else
+            { ipAddress = args[2]; }
+
 
 #if !DOTNETCORE
             storageConnectionString = ConfigurationManager.AppSettings.Get("AZURE_STORAGE_CONN_STRING");
@@ -47,28 +46,20 @@ namespace CRA.Worker
             if (storageConnectionString != null)
             { dataProvider = new AzureProviderImpl(storageConnectionString); }
             else if (storageConnectionString == null)
-            { dataProvider = new FileSyncDataProvider.FileProviderImpl("."); }
+            { dataProvider = new FileSyncDataProvider.FileProviderImpl(); }
 
-            int connectionsPoolPerWorker;
-            string connectionsPoolPerWorkerString = null;
 #if !DOTNETCORE
             connectionsPoolPerWorkerString = ConfigurationManager.AppSettings.Get("CRA_WORKER_MAX_CONN_POOL");
 #endif
             if (connectionsPoolPerWorkerString != null)
             {
                 try
-                {
-                    connectionsPoolPerWorker = Convert.ToInt32(connectionsPoolPerWorkerString);
-                }
+                { connectionsPoolPerWorker = Convert.ToInt32(connectionsPoolPerWorkerString); }
                 catch
-                {
-                    throw new InvalidOperationException("Maximum number of connections per CRA worker is wrong. Use appSettings in your app.config to provide this using the key CRA_WORKER_MAX_CONN_POOL.");
-                }
+                { throw new InvalidOperationException(MaxConnectionIsWrong); }
             }
             else
-            {
-                connectionsPoolPerWorker = 1000;
-            }
+            { connectionsPoolPerWorker = 1000; }
 
             ISecureStreamConnectionDescriptor descriptor = null;
             if (args.Length > 3)
@@ -83,9 +74,8 @@ namespace CRA.Worker
                     type = assembly.GetType(args[4]);
                 }
                 else
-                {
-                    type = Type.GetType(args[4]);
-                }
+                { type = Type.GetType(args[4]); }
+
                 descriptor = (ISecureStreamConnectionDescriptor)Activator.CreateInstance(type);
             }
 
@@ -110,6 +100,7 @@ namespace CRA.Worker
                     return ip.ToString();
                 }
             }
+
             throw new InvalidOperationException("Local IP Address Not Found!");
         }
     }
