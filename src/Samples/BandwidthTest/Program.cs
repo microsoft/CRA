@@ -14,8 +14,8 @@ namespace BandwidthTest
             client.Reset();
 
             client.DefineVertex("bandwidthtestvertex", () => new BandwidthTestVertex()).Wait();
-            client.InstantiateVertex("crainst01", "bwvertex1", "bandwidthtestvertex", chunkSize);
-            client.InstantiateVertex("crainst02", "bwvertex2", "bandwidthtestvertex", chunkSize);
+            client.InstantiateVertex("crainst01", "bwvertex1", "bandwidthtestvertex", chunkSize).Wait();
+            client.InstantiateVertex("crainst02", "bwvertex2", "bandwidthtestvertex", chunkSize).Wait();
             //client.InstantiateVertex("crainst03", "bwvertex3", "bandwidthtestvertex", chunkSize);
 
             client.Connect("bwvertex1", "output1", "bwvertex2", "input1");

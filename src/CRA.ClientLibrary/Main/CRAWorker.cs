@@ -146,9 +146,9 @@ namespace CRA.ClientLibrary
             try
             {
                 // Need to get the latest address & port
-                row = await (reverse
-                    ? _vertexInfoProvider.GetRowForVertex(fromVertexName)
-                    : _vertexInfoProvider.GetRowForVertex(toVertexName));
+                row = (await (reverse
+                    ? _vertexInfoProvider.GetRowForActiveVertex(fromVertexName)
+                    : _vertexInfoProvider.GetRowForActiveVertex(toVertexName))).Value;
             }
             catch
             {
@@ -193,7 +193,9 @@ namespace CRA.ClientLibrary
 
             // Send request to CRA instance
             Stream ns = null;
-            var _row = await _vertexInfoProvider.GetRowForInstanceVertex(row.InstanceName, "");
+            var _row = (await _vertexInfoProvider.GetRowForInstanceVertex(row.InstanceName, ""))
+                .Value;
+
             try
             {
                 // Get a stream connection from the pool if available
@@ -207,9 +209,7 @@ namespace CRA.ClientLibrary
                 }
             }
             catch
-            {
-                return CRAErrorCode.ConnectionEstablishFailed;
-            }
+            { return CRAErrorCode.ConnectionEstablishFailed; }
 
             if (!reverse)
                 ns.WriteInt32((int)CRATaskMessageType.CONNECT_VERTEX_RECEIVER);

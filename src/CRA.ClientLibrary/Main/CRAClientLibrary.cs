@@ -198,7 +198,7 @@ namespace CRA.ClientLibrary
                 port: 0,
                 vertexName: vertexName,
                 vertexDefinition: vertexDefinition,
-                vertexCreateAction: procDefRow.VertexCreateAction,
+                vertexCreateAction: procDefRow.Value.VertexCreateAction,
                 vertexParameter: blobName,
                 isActive: false,
                 isSharded:  sharded);
@@ -211,7 +211,7 @@ namespace CRA.ClientLibrary
             VertexInfo instanceRow;
             try
             {
-                instanceRow = await _vertexInfoManager.GetRowForInstance(instanceName);
+                instanceRow = (await _vertexInfoManager.GetRowForInstance(instanceName)).Value;
 
                 // Get a stream connection from the pool if available
                 Stream stream;
@@ -417,7 +417,7 @@ namespace CRA.ClientLibrary
             IVertex vertex = null;
             try
             {
-                vertex = row.GetVertexCreateAction()();
+                vertex = row.Value.GetVertexCreateAction()();
             }
             catch (Exception e)
             {
@@ -616,13 +616,13 @@ namespace CRA.ClientLibrary
             // We now try best-effort to tell the CRA instance of this connection
             var result = CRAErrorCode.Success;
 
-            VertexInfo _row;
+            VertexInfo? _row;
             try
             {
                 // Get instance for source vertex
                 _row = await (direction == ConnectionInitiator.FromSide
-                    ? _vertexInfoManager.VertexInfoProvider.GetRowForVertex(fromVertexName)
-                    : _vertexInfoManager.VertexInfoProvider.GetRowForVertex(toVertexName));
+                    ? _vertexInfoManager.VertexInfoProvider.GetRowForActiveVertex(fromVertexName)
+                    : _vertexInfoManager.VertexInfoProvider.GetRowForActiveVertex(toVertexName));
             }
             catch
             {
@@ -634,7 +634,7 @@ namespace CRA.ClientLibrary
             {
                 if (_localWorker != null)
                 {
-                    if (_localWorker.InstanceName == _row.InstanceName)
+                    if (_localWorker.InstanceName == _row.Value.InstanceName)
                     {
                         return await _localWorker.Connect_InitiatorSide(
                             fromVertexName,
@@ -649,7 +649,7 @@ namespace CRA.ClientLibrary
                 // Send request to CRA instance
                 TcpClient client = null;
                 // Get address and port for instance, using row with vertex = ""
-                var row = await _vertexInfoManager.GetRowForInstance(_row.InstanceName);
+                var row = (await _vertexInfoManager.GetRowForInstance(_row.Value.InstanceName)).Value;
 
                 // Get a stream connection from the pool if available
                 Stream stream;
@@ -664,7 +664,7 @@ namespace CRA.ClientLibrary
                     stream = client.GetStream();
 
                     if (SecureStreamConnectionDescriptor != null)
-                        stream = SecureStreamConnectionDescriptor.CreateSecureClient(stream, _row.InstanceName);
+                        stream = SecureStreamConnectionDescriptor.CreateSecureClient(stream, _row.Value.InstanceName);
                 }
 
                 if (direction == ConnectionInitiator.FromSide)

@@ -18,10 +18,10 @@ namespace CRA.FileSyncDataProvider
         private readonly string _directoryPath;
 
         public FileProviderImpl()
-        { _directoryPath = GetDefaultDirectory(); }
+        { _directoryPath = FileUtils.GetDirectory(GetDefaultDirectory()); }
 
         public FileProviderImpl(string directoryPath)
-        { _directoryPath = directoryPath; }
+        { _directoryPath = FileUtils.GetDirectory(directoryPath); }
 
         public IBlobStorageProvider GetBlobStorageProvider()
             => new FileBlobProvider(
@@ -51,10 +51,7 @@ namespace CRA.FileSyncDataProvider
         private string GetDirectory(string subPath)
         {
             string subDirectoryPath = Path.Combine(_directoryPath, subPath);
-            if (!Directory.Exists(subDirectoryPath))
-            { Directory.CreateDirectory(subDirectoryPath); }
-
-            return subDirectoryPath;
+            return FileUtils.GetDirectory(subPath);
         }
     }
 }

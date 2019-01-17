@@ -320,23 +320,26 @@ namespace CRA.ClientLibrary
             var _vertexTableManager = _clientLibrary._vertexInfoManager;
 
             // Need to get the latest address & port
-            var row = await (reverse ? 
-                _vertexTableManager.GetRowForActiveVertex(fromVertexName)
-                : _vertexTableManager.GetRowForActiveVertex(toVertexName));
+            var vertexConnectionRow = (await (reverse
+                ? _vertexTableManager.GetRowForActiveVertex(fromVertexName)
+                : _vertexTableManager.GetRowForActiveVertex(toVertexName))).Value;
 
-            var _row = await _vertexTableManager.GetRowForInstance(row.InstanceName);
+            var vertexRow = (await _vertexTableManager.GetRowForInstance(vertexConnectionRow.InstanceName)).Value;
 
             // Send request to CRA instance
             Stream ns = null;
             try
             {
-                if (!_clientLibrary.TryGetSenderStreamFromPool(_row.Address, _row.Port.ToString(), out ns))
+                if (!_clientLibrary.TryGetSenderStreamFromPool(
+                    vertexRow.Address,
+                    vertexRow.Port.ToString(),
+                    out ns))
                 {
-                    TcpClient client = new TcpClient(_row.Address, _row.Port);
+                    TcpClient client = new TcpClient(vertexRow.Address, vertexRow.Port);
                     client.NoDelay = true;
 
                     ns = _clientLibrary.SecureStreamConnectionDescriptor
-                          .CreateSecureClient(client.GetStream(), row.InstanceName);
+                          .CreateSecureClient(client.GetStream(), vertexConnectionRow.InstanceName);
                 }
             }
             catch

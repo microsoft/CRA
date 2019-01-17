@@ -21,8 +21,22 @@ namespace CRA.FileSyncDataProvider
         private static readonly JsonSerializer jsonSerializer
             = new JsonSerializer();
 
+        public static string GetDirectory(string path)
+        {
+            if (!Directory.Exists(path))
+            { Directory.CreateDirectory(path); }
+
+            return path;
+        }
+
         public static Stream  GetReadWriteStream(string fileName)
         {
+            if (!Directory.Exists(Path.GetDirectoryName(fileName)))
+            {
+                Directory.CreateDirectory(
+                    Path.GetDirectoryName(fileName));
+            }
+
             return File.Open(
                 fileName,
                 FileMode.OpenOrCreate,
@@ -32,6 +46,12 @@ namespace CRA.FileSyncDataProvider
 
         public static Stream GetReadStream(string fileName)
         {
+            if (!Directory.Exists(Path.GetDirectoryName(fileName)))
+            {
+                Directory.CreateDirectory(
+                    Path.GetDirectoryName(fileName));
+            }
+
             return File.Open(
                 fileName,
                 FileMode.OpenOrCreate,

@@ -102,13 +102,13 @@ namespace CRA.ClientLibrary
             { await _vertexInfoProvider.DeleteVertexInfo(row); }
         }
 
-        internal Task<VertexInfo> GetRowForActiveVertex(string vertexName)
-            => _vertexInfoProvider.GetRowForVertex(vertexName);
+        internal Task<VertexInfo?> GetRowForActiveVertex(string vertexName)
+            => _vertexInfoProvider.GetRowForActiveVertex(vertexName);
 
-        internal Task<VertexInfo> GetRowForInstance(string instanceName)
-            => GetRowForInstanceVertex(instanceName, "");
+        internal Task<VertexInfo?> GetRowForInstance(string instanceName)
+            => _vertexInfoProvider.GetRowForInstance(instanceName);
 
-        internal Task<VertexInfo> GetRowForInstanceVertex(
+        internal Task<VertexInfo?> GetRowForInstanceVertex(
             string instanceName,
             string vertexName)
             => _vertexInfoProvider.GetRowForInstanceVertex(

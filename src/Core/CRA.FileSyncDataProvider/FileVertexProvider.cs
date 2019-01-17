@@ -74,33 +74,37 @@ namespace CRA.FileSyncDataProvider
                 _fileName,
                 (vi) => vi.InstanceName == instanceName));
 
-        public async Task<VertexInfo> GetInstanceFromAddress(string address, int port)
-            => (await FileUtils.GetAll<VertexInfo>(
+        public async Task<VertexInfo?> GetInstanceFromAddress(string address, int port)
+            => (await FileUtils.Get<VertexInfo>(
                 _fileName,
-                (vi) => vi.Address == address && vi.Port == port)).First();
+                (vi) => vi.Address == address && vi.Port == port));
 
         public async Task<IEnumerable<string>> GetInstanceNames()
-            => (await this.GetAll()).Select(_ => _.InstanceName);
-
-        public async Task<VertexInfo> GetRowForInstance(string instanceName)
             => (await this.GetAll())
-                .Where(_ => _.InstanceName == instanceName)
-                .First();
+            .Where(_ => _.VertexName == "")
+            .Select(_ => _.InstanceName);
 
-        public async Task<VertexInfo> GetRowForInstanceVertex(string instanceName, string vertexName)
-            => (await this.GetAll())
-                .Where(_ => _.InstanceName == instanceName && _.VertexName == vertexName)
-                .First();
+        public async Task<VertexInfo?> GetRowForInstance(string instanceName)
+            => (await FileUtils.Get<VertexInfo>(
+                _fileName,
+                (vi) => vi.InstanceName == instanceName && string.IsNullOrEmpty(vi.VertexName)));
 
-        public async Task<VertexInfo> GetRowForVertex(string vertexName)
-            => (await this.GetAll())
-                .Where(_ => _.VertexName == vertexName)
-                .First();
+        public async Task<VertexInfo?> GetRowForInstanceVertex(string instanceName, string vertexName)
+            => (await FileUtils.Get<VertexInfo>(
+                _fileName,
+                (vi) => vi.InstanceName == instanceName
+                    && (vi.VertexName == vertexName
+                        || (string.IsNullOrEmpty(vertexName) && string.IsNullOrEmpty(vi.VertexName)))));
 
-        public async Task<VertexInfo> GetRowForVertexDefinition(string vertexDefinition)
-            => (await this.GetAll())
-                .Where(_ => _.VertexDefinition == vertexDefinition)
-                .First();
+        public async Task<VertexInfo?> GetRowForActiveVertex(string vertexName)
+            => (await FileUtils.Get<VertexInfo>(
+                _fileName,
+                (vi) => vi.VertexName == vertexName && vi.IsActive));
+
+        public async Task<VertexInfo?> GetRowForVertexDefinition(string vertexDefinition)
+            => (await FileUtils.Get<VertexInfo>(
+                _fileName,
+                (vi) => vi.VertexDefinition == vertexDefinition));
 
         public async Task<IEnumerable<VertexInfo>> GetRowsForShardedInstanceVertex(string instanceName, string vertexName)
             => (await this.GetAll())
@@ -118,13 +122,14 @@ namespace CRA.FileSyncDataProvider
 
         public async Task<IEnumerable<string>> GetVertexDefinitions()
             => (await this.GetAll())
-                .Where(_ => !string.IsNullOrEmpty(_.VertexDefinition))
+                .Where(_ => !string.IsNullOrEmpty(_.VertexDefinition)
+                    && string.IsNullOrEmpty(_.InstanceName))
                 .Select(_ => _.VertexDefinition);
 
         public async Task<IEnumerable<string>> GetVertexNames()
             => (await this.GetAll())
-                .Select(_ => _.VertexName)
-                .Where(_ => !string.IsNullOrEmpty(_));
+                .Where(_ => !string.IsNullOrEmpty(_.InstanceName))
+                .Select(_ => _.VertexName);
 
         public async Task<IEnumerable<VertexInfo>> GetVertices(string instanceName)
             => (await this.GetAll())

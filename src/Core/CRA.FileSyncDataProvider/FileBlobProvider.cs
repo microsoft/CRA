@@ -21,7 +21,7 @@ namespace CRA.FileSyncDataProvider
         private readonly string _blobDirectory;
 
         public FileBlobProvider(string blobDirectory)
-        { _blobDirectory = blobDirectory; }
+        { _blobDirectory = FileUtils.GetDirectory(blobDirectory); }
 
         public Task Delete(string pathKey)
         {
@@ -31,15 +31,13 @@ namespace CRA.FileSyncDataProvider
 
         public Task<Stream> GetReadStream(string pathKey)
             => Task.FromResult<Stream>(
-                File.OpenRead(
+                FileUtils.GetReadStream(
                     Path.Combine(
                         _blobDirectory, pathKey)));
 
         public Task<Stream> GetWriteStream(string pathKey)
             => Task.FromResult<Stream>(
-                File.Open(
-                    Path.Combine(_blobDirectory, pathKey),
-                    FileMode.OpenOrCreate,
-                    FileAccess.Read));
+                FileUtils.GetReadWriteStream(
+                    Path.Combine(_blobDirectory, pathKey)));
     }
 }

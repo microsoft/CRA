@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "BandwidthTest": {
+      "commandName": "Project",
+      "workingDirectory": "C:\\Users\\gautamb\\source\\repos\\CRA\\src\\CRA.Worker\\bin\\Debug\\netcoreapp2.0"
+    }
+  }
+}

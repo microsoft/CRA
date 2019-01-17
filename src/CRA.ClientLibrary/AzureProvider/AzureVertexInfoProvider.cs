@@ -35,26 +35,25 @@ namespace CRA.ClientLibrary.AzureProvider
         public async Task<int> CountAll()
             => (await GetAll()).Count();
 
-        public async Task<VertexInfo> GetInstanceFromAddress(string address, int port)
-            => (await GetAll()).Where(gn => address == gn.Address && port == gn.Port).First();
+        public Task<VertexInfo?> GetInstanceFromAddress(string address, int port)
+            => Get(gn => address == gn.Address && port == gn.Port);
 
-        public async Task<VertexInfo> GetRowForInstance(string instanceName)
-            => (await GetAll()).Where(gn => instanceName == gn.InstanceName && string.IsNullOrEmpty(gn.VertexName)).First();
+        public Task<VertexInfo?> GetRowForInstance(string instanceName)
+            => Get(gn => instanceName == gn.InstanceName && string.IsNullOrEmpty(gn.VertexName));
 
         public async Task<IEnumerable<VertexInfo>> GetAllRowsForInstance(string instanceName)
             => (await GetAll()).Where(gn => instanceName == gn.InstanceName);
 
-        public async Task<VertexInfo> GetRowForInstanceVertex(string instanceName, string vertexName)
-            => (await GetAll()).Where(gn => instanceName == gn.InstanceName && vertexName == gn.VertexName).First();
+        public Task<VertexInfo?> GetRowForInstanceVertex(string instanceName, string vertexName)
+            => Get(gn => instanceName == gn.InstanceName && vertexName == gn.VertexName);
 
-        public async Task<VertexInfo> GetRowForVertexDefinition(string vertexDefinition)
-            => (await GetAll()).Where(gn => vertexDefinition == gn.VertexName && string.IsNullOrEmpty(gn.InstanceName)).First();
+        public Task<VertexInfo?> GetRowForVertexDefinition(string vertexDefinition)
+            => Get(gn => vertexDefinition == gn.VertexName && string.IsNullOrEmpty(gn.InstanceName));
 
-        public async Task<VertexInfo> GetRowForVertex(string vertexName)
-            => (await GetAll())
-                .Where(gn => vertexName == gn.VertexName && !string.IsNullOrEmpty(gn.InstanceName))
-                .Where(gn => gn.IsActive)
-                .First();
+        public Task<VertexInfo?> GetRowForActiveVertex(string vertexName)
+            => Get(gn => vertexName == gn.VertexName
+                && !string.IsNullOrEmpty(gn.InstanceName)
+                && gn.IsActive);
 
         public async Task<IEnumerable<VertexInfo>> GetVertices(string instanceName)
             => (await GetAll()).Where(gn => instanceName == gn.InstanceName && !string.IsNullOrEmpty(gn.VertexName));
@@ -116,7 +115,7 @@ namespace CRA.ClientLibrary.AzureProvider
                         "PartitionKey",
                         QueryComparisons.Equal,
                         ""))))
-                .Select(e => e.VertexName)
+                .Select(e => e.VertexDefinition)
                 .ToList();
 
         public async Task<IEnumerable<string>> GetInstanceNames()
@@ -158,5 +157,14 @@ namespace CRA.ClientLibrary.AzureProvider
                 .Where(e => e.VertexName.StartsWith(vertexName + "$"))
                 .Select(e => (VertexInfo)e)
                 .ToList();
+
+        private async Task<VertexInfo?> Get(System.Func<VertexInfo, bool> filter)
+        {
+            var item = (await GetAll()).Where(filter).FirstOrDefault();
+            if (item == default(VertexInfo))
+            { return null; }
+
+            return item;
+        }
     }
 }
