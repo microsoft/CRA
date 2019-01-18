@@ -103,6 +103,15 @@ namespace CRA.ClientLibrary
 
         public void Dispose()
         {
+            this.Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        protected virtual void Dispose(bool cleanManaged)
+        {
+            if(!cleanManaged)
+            { return; }
+
             foreach (string key in _streamConnectionPools.Keys)
             {
                 _streamConnectionPools[key].Free(true);

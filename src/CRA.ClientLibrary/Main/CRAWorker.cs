@@ -95,6 +95,15 @@ namespace CRA.ClientLibrary
 
         public void Dispose()
         {
+            this.Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        protected virtual void Dispose(bool disposeManaged)
+        {
+            if (!disposeManaged)
+            { return; }
+
             _craClient.Dispose();
         }
 
