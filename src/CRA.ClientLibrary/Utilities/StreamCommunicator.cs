@@ -105,6 +105,7 @@ namespace CRA.ClientLibrary
                 stream.WriteByte((byte)((zigZagEncoded | 0x80) & 0xFF));
                 zigZagEncoded >>= 7;
             }
+
             stream.WriteByte((byte)zigZagEncoded);
         }
 

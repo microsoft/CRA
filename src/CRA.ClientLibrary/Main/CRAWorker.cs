@@ -30,8 +30,8 @@ namespace CRA.ClientLibrary
         private readonly int _port;
 
         private readonly int _streamsPoolSize;
-        private readonly IVertexInfoProvider _vertexInfoProvider;
         private readonly string _workerinstanceName;
+        private readonly IVertexInfoProvider _vertexInfoProvider;
         private readonly ConcurrentDictionary<string, CancellationTokenSource> inConnections = new ConcurrentDictionary<string, CancellationTokenSource>();
         private readonly ConcurrentDictionary<string, CancellationTokenSource> outConnections = new ConcurrentDictionary<string, CancellationTokenSource>();
         private readonly ConcurrentDictionary<string, ShardingInfo> shardingInfoTable = new ConcurrentDictionary<string, ShardingInfo>();
@@ -236,16 +236,17 @@ namespace CRA.ClientLibrary
                 {
                     if (outConnections.TryAdd(fromVertexName + ":" + fromVertexOutput + ":" + toVertexName + ":" + toVertexInput, source))
                     {
-                        await EgressToStream(
-                            fromVertexName,
-                            fromVertexOutput,
-                            toVertexName,
-                            toVertexInput,
-                            reverse,
-                            ns,
-                            source,
-                            _row.Address,
-                            _row.Port);
+                        var tmp = Task.Run(() =>
+                            EgressToStream(
+                                fromVertexName,
+                                fromVertexOutput,
+                                toVertexName,
+                                toVertexInput,
+                                reverse,
+                                ns,
+                                source,
+                                _row.Address,
+                                _row.Port));
                         return CRAErrorCode.Success;
                     }
                     else
@@ -260,7 +261,7 @@ namespace CRA.ClientLibrary
                 {
                     if (inConnections.TryAdd(fromVertexName + ":" + fromVertexOutput + ":" + toVertexName + ":" + toVertexInput, source))
                     {
-                        await IngressFromStream(
+                        var tmp = Task.Run(() => IngressFromStream(
                             fromVertexName,
                             fromVertexOutput,
                             toVertexName,
@@ -269,7 +270,8 @@ namespace CRA.ClientLibrary
                             ns,
                             source,
                             _row.Address,
-                            _row.Port);
+                            _row.Port));
+
                         return CRAErrorCode.Success;
                     }
                     else
@@ -320,7 +322,15 @@ namespace CRA.ClientLibrary
                 if (inConnections.TryAdd(fromVertexName + ":" + fromVertexOutput + ":" + toVertexName + ":" + toVertexInput, source))
                 {
                     Task.Run(() =>
-                        IngressFromStream(fromVertexName, fromVertexOutput, toVertexName, toVertexInput, reverse, stream, source));
+                        IngressFromStream(
+                            fromVertexName,
+                            fromVertexOutput,
+                            toVertexName,
+                            toVertexInput,
+                            reverse,
+                            stream,
+                            source));
+
                     return (int)CRAErrorCode.Success;
                 }
                 else
@@ -336,7 +346,15 @@ namespace CRA.ClientLibrary
                 if (outConnections.TryAdd(fromVertexName + ":" + fromVertexOutput + ":" + toVertexName + ":" + toVertexInput, source))
                 {
                     Task.Run(() =>
-                        EgressToStream(fromVertexName, fromVertexOutput, toVertexName, toVertexInput, reverse, stream, source));
+                        EgressToStream(
+                            fromVertexName,
+                            fromVertexOutput,
+                            toVertexName,
+                            toVertexInput,
+                            reverse,
+                            stream,
+                            source));
+
                     return (int)CRAErrorCode.Success;
                 }
                 else
@@ -567,7 +585,7 @@ namespace CRA.ClientLibrary
 #pragma warning restore CS4014
                     }
 
-                    _craClient.Disconnect(fromVertexName, fromVertexOutput, toVertexName, toVertexInput);
+                    await _craClient.Disconnect(fromVertexName, fromVertexOutput, toVertexName, toVertexInput);
                 }
             }
             catch (Exception e)
@@ -584,7 +602,7 @@ namespace CRA.ClientLibrary
                 }
 
                 // Retry following while connection not in list
-                RetryRestoreConnection(fromVertexName, fromVertexOutput, toVertexName, toVertexInput, false);
+                await RetryRestoreConnection(fromVertexName, fromVertexOutput, toVertexName, toVertexInput, false);
             }
         }
 
@@ -634,7 +652,7 @@ namespace CRA.ClientLibrary
                 if (outConnections.TryRemove(fromVertexName + ":" + fromVertexOutput + ":" + toVertexName + ":" + toVertexInput, out oldSource))
                 {
                     oldSource.Dispose();
-                    _craClient.Disconnect(fromVertexName, fromVertexOutput, toVertexName, toVertexInput);
+                    await _craClient.Disconnect(fromVertexName, fromVertexOutput, toVertexName, toVertexInput);
                 }
             }
             catch (Exception e)
@@ -651,7 +669,7 @@ namespace CRA.ClientLibrary
                 }
 
                 // Retry following while connection not in list
-                RetryRestoreConnection(fromVertexName, fromVertexOutput, toVertexName, toVertexInput, false);
+                await RetryRestoreConnection(fromVertexName, fromVertexOutput, toVertexName, toVertexInput, false);
             }
         }
 
@@ -804,7 +822,7 @@ namespace CRA.ClientLibrary
                     Debug.WriteLine("Unexpected: caught exception in FromStream but entry absent in inConnections");
                 }
 
-                RetryRestoreConnection(fromVertexName, fromVertexOutput, toVertexName, toVertexInput, true);
+                await RetryRestoreConnection(fromVertexName, fromVertexOutput, toVertexName, toVertexInput, true);
             }
         }
 

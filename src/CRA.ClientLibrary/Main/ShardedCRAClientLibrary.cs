@@ -42,7 +42,7 @@ namespace CRA.ClientLibrary
                 isActive: true,
                 isSharded: false);
 
-            await _vertexInfoManager.VertexInfoProvider.InsertOrReplace(newRow);
+            await _vertexManager.VertexInfoProvider.InsertOrReplace(newRow);
 
             return CRAErrorCode.Success;
         }
@@ -255,12 +255,12 @@ namespace CRA.ClientLibrary
         {
             var tasks = new List<Task>();
             foreach(var vertex in 
-                await _vertexInfoManager.VertexInfoProvider.GetRowsForShardedInstanceVertex(
+                await _vertexManager.VertexInfoProvider.GetRowsForShardedInstanceVertex(
                     instanceName,
                     vertexName))
             {
                 tasks.Add(
-                    _vertexInfoManager.VertexInfoProvider.DeleteVertexInfo(vertex));
+                    _vertexManager.VertexInfoProvider.DeleteVertexInfo(vertex));
             }
 
             await Task.WhenAll(tasks);
@@ -393,7 +393,7 @@ namespace CRA.ClientLibrary
         /// <returns></returns>
         public async Task<CRAErrorCode> ConnectShardedVerticesWithFullMesh(string fromVertexName, string[] fromEndpoints, string toVertexName, string[] toEndpoints)
         {
-            var fromVerticesRows = await _vertexInfoManager
+            var fromVerticesRows = await _vertexManager
                 .VertexInfoProvider
                 .GetRowsForShardedVertex(fromVertexName);
 
@@ -406,7 +406,7 @@ namespace CRA.ClientLibrary
                 i++;
             }
 
-            var toVerticesRows = await _vertexInfoManager
+            var toVerticesRows = await _vertexManager
                 .VertexInfoProvider
                 .GetRowsForShardedVertex(toVertexName);
 
@@ -497,7 +497,7 @@ namespace CRA.ClientLibrary
         /// <returns></returns>
         public async Task DisconnectShardedVertices(string fromVertexName, string[] fromEndpoints, string toVertexName, string[] toEndpoints)
         {
-            var fromVerticesRows = await _vertexInfoManager
+            var fromVerticesRows = await _vertexManager
                 .VertexInfoProvider
                 .GetRowsForShardedVertex(fromVertexName);
             string[] fromVerticesNames = new string[fromVerticesRows.Count()];
@@ -509,7 +509,7 @@ namespace CRA.ClientLibrary
                 i++;
             }
 
-            var toVerticesRows = await _vertexInfoManager
+            var toVerticesRows = await _vertexManager
                 .VertexInfoProvider
                 .GetRowsForShardedVertex(toVertexName);
 
