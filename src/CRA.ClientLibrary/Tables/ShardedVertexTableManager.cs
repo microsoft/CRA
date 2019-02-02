@@ -4,6 +4,8 @@ using System.Collections.Generic;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Table;
 using System.Linq.Expressions;
+using CRA.ClientLibrary.DataProvider;
+using System.Threading.Tasks;
 
 namespace CRA.ClientLibrary
 {
@@ -12,89 +14,81 @@ namespace CRA.ClientLibrary
     /// </summary>
     public class ShardedVertexTableManager
     {
-        private CloudTable _shardedVertexTable;
+        IShardedVertexInfoProvider _shardedVertexInfoProvider;
         private VertexTableManager _vertexTableManager;
 
-        internal ShardedVertexTableManager(string storageConnectionString)
+        public ShardedVertexTableManager(IDataProvider azureImpl)
         {
-            var _storageAccount = CloudStorageAccount.Parse(storageConnectionString);
-            var _tableClient = _storageAccount.CreateCloudTableClient();
-            _shardedVertexTable = CreateTableIfNotExists("crashardedvertextable", _tableClient);
-            _vertexTableManager = new VertexTableManager(storageConnectionString);
+            _shardedVertexInfoProvider = azureImpl.GetShardedVertexInfoProvider();
+            _vertexTableManager = new VertexTableManager(azureImpl);
         }
 
-        internal void DeleteTable()
+        public Task DeleteTable()
+            => _shardedVertexInfoProvider.Delete();
+
+        public Task RegisterShardedVertex(
+            string vertexName,
+            List<string> allInstances,
+            List<int> allShards,
+            List<int> addedShards,
+            List<int> removedShards,
+            Expression<Func<int, int>> shardLocator)
         {
-            _shardedVertexTable.DeleteIfExistsAsync().Wait();
+            return _shardedVertexInfoProvider.Insert(
+                ShardedVertexInfo.Create(
+                    vertexName,
+                    "0",
+                    allInstances,
+                    allShards,
+                    addedShards,
+                    removedShards,
+                    shardLocator));
         }
 
-        internal void RegisterShardedVertex(string vertexName, List<string> allInstances,
-            List<int> allShards, List<int> addedShards, List<int> removedShards, Expression<Func<int, int>> shardLocator)
+        public async Task<bool> ExistsShardedVertex(string vertexName)
+            => (await _shardedVertexInfoProvider.GetEntriesForVertex(vertexName)).Any();
+
+        public async Task<(List<string> allInstances, List<int> allShards, List<int> removeShards, List<int> addesShards)>
+            GetLatestShardedVertex(string vertexName)
         {
-            TableOperation insertOperation = TableOperation.InsertOrReplace(new ShardedVertexTable
-                (vertexName, "0", allInstances, allShards, addedShards, removedShards, shardLocator));
-            _shardedVertexTable.ExecuteAsync(insertOperation).Wait();
+            var entry = await _shardedVertexInfoProvider.GetLatestEntryForVertex(vertexName);
+            var allInstances = entry.AllInstances.Split(';').ToList();
+            var allShards = entry.AllShards.Split(';').Select(e => Int32.Parse(e)).ToList();
+            var removedShards = entry.RemovedShards.Split(';').Select(e => Int32.Parse(e)).ToList();
+            var addedShards = entry.AddedShards.Split(';').Select(e => Int32.Parse(e)).ToList();
+
+            return (allInstances, allShards, removedShards, addedShards);
         }
 
-        internal bool ExistsShardedVertex(string vertexName)
-        {
-            TableQuery<VertexTable> query = new TableQuery<VertexTable>()
-                .Where(TableQuery.GenerateFilterCondition("PartitionKey", QueryComparisons.Equal, vertexName));
-            return _shardedVertexTable.ExecuteQuery(query).Any();
-        }
-
-        internal void GetLatestShardedVertex(string vertexName, out List<string> AllInstances, out List<int> AllShards, out List<int> RemovedShards, out List<int> AddedShards)
-        {
-            var entry = ShardedVertexTable.GetLatestEntryForVertex(_shardedVertexTable, vertexName);
-            AllInstances = entry.AllInstances.Split(';').ToList();
-            AllShards = entry.AllShards.Split(';').Select(e => Int32.Parse(e)).ToList();
-            RemovedShards = entry.RemovedShards.Split(';').Select(e => Int32.Parse(e)).ToList();
-            AddedShards = entry.AddedShards.Split(';').Select(e => Int32.Parse(e)).ToList();
-        }
-
-        internal ShardingInfo GetLatestShardingInfo(string vertexName)
+        public async Task<ShardingInfo> GetLatestShardingInfo(string vertexName)
         {
             ShardingInfo result = new ShardingInfo();
 
-            if (ShardedVertexTable.GetEntriesForVertex(_shardedVertexTable, vertexName).Count() == 0)
-            {
-                return result;
-            }
+            if (await this.ExistsShardedVertex(vertexName))
+            { return result; }
 
-            var entry = ShardedVertexTable.GetLatestEntryForVertex(_shardedVertexTable, vertexName);
+            var entry = await _shardedVertexInfoProvider.GetLatestEntryForVertex(vertexName);
             result.AllShards = entry.AllShards.Split(';').Select(e => Int32.Parse(e)).ToArray();
+
             result.RemovedShards = new int[0];
             if (entry.RemovedShards != "")
-                result.RemovedShards = entry.RemovedShards.Split(';').Select(e => Int32.Parse(e)).ToArray();
+            { result.RemovedShards = entry.RemovedShards.Split(';').Select(e => Int32.Parse(e)).ToArray(); }
+
             result.AddedShards = new int[0];
+
             if (entry.AddedShards != "")
-                result.AddedShards = entry.AddedShards.Split(';').Select(e => Int32.Parse(e)).ToArray();
+            { result.AddedShards = entry.AddedShards.Split(';').Select(e => Int32.Parse(e)).ToArray(); }
+
             result.ShardLocator = entry.GetShardLocatorExpr();
             return result;
         }
 
-        internal void DeleteShardedVertex(string vertexName)
+        public async Task DeleteShardedVertex(string vertexName)
         {
-            _vertexTableManager.DeleteShardedVertex(vertexName);
-            foreach (var entry in ShardedVertexTable.GetEntriesForVertex(_shardedVertexTable, vertexName))
-            {
-                TableOperation deleteOperation = TableOperation.Delete(entry);
-                _shardedVertexTable.ExecuteAsync(deleteOperation).Wait();
-            }
-        }
+            await _vertexTableManager.DeleteShardedVertex(vertexName, "");
 
-        private static CloudTable CreateTableIfNotExists(string tableName, CloudTableClient _tableClient)
-        {
-            CloudTable table = _tableClient.GetTableReference(tableName);
-            try
-            {
-                table.CreateIfNotExistsAsync().Wait();
-            }
-            catch (Exception)
-            {
-            }
-
-            return table;
+            foreach (var entry in await _shardedVertexInfoProvider.GetEntriesForVertex(vertexName))
+            { await _shardedVertexInfoProvider.Delete(entry); }
         }
     }
 }

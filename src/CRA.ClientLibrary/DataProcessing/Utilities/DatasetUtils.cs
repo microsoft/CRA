@@ -1,4 +1,5 @@
-﻿using System;
+﻿using CRA.ClientLibrary.DataProvider;
+using System;
 using System.IO;
 using System.Linq.Expressions;
 using System.Runtime.CompilerServices;
@@ -155,12 +156,18 @@ namespace CRA.ClientLibrary.DataProcessing
 
     public class ShardedDatasetClient
     {
-        public ShardedDatasetClient(){ }
+        private readonly IDataProvider _dataProvider;
+
+        public ShardedDatasetClient(IDataProvider dataProvider){
+            _dataProvider = dataProvider;
+        }
 
         public IShardedDataset<TKey, TPayload, TDataset> CreateShardedDataset<TKey, TPayload, TDataset>(Expression<Func<int, TDataset>> sharder)
                 where TDataset : IDataset<TKey, TPayload>
         {
-            return new ClientSideShardedDataset<TKey, TPayload, TDataset>(sharder);
+            return new ClientSideShardedDataset<TKey, TPayload, TDataset>(
+                _dataProvider,
+                sharder);
         }
 
     }

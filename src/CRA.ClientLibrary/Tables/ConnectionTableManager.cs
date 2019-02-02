@@ -1,8 +1,6 @@
 ﻿using System.Collections.Generic;
-using System.Linq;
-using Microsoft.WindowsAzure.Storage;
-using Microsoft.WindowsAzure.Storage.Table;
-using System.Diagnostics;
+using CRA.ClientLibrary.DataProvider;
+using System.Threading.Tasks;
 
 namespace CRA.ClientLibrary
 {
@@ -11,74 +9,37 @@ namespace CRA.ClientLibrary
     /// </summary>
     public class ConnectionTableManager
     {
-        private CloudTable _connectionTable;
+        private IVertexConnectionInfoProvider _connectionProvider;
 
-        internal ConnectionTableManager(string storageConnectionString)
+        internal ConnectionTableManager(IDataProvider dataProvider)
         {
-            var _storageAccount = CloudStorageAccount.Parse(storageConnectionString);
-            var _tableClient = _storageAccount.CreateCloudTableClient();
-            _connectionTable = CreateTableIfNotExists("craconnectiontable", _tableClient);
+            _connectionProvider = dataProvider.GetVertexConnectionInfoProvider();
         }
 
-        internal void DeleteTable()
+        internal Task DeleteTable()
+            => _connectionProvider.DeleteStore();
+
+
+        internal Task AddConnection(string fromVertex, string fromOutput, string toConnection, string toInput)
+            => _connectionProvider.Add(
+                new VertexConnectionInfo(
+                    fromVertex: fromVertex,
+                    fromEndpoint: fromOutput,
+                    toVertex: toConnection,
+                    toEndpoint: toInput));
+
+        internal async Task DeleteConnection(string fromVertex, string fromOutput, string toConnection, string toInput)
         {
-            _connectionTable.DeleteIfExistsAsync().Wait();
+            var vci = await _connectionProvider.Get(fromVertex, fromOutput, toConnection, toInput);
+
+            if (vci != null)
+            { await _connectionProvider.Delete(vci.Value); }
         }
 
+        internal Task<IEnumerable<VertexConnectionInfo>> GetConnectionsFromVertex(string vertexName)
+            => _connectionProvider.GetAllConnectionsFromVertex(vertexName);
 
-        internal void AddConnection(string fromVertex, string fromOutput, string toConnection, string toInput)
-        {
-            // Make the connection information stable
-            var newRow = new ConnectionTable(fromVertex, fromOutput, toConnection, toInput);
-            TableOperation insertOperation = TableOperation.InsertOrReplace(newRow);
-            _connectionTable.ExecuteAsync(insertOperation).Wait();
-        }
-
-        internal void DeleteConnection(string fromVertex, string fromOutput, string toConnection, string toInput)
-        {
-            // Make the connection information stable
-            var newRow = new ConnectionTable(fromVertex, fromOutput, toConnection, toInput);
-            newRow.ETag = "*";
-            TableOperation retrieveOperation = TableOperation.Retrieve<ConnectionTable>(newRow.PartitionKey, newRow.RowKey);
-            TableResult retrievedResult = _connectionTable.ExecuteAsync(retrieveOperation).GetAwaiter().GetResult();
-            ConnectionTable deleteEntity = (ConnectionTable)retrievedResult.Result;
-            if (deleteEntity != null)
-            {
-                TableOperation deleteOperation = TableOperation.Delete(deleteEntity);
-                _connectionTable.ExecuteAsync(deleteOperation).Wait();
-            }
-        }
-
-        internal List<ConnectionInfo> GetConnectionsFromVertex(string vertexName)
-        {
-            TableQuery<ConnectionTable> query = new TableQuery<ConnectionTable>()
-                .Where(TableQuery.GenerateFilterCondition("PartitionKey", QueryComparisons.Equal, vertexName));
-
-            return _connectionTable
-                .ExecuteQuery(query)
-                .Select(e => new ConnectionInfo(e.FromVertex, e.FromEndpoint, e.ToVertex, e.ToEndpoint))
-                .ToList();
-        }
-
-        internal List<ConnectionInfo> GetConnectionsToVertex(string vertexName)
-        {
-            return
-                ConnectionTable.GetAllConnectionsToVertex(_connectionTable, vertexName)
-                    .Select(e => new ConnectionInfo(e.FromVertex, e.FromEndpoint, e.ToVertex, e.ToEndpoint))
-                    .ToList();
-        }
-
-        private CloudTable CreateTableIfNotExists(string tableName, CloudTableClient _tableClient)
-        {
-            CloudTable table = _tableClient.GetTableReference(tableName);
-            try
-            {
-                Debug.WriteLine("Creating table " + tableName);
-                table.CreateIfNotExistsAsync().Wait();
-            }
-            catch { }
-
-            return table;
-        }
+        internal Task<IEnumerable<VertexConnectionInfo>> GetConnectionsToVertex(string vertexName)
+            => _connectionProvider.GetAllConnectionsToVertex(vertexName);
     }
 }

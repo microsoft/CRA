@@ -3,6 +3,7 @@ using System.Reflection;
 using System.Linq.Expressions;
 using System.Threading.Tasks;
 using System.Collections.Generic;
+using CRA.ClientLibrary.DataProvider;
 
 namespace CRA.ClientLibrary.DataProcessing
 {
@@ -18,7 +19,7 @@ namespace CRA.ClientLibrary.DataProcessing
         private System.Object _produceIfReadyLock = new System.Object();
         private bool _isProduceIfReadyApplied = false;
 
-        public ProducerOperator() : base()
+        public ProducerOperator(IDataProvider dataProvider) : base(dataProvider)
         {
             _cachedDatasets = new Dictionary<string, object>();
         }

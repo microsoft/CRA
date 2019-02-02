@@ -16,6 +16,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Core\CRA.FileSyncDataProvider\CRA.FileSyncDataProvider.csproj" />
     <ProjectReference Include="..\CRA.ClientLibrary\CRA.ClientLibrary.csproj" />
   </ItemGroup>
 

@@ -1,4 +1,5 @@
 ﻿using CRA.ClientLibrary;
+using System.Threading.Tasks;
 
 namespace BandwidthTest
 {
@@ -10,7 +11,7 @@ namespace BandwidthTest
         {
         }
 
-        public override void Initialize(object vertexParameter)
+        public override Task InitializeAsync(object vertexParameter)
         {
             _chunkSize = (int)vertexParameter;
             AddAsyncInputEndpoint("input1", new MyAsyncInput(this, _chunkSize));
@@ -46,7 +47,7 @@ namespace BandwidthTest
             AddAsyncInputEndpoint("input16", new MyAsyncInput(this, _chunkSize));
             AddAsyncOutputEndpoint("output16", new MyAsyncOutput(this, _chunkSize));
 
-            base.Initialize(vertexParameter);
+            return base.InitializeAsync(vertexParameter);
         }
     }
 }

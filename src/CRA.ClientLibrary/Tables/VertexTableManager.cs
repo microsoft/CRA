@@ -3,6 +3,8 @@ using System.Linq;
 using System.Collections.Generic;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Table;
+using CRA.ClientLibrary.DataProvider;
+using System.Threading.Tasks;
 
 namespace CRA.ClientLibrary
 {
@@ -11,175 +13,120 @@ namespace CRA.ClientLibrary
     /// </summary>
     public class VertexTableManager
     {
-        private CloudTable _vertexTable;
+        private IVertexInfoProvider _vertexInfoProvider;
 
-        internal VertexTableManager(string storageConnectionString)
-        {
-            var _storageAccount = CloudStorageAccount.Parse(storageConnectionString);
-            var _tableClient = _storageAccount.CreateCloudTableClient();
-            _vertexTable = CreateTableIfNotExists("cravertextable", _tableClient);
-        }
+        internal VertexTableManager(IDataProvider dataProvider)
+            => _vertexInfoProvider = dataProvider.GetVertexInfoProvider();
 
-        internal void DeleteTable()
-        {
-            _vertexTable.DeleteIfExistsAsync().Wait();
-        }
+        public IVertexInfoProvider VertexInfoProvider
+            => _vertexInfoProvider;
 
-        internal bool ExistsVertex(string vertexName)
-        {
-            TableQuery<VertexTable> query = new TableQuery<VertexTable>()
-                .Where(TableQuery.GenerateFilterCondition("RowKey", QueryComparisons.Equal, vertexName));
-            return _vertexTable.ExecuteQuery(query).Any();
-        }
+        internal Task DeleteTable()
+            => _vertexInfoProvider.DeleteStore();
 
-        internal bool ExistsShardedVertex(string vertexName, out List<int> shards)
-        {
-            TableQuery<VertexTable> query = new TableQuery<VertexTable>()
-                .Where(
-                TableQuery.CombineFilters(
-            TableQuery.GenerateFilterCondition("RowKey",
-                QueryComparisons.GreaterThanOrEqual,
-                vertexName + "$"),
-            TableOperators.And,
-            TableQuery.GenerateFilterCondition("RowKey",
-                QueryComparisons.LessThan,
-                vertexName + "$9999999999999")
-            ));
-            shards = _vertexTable.ExecuteQuery(query)
-                .Select(e => int.Parse(e.VertexName.Split('$')[1])).ToList();
+        internal async Task<bool> ExistsVertex(string vertexName)
+            => (await _vertexInfoProvider
+                .GetRowsForVertex(vertexName))
+                .Any();
 
-            return shards.Count > 0;
-        }
+        internal async Task<List<int>> ExistsShardedVertex(string vertexName)
+            => (await _vertexInfoProvider.GetRowsForShardedVertex(vertexName))
+                .Select(vi => int.Parse(vi.VertexName.Split('$')[1]))
+                .ToList();
 
-        internal void RegisterInstance(string instanceName, string address, int port)
-        {
-            TableOperation insertOperation = TableOperation.InsertOrReplace(new VertexTable
-                (instanceName, "", "", address, port, "", "", true, false));
-            _vertexTable.ExecuteAsync(insertOperation).Wait();
-        }
+        internal Task RegisterInstance(string instanceName, string address, int port)
+            => _vertexInfoProvider.InsertOrReplace(
+                new VertexInfo(
+                    instanceName: instanceName,
+                    address: address,
+                    port: port,
+                    vertexName: string.Empty,
+                    vertexDefinition: string.Empty,
+                    vertexCreateAction: string.Empty,
+                    vertexParameter: string.Empty,
+                    isActive: true,
+                    isSharded: false));
 
         internal void RegisterVertex(string vertexName, string instanceName)
+            => _vertexInfoProvider.InsertOrReplace(
+                new VertexInfo(
+                    instanceName: instanceName,
+                    address: string.Empty,
+                    port: 0,
+                    vertexName: vertexName,
+                    vertexDefinition: string.Empty,
+                    vertexCreateAction: string.Empty,
+                    vertexParameter: string.Empty,
+                    isActive: false,
+                    isSharded: false));
+
+        internal async Task ActivateVertexOnInstance(string vertexName, string instanceName)
         {
-            TableOperation insertOperation = TableOperation.InsertOrReplace(new VertexTable
-                (instanceName, vertexName, "", "", 0, "", "", false, false));
-            _vertexTable.ExecuteAsync(insertOperation).Wait();
+            var newActiveVertex = (await _vertexInfoProvider.GetAll())
+                .Where(gn => instanceName == gn.InstanceName && vertexName == gn.VertexName)
+                .First()
+                .Activate();
+
+            await _vertexInfoProvider.InsertOrReplace(newActiveVertex);
         }
 
-        internal void ActivateVertexOnInstance(string vertexName, string instanceName)
+        internal async Task DeactivateVertexOnInstance(
+            string vertexName,
+            string instanceName)
         {
-            var newActiveVertex = VertexTable.GetAll(_vertexTable)
-                .Where(gn => instanceName == gn.InstanceName && vertexName == gn.VertexName)
-                .First();
+            var newActiveVertex = (await _vertexInfoProvider.GetAll())
+                .Where(gn => instanceName == gn.InstanceName
+                    && vertexName == gn.VertexName)
+                .First()
+                .Deactivate();
 
-            newActiveVertex.IsActive = true;
-            TableOperation insertOperation = TableOperation.InsertOrReplace(newActiveVertex);
-            _vertexTable.ExecuteAsync(insertOperation).Wait();
-
-            var procs = VertexTable.GetAll(_vertexTable)
-                .Where(gn => vertexName == gn.VertexName && instanceName != gn.InstanceName);
-            foreach (var proc in procs)
-            {
-                if (proc.IsActive)
-                {
-                    proc.IsActive = false;
-                    TableOperation _insertOperation = TableOperation.InsertOrReplace(proc);
-                    _vertexTable.ExecuteAsync(_insertOperation).Wait();
-                }
-            }
-        }
-
-        internal void DeactivateVertexOnInstance(string vertexName, string instanceName)
-        {
-            var newActiveVertex = VertexTable.GetAll(_vertexTable)
-                .Where(gn => instanceName == gn.InstanceName && vertexName == gn.VertexName)
-                .First();
-
-            newActiveVertex.IsActive = false;
-            TableOperation insertOperation = TableOperation.InsertOrReplace(newActiveVertex);
-            _vertexTable.ExecuteAsync(insertOperation).Wait();
+            await _vertexInfoProvider.InsertOrReplace(newActiveVertex);
         }
 
         internal void DeleteInstance(string instanceName)
+            => _vertexInfoProvider.DeleteVertexInfo(instanceName, string.Empty);
+
+        internal Task DeleteInstanceVertex(string instanceName, string vertexName)
+            => _vertexInfoProvider.DeleteVertexInfo(instanceName, vertexName);
+
+        internal async Task DeleteShardedVertex(string vertexName)
         {
-            var newRow = new DynamicTableEntity(instanceName, "");
-            newRow.ETag = "*";
-            TableOperation deleteOperation = TableOperation.Delete(newRow);
-            _vertexTable.ExecuteAsync(deleteOperation).Wait();
+            foreach (var row in await _vertexInfoProvider.GetRowsForShardedVertex(vertexName))
+            { await _vertexInfoProvider.DeleteVertexInfo(row); }
         }
 
-        internal void DeleteInstanceVertex(string instanceName, string vertexName)
+        internal async Task DeleteShardedVertex(string vertexName, string instanceName)
         {
-            var newRow = new DynamicTableEntity(instanceName, vertexName);
-            newRow.ETag = "*";
-            TableOperation deleteOperation = TableOperation.Delete(newRow);
-            _vertexTable.ExecuteAsync(deleteOperation).Wait();
+            foreach (var row in (await _vertexInfoProvider.GetRowsForShardedVertex(vertexName))
+                .Where(vi => vi.InstanceName == instanceName))
+            { await _vertexInfoProvider.DeleteVertexInfo(row); }
         }
 
-        internal void DeleteShardedVertex(string vertexName)
-        {
-            foreach (var row in VertexTable.GetRowsForShardedVertex(_vertexTable, vertexName))
-            {
-                TableOperation deleteOperation = TableOperation.Delete(row);
-                _vertexTable.ExecuteAsync(deleteOperation).Wait();
-            }
-        }
+        internal Task<VertexInfo?> GetRowForActiveVertex(string vertexName)
+            => _vertexInfoProvider.GetRowForActiveVertex(vertexName);
 
-        internal VertexTable GetRowForActiveVertex(string vertexName)
-        {
-            return VertexTable.GetAll(_vertexTable)
-                .Where(gn => vertexName == gn.VertexName && !string.IsNullOrEmpty(gn.InstanceName))
-                .Where(gn => gn.IsActive)
+        internal Task<VertexInfo?> GetRowForInstance(string instanceName)
+            => _vertexInfoProvider.GetRowForInstance(instanceName);
+
+        internal Task<VertexInfo?> GetRowForInstanceVertex(
+            string instanceName,
+            string vertexName)
+            => _vertexInfoProvider.GetRowForInstanceVertex(
+                instanceName,
+                vertexName);
+
+        internal async Task<VertexInfo> GetRowForDefaultInstance()
+            => (await _vertexInfoProvider.GetAll())
+                .Where(gn => string.IsNullOrEmpty(gn.VertexName))
                 .First();
-        }
 
-        internal VertexTable GetRowForInstance(string instanceName)
-        {
-            return GetRowForInstanceVertex(instanceName, "");
-        }
+        internal Task<IEnumerable<string>> GetVertexNames()
+            => _vertexInfoProvider.GetVertexNames();
 
-        internal VertexTable GetRowForInstanceVertex(string instanceName, string vertexName)
-        {
-            return VertexTable.GetAll(_vertexTable).Where(gn => instanceName == gn.InstanceName && vertexName == gn.VertexName).First();
-        }
+        internal Task<IEnumerable<string>> GetVertexDefinitions()
+            => _vertexInfoProvider.GetVertexDefinitions();
 
-        internal VertexTable GetRowForDefaultInstance()
-        {
-            return VertexTable.GetAll(_vertexTable).Where(gn => string.IsNullOrEmpty(gn.VertexName)).First();
-        }
-
-        private static CloudTable CreateTableIfNotExists(string tableName, CloudTableClient _tableClient)
-        {
-            CloudTable table = _tableClient.GetTableReference(tableName);
-            try
-            {
-                table.CreateIfNotExistsAsync().Wait();
-            }
-            catch (Exception)
-            {
-            }
-
-            return table;
-        }
-
-        internal List<string> GetVertexNames()
-        {
-            TableQuery<VertexTable> query = new TableQuery<VertexTable>()
-                .Where(TableQuery.GenerateFilterCondition("PartitionKey", QueryComparisons.NotEqual, ""));
-            return _vertexTable.ExecuteQuery(query).Select(e => e.VertexName).ToList();
-        }
-
-        internal List<string> GetVertexDefinitions()
-        {
-            TableQuery<VertexTable> query = new TableQuery<VertexTable>()
-                .Where(TableQuery.GenerateFilterCondition("PartitionKey", QueryComparisons.Equal, ""));
-            return _vertexTable.ExecuteQuery(query).Select(e => e.VertexName).ToList();
-        }
-
-        internal List<string> GetInstanceNames()
-        {
-            TableQuery<VertexTable> query = new TableQuery<VertexTable>()
-                .Where(TableQuery.GenerateFilterCondition("RowKey", QueryComparisons.Equal, ""));
-            return _vertexTable.ExecuteQuery(query).Select(e => e.InstanceName).ToList();
-        }
+        internal Task<IEnumerable<string>> GetInstanceNames()
+            => _vertexInfoProvider.GetInstanceNames();
     }
 }

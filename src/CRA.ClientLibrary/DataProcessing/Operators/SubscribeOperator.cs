@@ -1,4 +1,5 @@
-﻿using System;
+﻿using CRA.ClientLibrary.DataProvider;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq.Expressions;
@@ -20,7 +21,7 @@ namespace CRA.ClientLibrary.DataProcessing
 
         private Stopwatch _watch = new Stopwatch();
 
-        public SubscribeOperator() : base()
+        public SubscribeOperator(IDataProvider dataProvider) : base(dataProvider)
         {
             _cachedDatasets = new Dictionary<string, object>();
         }

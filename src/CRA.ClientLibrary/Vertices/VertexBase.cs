@@ -281,9 +281,8 @@ namespace CRA.ClientLibrary
         /// Initialize vertex
         /// </summary>
         /// <param name="vertexParameter"></param>
-        public virtual void Initialize(object vertexParameter)
-        {
-        }
+        public void Initialize(object vertexParameter)
+        { this.InitializeAsync(vertexParameter).Wait(); }
 
         /// <summary>
         /// Initialize vertex
@@ -300,7 +299,6 @@ namespace CRA.ClientLibrary
         public virtual void Dispose()
         {
             Dispose(true);
-            GC.SuppressFinalize(this);
         }
 
         /// <summary>
@@ -354,10 +352,10 @@ namespace CRA.ClientLibrary
         /// Initialize vertex
         /// </summary>
         /// <param name="vertexParameter"></param>
-        public override void Initialize(object vertexParameter)
+        public override async Task InitializeAsync(object vertexParameter)
         {
             var par = (Tuple<int, object>)vertexParameter;
-            var shardingInfo = ClientLibrary.GetShardingInfo(GetVertexName());
+            var shardingInfo = await ClientLibrary.GetShardingInfo(GetVertexName());
             Initialize(par.Item1, shardingInfo, par.Item2);
         }
 

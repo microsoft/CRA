@@ -1,8 +1,10 @@
-﻿using System;
+﻿using CRA.ClientLibrary.DataProvider;
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace CRA.ClientLibrary.DataProcessing
 {
@@ -37,12 +39,12 @@ namespace CRA.ClientLibrary.DataProcessing
         private System.Object _applyOutputLock = new System.Object();
         private bool _isOutputApplied = false;
 
-        public OperatorBase() : base()
+        public OperatorBase(IDataProvider dataProvider) : base()
         {
-            _craClient = new CRAClientLibrary();
+            _craClient = new CRAClientLibrary(dataProvider);
         }
 
-        public override void Initialize(object vertexParameter)
+        public override Task InitializeAsync(object vertexParameter)
         {
             PrepareOperatorParameter(vertexParameter);
             PrepareAllConnectionsMap();
@@ -50,7 +52,7 @@ namespace CRA.ClientLibrary.DataProcessing
             PrepareOperatorOutput();
             
             InitializeOperator();
-            base.Initialize(vertexParameter);
+            return base.InitializeAsync(vertexParameter);
         }
 
         private void PrepareOperatorParameter(object vertexParameter)

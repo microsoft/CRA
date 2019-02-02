@@ -1,4 +1,5 @@
-﻿using System;
+﻿using CRA.ClientLibrary.DataProvider;
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Reflection;
@@ -34,7 +35,7 @@ namespace CRA.ClientLibrary.DataProcessing
         private bool _isProduceAllowedToApply = true;
 
 
-        public ShuffleOperator() : base()
+        public ShuffleOperator(IDataProvider dataProvider) : base(dataProvider)
         {
             _cachedDatasets = new Dictionary<string, object>();
             _firstProduceTrigger = new ManualResetEvent(false);

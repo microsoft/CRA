@@ -36,7 +36,11 @@ namespace BandwidthTest
             }
         }
 
-        public async Task FromStreamAsync(Stream stream, string otherVertex, string otherEndpoint, CancellationToken token)
+        public async Task FromStreamAsync(
+            Stream stream,
+            string otherVertex,
+            string otherEndpoint,
+            CancellationToken token)
         {
             Console.WriteLine("Receiving data from vertex: " + otherVertex + ", endpoint: " + otherEndpoint);
             int bwCheckPeriod = 1000 * 1024 * 1024 / _chunkSize;
@@ -52,6 +56,7 @@ namespace BandwidthTest
                     Console.WriteLine("Incoming bandwidth from vertex {0}, endpoint {1} = {2} MBps", otherVertex, otherEndpoint, _chunkSize * (double)bwCheckPeriod / (1000 * (double)sw.ElapsedMilliseconds));
                     sw.Restart();
                 }
+
                 if (!_running) break;
             }
         }

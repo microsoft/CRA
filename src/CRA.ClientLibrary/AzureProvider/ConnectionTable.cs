@@ -1,9 +1,10 @@
-﻿using Microsoft.WindowsAzure.Storage.Table;
+﻿using CRA.ClientLibrary.DataProvider;
+using Microsoft.WindowsAzure.Storage.Table;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 
-namespace CRA.ClientLibrary
+namespace CRA.ClientLibrary.AzureProvider
 {
     /// <summary>
     /// An assignment of one machine to a group
@@ -93,6 +94,22 @@ namespace CRA.ClientLibrary
             TableQuery<ConnectionTable> query = new TableQuery<ConnectionTable>();
             return instanceTable.ExecuteQuery(query);
         }
+
+        public static implicit operator VertexConnectionInfo(ConnectionTable ct)
+            => new VertexConnectionInfo(
+                fromVertex: ct.FromVertex,
+                fromEndpoint: ct.FromEndpoint,
+                toVertex: ct.ToVertex,
+                toEndpoint: ct.ToEndpoint,
+                versionId: ct.ETag);
+
+        public static implicit operator ConnectionTable(VertexConnectionInfo vci)
+            => new ConnectionTable(
+                fromVertex: vci.FromVertex,
+                fromEndpoint: vci.FromEndpoint,
+                toVertex: vci.ToVertex,
+                toEndpoint: vci.ToEndpoint)
+            { ETag = vci.VersionId };
 
         /// <summary>
         /// Counts all nodes in the cluster regardless of their group

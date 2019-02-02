@@ -9,8 +9,9 @@ using System.Configuration;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Microsoft.WindowsAzure.Storage.Table;
+using CRA.ClientLibrary.DataProvider;
 
-namespace CRA.ClientLibrary
+namespace CRA.ClientLibrary.AzureProvider
 {
     /// <summary>
     /// An assignment of one machine to a group
@@ -168,6 +169,32 @@ namespace CRA.ClientLibrary
         /// Constructor
         /// </summary>
         public VertexTable() { }
+
+        public static implicit operator VertexTable(VertexInfo vertexInfo)
+            => new VertexTable(
+                instanceName: vertexInfo.InstanceName,
+                vertexName: vertexInfo.VertexName,
+                vertexDefinition: vertexInfo.VertexDefinition,
+                address: vertexInfo.Address,
+                port: vertexInfo.Port,
+                vertexCreateAction: vertexInfo.VertexCreateAction,
+                vertexParameter: vertexInfo.VertexParameter,
+                isActive: vertexInfo.IsActive,
+                isSharded: vertexInfo.IsSharded)
+            { ETag = vertexInfo.VersionId };
+
+        public static implicit operator VertexInfo(VertexTable vertexInfo)
+            => new VertexInfo(
+                instanceName: vertexInfo.InstanceName,
+                vertexName: vertexInfo.VertexName,
+                vertexDefinition: vertexInfo.VertexDefinition,
+                address: vertexInfo.Address,
+                port: vertexInfo.Port,
+                vertexCreateAction: vertexInfo.VertexCreateAction,
+                vertexParameter: vertexInfo.VertexParameter,
+                isActive: vertexInfo.IsActive,
+                isSharded: vertexInfo.IsSharded,
+                versionId: vertexInfo.ETag);
 
         /// <summary>
         /// ToString

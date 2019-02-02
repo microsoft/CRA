@@ -21,19 +21,19 @@
     <tags>common runtime applications</tags>
     <dependencies>
       <group targetFramework="net46">
-        <dependency id="Newtonsoft.Json" version="11.0.2" />
-        <dependency id="Remote.Linq" version="5.8.1" />
-        <dependency id="WindowsAzure.Storage" version="9.3.2" />
+        <dependency id="Newtonsoft.Json" version="12.0.1" />
+        <dependency id="Remote.Linq" version="5.8.2" />
+        <dependency id="WindowsAzure.Storage" version="9.3.3" />
       </group>
       <group targetFramework="netstandard2.0">
-        <dependency id="Newtonsoft.Json" version="11.0.2" />
-        <dependency id="Remote.Linq" version="5.8.1" />
-        <dependency id="WindowsAzure.Storage" version="9.3.2" />
+        <dependency id="Newtonsoft.Json" version="12.0.1" />
+        <dependency id="Remote.Linq" version="5.8.2" />
+        <dependency id="WindowsAzure.Storage" version="9.3.3" />
       </group>
       <group targetFramework="netcoreapp2.0">
-        <dependency id="Newtonsoft.Json" version="11.0.2" />
-        <dependency id="Remote.Linq" version="5.8.1" />
-        <dependency id="WindowsAzure.Storage" version="9.3.2" />
+        <dependency id="Newtonsoft.Json" version="12.0.1" />
+        <dependency id="Remote.Linq" version="5.8.2" />
+        <dependency id="WindowsAzure.Storage" version="9.3.3" />
       </group>
     </dependencies>
   </metadata>
@@ -41,6 +41,9 @@
     <file src="..\CRA.ClientLibrary\bin\Release\net46\CRA.ClientLibrary.dll" target="lib\net46" />
     <file src="..\CRA.ClientLibrary\bin\Release\netcoreapp2.0\CRA.ClientLibrary.dll" target="lib\netcoreapp2.0" />
     <file src="..\CRA.ClientLibrary\bin\Release\netstandard2.0\CRA.ClientLibrary.dll" target="lib\netstandard2.0" />
+    <file src="..\CRA.ClientLibrary\bin\Release\net46\CRA.FileSyncDataProvider.dll" target="lib\net46" />
+    <file src="..\CRA.ClientLibrary\bin\Release\netcoreapp2.0\CRA.FileSyncDataProvider.dll" target="lib\netcoreapp2.0" />
+    <file src="..\CRA.ClientLibrary\bin\Release\netstandard2.0\CRA.FileSyncDataProvider.dll" target="lib\netstandard2.0" />
     <file src="bin\Release\net46\CRA.Worker.exe" target="lib\net46" />
     <file src="bin\Release\netcoreapp2.0\CRA.Worker.dll" target="lib\netcoreapp2.0" />
     <file src="bin\Release\netcoreapp2.0\CRA.Worker.dll" target="lib\netstandard2.0" />

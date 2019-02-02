@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.Serialization;
+using System.Threading.Tasks;
 
 namespace CRA.ClientLibrary.DataProcessing
 {
@@ -44,7 +45,7 @@ namespace CRA.ClientLibrary.DataProcessing
                 return DefaultDeployDescriptor;
         }
 
-        public static bool DeployOperators(CRAClientLibrary client, OperatorsToplogy topology)
+        public static async Task<bool> DeployOperators(CRAClientLibrary client, OperatorsToplogy topology)
         {
             topology.PrepareFinalOperatorsTasks();
 
@@ -74,11 +75,11 @@ namespace CRA.ClientLibrary.DataProcessing
                 tasks[i].EndpointsDescriptor = topology.OperatorsEndpointsDescriptors[tasksIds[i]];
                 tasks[i].VerticesConnectionsMap = connectionsMap;
                 if (tasks[i].OperationType == OperatorType.Produce)
-                    isSuccessful = DeployProduceTask(client, (ProduceTask)tasks[i]);
+                    isSuccessful = await DeployProduceTask(client, (ProduceTask)tasks[i]);
                 else if (tasks[i].OperationType == OperatorType.Subscribe)
-                    isSuccessful = DeploySubscribeTask(client, (SubscribeTask)tasks[i], topology);
+                    isSuccessful = await DeploySubscribeTask(client, (SubscribeTask)tasks[i], topology);
                 else if (tasks[i].OperationType == OperatorType.Move)
-                    isSuccessful = DeployShuffleReduceTask(client, (ShuffleTask)tasks[i], topology);
+                    isSuccessful = await DeployShuffleReduceTask(client, (ShuffleTask)tasks[i], topology);
 
                 if (!isSuccessful) break;
             }
@@ -145,12 +146,20 @@ namespace CRA.ClientLibrary.DataProcessing
             return verticesConnectionsMap;
         }
 
-        public static bool DeployProduceTask(CRAClientLibrary client, ProduceTask task)
+        public static async Task<bool> DeployProduceTask(CRAClientLibrary client, ProduceTask task)
         {
             try { 
-                client.DefineVertex(typeof(ProducerOperator).Name.ToLower(), () => new ProducerOperator());
-                CRAErrorCode status = client.InstantiateShardedVertex(task.OutputId, typeof(ProducerOperator).Name.ToLower(),
-                                                                task, task.DeployDescriptor.InstancesMap());
+                await client
+                    .DefineVertex(
+                        typeof(ProducerOperator).Name.ToLower(),
+                        () => new ProducerOperator(client.DataProvider));
+
+                CRAErrorCode status = client.InstantiateShardedVertex(
+                    task.OutputId,
+                    typeof(ProducerOperator).Name.ToLower(),
+                    task,
+                    task.DeployDescriptor.InstancesMap());
+
                 if (status == CRAErrorCode.Success)
                     return true;
                 else
@@ -163,11 +172,17 @@ namespace CRA.ClientLibrary.DataProcessing
             }
         }
 
-        public static bool DeploySubscribeTask(CRAClientLibrary client, SubscribeTask task, OperatorsToplogy topology)
+        public static async Task<bool> DeploySubscribeTask(
+            CRAClientLibrary client,
+            SubscribeTask task,
+            OperatorsToplogy topology)
         {
             try
             {
-                client.DefineVertex(typeof(SubscribeOperator).Name.ToLower(), () => new SubscribeOperator());
+                await client.DefineVertex(
+                    typeof(SubscribeOperator).Name.ToLower(),
+                    () => new SubscribeOperator(client.DataProvider));
+
                 CRAErrorCode status =  client.InstantiateShardedVertex(task.OutputId, typeof(SubscribeOperator).Name.ToLower(),
                                             task, task.DeployDescriptor.InstancesMap());
                 if (status == CRAErrorCode.Success)
@@ -187,13 +202,23 @@ namespace CRA.ClientLibrary.DataProcessing
             }
         }
 
-        private static bool DeployShuffleReduceTask(CRAClientLibrary client, ShuffleTask task, OperatorsToplogy topology)
+        private static async Task<bool> DeployShuffleReduceTask(
+            CRAClientLibrary client,
+            ShuffleTask task,
+            OperatorsToplogy topology)
         {
             try
             {
-                client.DefineVertex(typeof(ShuffleOperator).Name.ToLower(), () => new ShuffleOperator());
-                CRAErrorCode status =  client.InstantiateShardedVertex(task.ReducerVertexName, typeof(ShuffleOperator).Name.ToLower(),
-                                                task, task.DeployDescriptor.InstancesMap());
+                await client.DefineVertex(
+                    typeof(ShuffleOperator).Name.ToLower(),
+                    () => new ShuffleOperator(client.DataProvider));
+
+                var status =  client.InstantiateShardedVertex(
+                    task.ReducerVertexName,
+                    typeof(ShuffleOperator).Name.ToLower(),
+                    task,
+                    task.DeployDescriptor.InstancesMap());
+
                 if (status == CRAErrorCode.Success)
                 {
                     foreach (string fromInputId in task.SecondaryEndpointsDescriptor.FromInputs.Keys)
@@ -215,8 +240,11 @@ namespace CRA.ClientLibrary.DataProcessing
             }
         }
 
-        public static bool DeployClientTerminal(CRAClientLibrary client, ClientTerminalTask task,
-                                                                ref DetachedVertex clientTerminal, OperatorsToplogy topology)
+        public static async Task<bool> DeployClientTerminal(
+            CRAClientLibrary client,
+            ClientTerminalTask task,
+            DetachedVertex clientTerminal,
+            OperatorsToplogy topology)
         {
             try
             {
@@ -228,7 +256,10 @@ namespace CRA.ClientLibrary.DataProcessing
                     int shardsCount = client.CountVertexShards(task.DeployDescriptor.InstancesMap());
                     for (int i = 0; i < shardsCount; i++)
                         for (int j = 0; j < inputEndpoints.Length; j++)
-                            clientTerminal.FromRemoteOutputEndpointStream(inputEndpoints[j] + i, fromInputId + "$" + i, outputEndpoints[j]);
+                            await clientTerminal.FromRemoteOutputEndpointStream(
+                                inputEndpoints[j] + i,
+                                fromInputId + "$" + i,
+                                outputEndpoints[j]);
                 }
                 return true;
             }

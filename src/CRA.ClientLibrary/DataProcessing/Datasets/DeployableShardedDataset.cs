@@ -1,11 +1,13 @@
-﻿using System;
+﻿using CRA.ClientLibrary.DataProvider;
+using System;
 using System.Linq.Expressions;
 using System.Text;
+using System.Threading.Tasks;
 
 namespace CRA.ClientLibrary.DataProcessing
 {
-    public class DeployableShardedDataset<TKeyI1, TPayloadI1, TDataSetI1, TKeyI2, TPayloadI2, TDataSetI2, 
-                TKeyO, TPayloadO, TDataSetO> : ShardedDatasetBase<TKeyO, TPayloadO, TDataSetO>, IDeployable
+    public class DeployableShardedDataset<TKeyI1, TPayloadI1, TDataSetI1, TKeyI2, TPayloadI2, TDataSetI2, TKeyO, TPayloadO, TDataSetO>
+        : ShardedDatasetBase<TKeyO, TPayloadO, TDataSetO>, IDeployable
         where TDataSetI1 : IDataset<TKeyI1, TPayloadI1>
         where TDataSetI2 : IDataset<TKeyI2, TPayloadI2>
         where TDataSetO : IDataset<TKeyO, TPayloadO>
@@ -23,11 +25,15 @@ namespace CRA.ClientLibrary.DataProcessing
         private bool _isDeployed = false;
         private CRAClientLibrary _craClient = null;
         private DetachedVertex _clientTerminal = null;
+        private readonly IDataProvider _dataProvider;
 
         public OperatorType OperationType { get { return _operationType; } }
 
-        internal DeployableShardedDataset(IShardedDataset<TKeyI1, TPayloadI1, TDataSetI1> input, 
+        internal DeployableShardedDataset(
+            IDataProvider dataProvider,
+            IShardedDataset<TKeyI1, TPayloadI1, TDataSetI1> input, 
             Expression<Func<TDataSetI1, TDataSetO>> transform)
+            : base(dataProvider)
         {
             _input1 = input;
             _input2 = null;
@@ -39,11 +45,15 @@ namespace CRA.ClientLibrary.DataProcessing
             _splitter = null;
             _merger = null;
             _moveDescriptor = null;
+            _dataProvider = dataProvider;
         }
 
-        internal DeployableShardedDataset(IShardedDataset<TKeyI1, TPayloadI1, TDataSetI1> input1,
+        internal DeployableShardedDataset(
+            IDataProvider dataProvider,
+            IShardedDataset<TKeyI1, TPayloadI1, TDataSetI1> input1,
             IShardedDataset<TKeyI2, TPayloadI2, TDataSetI2> input2,
             Expression<Func<TDataSetI1, TDataSetI2, TDataSetO>> transform)
+            : base(dataProvider)
         {
             _input1 = input1;
             _input2 = input2;
@@ -55,11 +65,15 @@ namespace CRA.ClientLibrary.DataProcessing
             _splitter = null;
             _merger = null;
             _moveDescriptor = null;
+            _dataProvider = dataProvider;
         }
 
-        internal DeployableShardedDataset(IShardedDataset<TKeyI1, TPayloadI1, TDataSetI1> input,
+        internal DeployableShardedDataset(
+            IDataProvider dataProvider,
+            IShardedDataset<TKeyI1, TPayloadI1, TDataSetI1> input,
             Expression<Func<TDataSetI1, IMoveDescriptor, TDataSetI2[]>> splitter,
             Expression<Func<TDataSetI2[], IMoveDescriptor, TDataSetO>> merger, IMoveDescriptor moveDescriptor)
+            : base(dataProvider)
         {
             _input1 = input;
             _input2 = null;
@@ -71,6 +85,7 @@ namespace CRA.ClientLibrary.DataProcessing
             _moveDescriptor = moveDescriptor;
             _unaryTransformer = null;
             _binaryTransformer = null;
+            _dataProvider = dataProvider;
         }
 
         public void Deploy(ref TaskBase task, ref OperatorsToplogy topology, ref OperatorTransforms parentTransforms)
@@ -202,14 +217,21 @@ namespace CRA.ClientLibrary.DataProcessing
                 task.NextInputIds.SetInputId1(temporaryInputs.InputId1);
 
             // Add the transformations from this operand to the parent operand
-            unaryTransforms.AddTransform(SerializationHelper.Serialize(_unaryTransformer),
-                    OperatorType.UnaryTransform.ToString(),
-                    TransformUtils.FillUnaryTransformTypes(typeof(TKeyI1), typeof(TPayloadI1), typeof(TDataSetI1),
-                        typeof(TKeyO), typeof(TPayloadO), typeof(TDataSetO)).ToString(), temporaryInputs);
+            unaryTransforms.AddTransform(
+                SerializationHelper.Serialize(_unaryTransformer),
+                OperatorType.UnaryTransform.ToString(),
+                TransformUtils.FillUnaryTransformTypes(
+                    typeof(TKeyI1),
+                    typeof(TPayloadI1),
+                    typeof(TDataSetI1),
+                    typeof(TKeyO),
+                    typeof(TPayloadO),
+                    typeof(TDataSetO)).ToString(),
+                temporaryInputs);
             parentTransforms = unaryTransforms;
         }
 
-        public override IShardedDataset<TKeyO, TPayloadO, TDataSetO> Deploy()
+        public override async Task<IShardedDataset<TKeyO, TPayloadO, TDataSetO>> Deploy()
         {
             if (!_isDeployed)
             {
@@ -249,7 +271,7 @@ namespace CRA.ClientLibrary.DataProcessing
                 clientTerminalTask.InputIds.SetInputId1(subscribeTask.OutputId);
                 clientTerminalTask.OutputId = typeof(DetachedVertex).Name.ToLower() + Guid.NewGuid().ToString();
 
-                _craClient = new CRAClientLibrary();
+                _craClient = new CRAClientLibrary(_dataProvider);
                 _clientTerminal = _craClient.RegisterAsVertex(clientTerminalTask.OutputId);
                 toplogy.AddOperatorBase(clientTerminalTask.OutputId, clientTerminalTask);
                 toplogy.AddOperatorInput(clientTerminalTask.OutputId, clientTerminalTask.InputIds.InputId1);
@@ -257,9 +279,13 @@ namespace CRA.ClientLibrary.DataProcessing
                 toplogy.AddOperatorOutput(clientTerminalTask.InputIds.InputId1, clientTerminalTask.OutputId);
                 toplogy.AddOperatorOutput(clientTerminalTask.InputIds.InputId2, clientTerminalTask.OutputId);
 
-                _isDeployed = DeploymentUtils.DeployOperators(_craClient, toplogy);
+                _isDeployed = await DeploymentUtils.DeployOperators(_craClient, toplogy);
                 if (_isDeployed)
-                    _isDeployed = DeploymentUtils.DeployClientTerminal(_craClient, clientTerminalTask, ref _clientTerminal, toplogy);
+                    _isDeployed = await DeploymentUtils.DeployClientTerminal(
+                        _craClient,
+                        clientTerminalTask,
+                        _clientTerminal,
+                        toplogy);
                 else
                     return null;
             }
@@ -267,11 +293,13 @@ namespace CRA.ClientLibrary.DataProcessing
             return this;
         }
         
-        public override void Subscribe<TDatasetObserver>(Expression<Func<TDatasetObserver>> observer)
+        public override async Task Subscribe<TDatasetObserver>(Expression<Func<TDatasetObserver>> observer)
         {
             IShardedDataset<TKeyO, TPayloadO, TDataSetO> deployedDataset = null;
             if (!_isDeployed)
-                deployedDataset = Deploy();
+            {
+                deployedDataset = await Deploy();
+            }
 
             if (!_isDeployed && deployedDataset == null)
                 throw new InvalidOperationException();
@@ -287,14 +315,14 @@ namespace CRA.ClientLibrary.DataProcessing
             }
         }
 
-        public override void MultiSubscribe<TDatasetObserver>(Expression<Func<TDatasetObserver>> observer, int runsCount)
+        public override async Task MultiSubscribe<TDatasetObserver>(Expression<Func<TDatasetObserver>> observer, int runsCount)
         {
             var inputConnections = _clientTerminal.ConnectionData.InputConnections;
             for (int i = 0; i < runsCount; i++)
             {
                 IShardedDataset<TKeyO, TPayloadO, TDataSetO> deployedDataset = null;
                 if (!_isDeployed)
-                    deployedDataset = Deploy();
+                    deployedDataset = await Deploy();
 
                 if (!_isDeployed && deployedDataset == null)
                     throw new InvalidOperationException();
@@ -312,7 +340,7 @@ namespace CRA.ClientLibrary.DataProcessing
                 inputConnections[key].WriteInt32((int)CRATaskMessageType.RELEASE);
         }
 
-        public override void Consume<TDatasetConsumer>(Expression<Func<TDatasetConsumer>> consumer)
+        public override Task Consume<TDatasetConsumer>(Expression<Func<TDatasetConsumer>> consumer)
         {
             throw new NotImplementedException();
         }
