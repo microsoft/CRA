@@ -1,10 +1,4 @@
-﻿//-----------------------------------------------------------------------
-// <copyright file="FileProviderImpl.cs" company="">
-//     Copyright (c) . All rights reserved.
-// </copyright>
-//-----------------------------------------------------------------------
-
-namespace CRA.FileSyncDataProvider
+﻿namespace CRA.FileSyncDataProvider
 {
     using CRA.ClientLibrary.DataProvider;
     using System;

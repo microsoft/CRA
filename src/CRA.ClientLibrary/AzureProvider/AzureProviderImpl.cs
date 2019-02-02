@@ -1,10 +1,4 @@
-﻿//-----------------------------------------------------------------------
-// <copyright file="AzureProviderImpl.cs" company="">
-//     Copyright (c) . All rights reserved.
-// </copyright>
-//-----------------------------------------------------------------------
-
-namespace CRA.ClientLibrary.AzureProvider
+﻿namespace CRA.ClientLibrary.AzureProvider
 {
     using CRA.ClientLibrary.DataProvider;
     using Microsoft.WindowsAzure.Storage;
@@ -55,7 +49,7 @@ namespace CRA.ClientLibrary.AzureProvider
             => new AzureEndpointInfoProvider(CreateTableIfNotExists("craendpointtable"));
 
         public IVertexConnectionInfoProvider GetVertexConnectionInfoProvider()
-            => new AzureVertexConnectionInfoProvider(CreateTableIfNotExists("cravertextable"));
+            => new AzureVertexConnectionInfoProvider(CreateTableIfNotExists("craconnectiontable"));
 
         public IShardedVertexInfoProvider GetShardedVertexInfoProvider()
             => new AzureShardedVertexInfoProvider(CreateTableIfNotExists("crashardedvertextable"));

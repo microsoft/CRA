@@ -518,6 +518,7 @@ namespace CRA.ClientLibrary
                 "Newtonsoft.Json, Version=8.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed",
                 "Newtonsoft.Json, Version=10.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed",
                 "Newtonsoft.Json, Version=11.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed",
+                "Newtonsoft.Json, Version=12.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed",
 
                 "Remote.Linq, Version=5.1.0.0, Culture=neutral, PublicKeyToken=null",
                 "Aqua, Version=2.0.0.0, Culture=neutral, PublicKeyToken=null",

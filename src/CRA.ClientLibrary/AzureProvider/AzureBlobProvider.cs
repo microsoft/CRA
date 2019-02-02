@@ -1,10 +1,4 @@
-﻿//-----------------------------------------------------------------------
-// <copyright file="AzureBlobProvider.cs" company="">
-//     Copyright (c) . All rights reserved.
-// </copyright>
-//-----------------------------------------------------------------------
-
-namespace CRA.ClientLibrary.AzureProvider
+﻿namespace CRA.ClientLibrary.AzureProvider
 {
     using CRA.ClientLibrary.DataProvider;
     using Microsoft.WindowsAzure.Storage.Blob;

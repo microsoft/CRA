@@ -1,10 +1,4 @@
-﻿//-----------------------------------------------------------------------
-// <copyright file="FileUtils.cs" company="">
-//     Copyright (c) . All rights reserved.
-// </copyright>
-//-----------------------------------------------------------------------
-
-namespace CRA.FileSyncDataProvider
+﻿namespace CRA.FileSyncDataProvider
 {
     using Newtonsoft.Json;
     using System;
