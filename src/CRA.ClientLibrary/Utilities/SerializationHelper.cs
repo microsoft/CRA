@@ -11,15 +11,9 @@ namespace CRA.ClientLibrary
     {
         private SerializationHelper() { }
 
-        private static readonly JsonSerializerSettings _serializerSettings
-            = new JsonSerializerSettings
-            {
-                TypeNameHandling = TypeNameHandling.Auto,
-                NullValueHandling = NullValueHandling.Ignore,
-                TypeNameAssemblyFormatHandling = TypeNameAssemblyFormatHandling.Full,
-            };
-
-
+        private static readonly JsonSerializerSettings _serializerSettings =
+                                       new JsonSerializerSettings().ConfigureRemoteLinq();
+  
         /// <summary>
         /// Serializes a LINQ expression.
         /// </summary>
