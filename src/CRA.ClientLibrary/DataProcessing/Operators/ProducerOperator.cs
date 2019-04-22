@@ -9,11 +9,11 @@ namespace CRA.ClientLibrary.DataProcessing
 {
     public class ProducerOperator : OperatorBase
     {
-        internal Dictionary<string, object> _cachedDatasets;
+        internal Dictionary<string, object> _cachedDatasets; 
 
         private Type _outputKeyType;
         private Type _outputPayloadType;
-        private Type _outputDatasetType;
+        private Type _outputDatasetType; 
         private string _outputId;
 
         private System.Object _produceIfReadyLock = new System.Object();

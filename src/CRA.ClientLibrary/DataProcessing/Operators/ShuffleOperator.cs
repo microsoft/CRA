@@ -18,7 +18,7 @@ namespace CRA.ClientLibrary.DataProcessing
         private ConcurrentDictionary<IEndpointContent, int> _secondaryInputEndpointInvertedIndex;
         private ConcurrentDictionary<string, ManualResetEvent> _onCompletedSecondaryInputs;
 
-        internal Dictionary<string, object> _cachedDatasets;
+        internal Dictionary<string, object> _cachedDatasets; 
 
         private Type _outputKeyType;
         private Type _outputPayloadType;

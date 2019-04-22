@@ -42,7 +42,8 @@ namespace CRA.ClientLibrary
                 isActive: true,
                 isSharded: false);
 
-            await _vertexManager.VertexInfoProvider.InsertOrReplace(newRow);
+            //await _vertexManager.VertexInfoProvider.InsertOrReplace(newRow);
+            _vertexManager.VertexInfoProvider.InsertOrReplace(newRow).Wait();
 
             return CRAErrorCode.Success;
         }
@@ -89,8 +90,10 @@ namespace CRA.ClientLibrary
                 }
             }
 
-            await _shardedVertexTableManager.DeleteShardedVertex(vertexName);
-            await _shardedVertexTableManager.RegisterShardedVertex(vertexName, allInstances, allShards, addedShards, removedShards, shardLocator);
+            //await _shardedVertexTableManager.DeleteShardedVertex(vertexName);
+            _shardedVertexTableManager.DeleteShardedVertex(vertexName).Wait();
+            //await _shardedVertexTableManager.RegisterShardedVertex(vertexName, allInstances, allShards, addedShards, removedShards, shardLocator);
+            _shardedVertexTableManager.RegisterShardedVertex(vertexName, allInstances, allShards, addedShards, removedShards, shardLocator).Wait();
 
             CRAErrorCode[] results = Task.WhenAll(tasks).Result;
 

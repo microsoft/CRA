@@ -16,6 +16,13 @@
             return null;
         }
 
+        public static string PrepareOutputEndpointIdForOperator(string toOutputId, OperatorEndpointsDescriptor endpointsDescriptor)
+        {
+            if (endpointsDescriptor.ToOutputs.Count != 0)
+                return "OutputTo" + toOutputId;
+
+            return null;
+        }
 
         public static string[] PrepareInputEndpointsIdsForOperator(string fromInputId, OperatorEndpointsDescriptor endpointsDescriptor)
         {
@@ -27,6 +34,14 @@
                      inputEndpoints[i] = "InputFrom" + fromInputId + i;
                 return inputEndpoints;
             }
+
+            return null;
+        }
+
+        public static string PrepareInputEndpointIdForOperator(string fromInputId, OperatorEndpointsDescriptor endpointsDescriptor)
+        {
+            if (endpointsDescriptor.FromInputs.Count != 0)
+                return "InputFrom" + fromInputId;
 
             return null;
         }

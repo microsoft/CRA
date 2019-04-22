@@ -497,7 +497,7 @@ namespace CRA.ClientLibrary
 
             var par = SerializationHelper.DeserializeObject(parameterString);
             vertex.Initialize(par);
-            await vertex.InitializeAsync(par);
+            //await vertex.InitializeAsync(par);
 
             // Activate vertex
             await ActivateVertex(vertexName, instanceName);

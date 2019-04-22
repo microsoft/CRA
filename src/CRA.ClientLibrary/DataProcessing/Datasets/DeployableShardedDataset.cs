@@ -119,7 +119,7 @@ namespace CRA.ClientLibrary.DataProcessing
             (_input1 as IDeployable).Deploy(ref shuffleTask, ref topology, ref shuffleInputTransforms);
             shuffleTask.PrepareTaskTransformations(shuffleInputTransforms);
             (shuffleTask as ShuffleTask).MapperVertexName = "shufflemapper" + Guid.NewGuid().ToString();
-            (shuffleTask as ShuffleTask).ReducerVertexName = typeof(ShuffleOperator).Name.ToLower() + Guid.NewGuid().ToString();
+            (shuffleTask as ShuffleTask).ReducerVertexName = typeof(ShardedShuffleOperator).Name.ToLower() + Guid.NewGuid().ToString();
             shuffleTask.InputIds.SetInputId1(shuffleTask.NextInputIds.InputId1);
             shuffleTask.InputIds.SetInputId2(shuffleTask.NextInputIds.InputId2);
             shuffleTask.OutputId = (shuffleTask as ShuffleTask).ReducerVertexName;
@@ -166,6 +166,70 @@ namespace CRA.ClientLibrary.DataProcessing
                 temporaryInputs.InputId1 = shuffleTask.OutputId;
             task.NextInputIds = temporaryInputs;
         }
+
+        /*
+        private void DeployMove(ref TaskBase task, ref OperatorsToplogy topology)
+        {
+            var isRightOperandInput = task.IsRightOperandInput;
+            OperatorInputs temporaryInputs = new OperatorInputs();
+
+            TaskBase shuffleTask = new ShuffleTask(_moveDescriptor);
+            shuffleTask.OperationTypes = TransformUtils.FillBinaryTransformTypes(
+                    typeof(TKeyI1), typeof(TPayloadI1), typeof(TDataSetI1),
+                    typeof(TKeyI2), typeof(TPayloadI2), typeof(TDataSetI2),
+                    typeof(TKeyO), typeof(TPayloadO), typeof(TDataSetO));
+            shuffleTask.IsRightOperandInput = false;
+            OperatorTransforms shuffleInputTransforms = new OperatorTransforms();
+            (_input1 as IDeployable).Deploy(ref shuffleTask, ref topology, ref shuffleInputTransforms);
+            shuffleTask.PrepareTaskTransformations(shuffleInputTransforms);
+            (shuffleTask as ShuffleTask).MapperVertexName = "shufflemapper" + Guid.NewGuid().ToString();
+            (shuffleTask as ShuffleTask).ReducerVertexName = typeof(ShuffleOperator).Name.ToLower() + Guid.NewGuid().ToString();
+            shuffleTask.InputIds.SetInputId1(shuffleTask.NextInputIds.InputId1);
+            shuffleTask.InputIds.SetInputId2(shuffleTask.NextInputIds.InputId2);
+            shuffleTask.OutputId = (shuffleTask as ShuffleTask).ReducerVertexName;
+            OperatorTransforms shuffleTransforms = new OperatorTransforms();
+            shuffleTransforms.AddTransform(SerializationHelper.Serialize(_splitter),
+                    OperatorType.MoveSplit.ToString(),
+                    TransformUtils.FillBinaryTransformTypes(typeof(TKeyI1), typeof(TPayloadI1), typeof(TDataSetI1),
+                        typeof(TKeyI2), typeof(TPayloadI2), typeof(TDataSetI2),
+                        typeof(TKeyO), typeof(TPayloadO), typeof(TDataSetO)).ToString(),
+                    shuffleTask.InputIds);
+            shuffleTransforms.AddTransform(SerializationHelper.Serialize(_merger),
+                    OperatorType.MoveMerge.ToString(),
+                    TransformUtils.FillBinaryTransformTypes(typeof(TKeyI1), typeof(TPayloadI1), typeof(TDataSetI1),
+                        typeof(TKeyI2), typeof(TPayloadI2), typeof(TDataSetI2),
+                        typeof(TKeyO), typeof(TPayloadO), typeof(TDataSetO)).ToString(),
+                    shuffleTask.InputIds);
+            ((ShuffleTask)shuffleTask).PrepareShuffleTransformations(shuffleTransforms);
+
+            topology.AddShuffleOperator((shuffleTask as ShuffleTask).MapperVertexName, (shuffleTask as ShuffleTask).ReducerVertexName, shuffleTask as ShuffleTask);
+            topology.AddOperatorInput((shuffleTask as ShuffleTask).MapperVertexName, shuffleTask.InputIds.InputId1);
+            topology.AddOperatorSecondaryInput((shuffleTask as ShuffleTask).MapperVertexName, shuffleTask.InputIds.InputId2);
+            topology.AddOperatorOutput(shuffleTask.InputIds.InputId1, (shuffleTask as ShuffleTask).MapperVertexName);
+            topology.AddOperatorOutput(shuffleTask.InputIds.InputId2, (shuffleTask as ShuffleTask).MapperVertexName);
+
+            if (shuffleTask.Transforms != null)
+            {
+                foreach (OperatorInputs inputs in shuffleTask.TransformsInputs)
+                {
+                    topology.AddOperatorInput((shuffleTask as ShuffleTask).MapperVertexName, inputs.InputId1);
+                    topology.AddOperatorSecondaryInput((shuffleTask as ShuffleTask).MapperVertexName, inputs.InputId2);
+                    topology.AddOperatorOutput(inputs.InputId1, (shuffleTask as ShuffleTask).MapperVertexName);
+                    topology.AddOperatorOutput(inputs.InputId2, (shuffleTask as ShuffleTask).MapperVertexName);
+                }
+            }
+
+            // Update the inputs and types for the next operation
+            task.InputIds.SetInputId1(shuffleTask.OutputId);
+            task.OperationTypes.SetInputKeyType(typeof(TKeyO));
+            task.OperationTypes.SetInputPayloadType(typeof(TPayloadO));
+            task.OperationTypes.SetInputDatasetType(typeof(TDataSetO));
+            if (isRightOperandInput)
+                temporaryInputs.InputId2 = shuffleTask.OutputId;
+            else
+                temporaryInputs.InputId1 = shuffleTask.OutputId;
+            task.NextInputIds = temporaryInputs;
+        }*/
 
         private void DeployBinaryTransform(ref TaskBase task, ref OperatorsToplogy topology, ref OperatorTransforms parentTransforms)
         {
@@ -247,7 +311,7 @@ namespace CRA.ClientLibrary.DataProcessing
                 Deploy(ref subscribeTask, ref toplogy, ref subscribeInputTransforms);
                 subscribeTask.InputIds.SetInputId1(subscribeTask.NextInputIds.InputId1);
                 subscribeTask.InputIds.SetInputId2(subscribeTask.NextInputIds.InputId2);
-                subscribeTask.OutputId = typeof(SubscribeOperator).Name.ToLower() + Guid.NewGuid().ToString();
+                subscribeTask.OutputId = typeof(ShardedSubscribeOperator).Name.ToLower() + Guid.NewGuid().ToString();
                 subscribeTask.PrepareTaskTransformations(subscribeInputTransforms);
 
                 toplogy.AddOperatorBase(subscribeTask.OutputId, subscribeTask);
@@ -292,7 +356,99 @@ namespace CRA.ClientLibrary.DataProcessing
 
             return this;
         }
-        
+        /*
+                public override async Task<IShardedDataset<TKeyO, TPayloadO, TDataSetO>> Deploy()
+                {
+                    if (!_isDeployed)
+                    {
+                        OperatorsToplogy toplogy = OperatorsToplogy.GetInstance();
+
+                        TaskBase subscribeTask = new SubscribeTask();
+                        subscribeTask.OperationTypes = TransformUtils.FillBinaryTransformTypes(
+                                        typeof(TKeyO), typeof(TPayloadO), typeof(TDataSetO),
+                                        typeof(TKeyO), typeof(TPayloadO), typeof(TDataSetO),
+                                        typeof(TKeyO), typeof(TPayloadO), typeof(TDataSetO));
+                        subscribeTask.IsRightOperandInput = false;
+                        OperatorTransforms subscribeInputTransforms = new OperatorTransforms();
+                        Deploy(ref subscribeTask, ref toplogy, ref subscribeInputTransforms);
+                        subscribeTask.InputIds.SetInputId1(subscribeTask.NextInputIds.InputId1);
+                        subscribeTask.InputIds.SetInputId2(subscribeTask.NextInputIds.InputId2);
+                        subscribeTask.OutputId = typeof(SubscribeOperator).Name.ToLower() + Guid.NewGuid().ToString();
+                        subscribeTask.PrepareTaskTransformations(subscribeInputTransforms);
+
+                        toplogy.AddOperatorBase(subscribeTask.OutputId, subscribeTask);
+                        toplogy.AddOperatorInput(subscribeTask.OutputId, subscribeTask.InputIds.InputId1);
+                        toplogy.AddOperatorSecondaryInput(subscribeTask.OutputId, subscribeTask.InputIds.InputId2);
+                        toplogy.AddOperatorOutput(subscribeTask.InputIds.InputId1, subscribeTask.OutputId);
+                        toplogy.AddOperatorOutput(subscribeTask.InputIds.InputId2, subscribeTask.OutputId);
+
+                        if (subscribeTask.Transforms != null)
+                        {
+                            foreach (OperatorInputs inputs in subscribeTask.TransformsInputs)
+                            {
+                                toplogy.AddOperatorInput(subscribeTask.OutputId, inputs.InputId1);
+                                toplogy.AddOperatorSecondaryInput(subscribeTask.OutputId, inputs.InputId2);
+                                toplogy.AddOperatorOutput(inputs.InputId1, subscribeTask.OutputId);
+                                toplogy.AddOperatorOutput(inputs.InputId2, subscribeTask.OutputId);
+                            }
+                        }
+
+                        ClientTerminalTask clientTerminalTask = new ClientTerminalTask();
+                        clientTerminalTask.InputIds.SetInputId1(subscribeTask.OutputId);
+                        clientTerminalTask.OutputId = typeof(DetachedVertex).Name.ToLower() + Guid.NewGuid().ToString();
+
+                        _craClient = new CRAClientLibrary(_dataProvider);
+                        _clientTerminal = _craClient.RegisterAsVertex(clientTerminalTask.OutputId);
+                        toplogy.AddOperatorBase(clientTerminalTask.OutputId, clientTerminalTask);
+                        toplogy.AddOperatorInput(clientTerminalTask.OutputId, clientTerminalTask.InputIds.InputId1);
+                        toplogy.AddOperatorInput(clientTerminalTask.OutputId, clientTerminalTask.InputIds.InputId2);
+                        toplogy.AddOperatorOutput(clientTerminalTask.InputIds.InputId1, clientTerminalTask.OutputId);
+                        toplogy.AddOperatorOutput(clientTerminalTask.InputIds.InputId2, clientTerminalTask.OutputId);
+
+                        _isDeployed = await DeploymentUtils.DeployOperators(_craClient, toplogy);
+                        if (_isDeployed)
+                            _isDeployed = await DeploymentUtils.DeployClientTerminal(
+                                _craClient,
+                                clientTerminalTask,
+                                _clientTerminal,
+                                toplogy);
+                        else
+                            return null;
+                    }
+
+                    return this;
+                }
+        */
+
+        public override async Task Subscribe<TDatasetObserver>(Expression<Func<TDatasetObserver>> observer)
+        {
+            IShardedDataset<TKeyO, TPayloadO, TDataSetO> deployedDataset = null;
+            if (!_isDeployed)
+            {
+                deployedDataset = await Deploy();
+            }
+
+            if (!_isDeployed && deployedDataset == null)
+                throw new InvalidOperationException();
+            else
+            {
+               var deployMsgBuffer = new byte[Encoding.ASCII.GetBytes("DEPLOY").Length];
+               deployMsgBuffer = Encoding.ASCII.GetBytes("DEPLOY");
+
+                var runMsgBuffer = new byte[Encoding.ASCII.GetBytes("RUN").Length];
+                runMsgBuffer = Encoding.ASCII.GetBytes("RUN");
+
+                var inputConnections = _clientTerminal.ConnectionData.InputConnections;
+                foreach (var key in inputConnections.Keys)
+                {
+                    
+                    await inputConnections[key].WriteAsync(deployMsgBuffer, 0, deployMsgBuffer.Length);
+                    await inputConnections[key].WriteAsync(runMsgBuffer, 0, runMsgBuffer.Length);
+                    inputConnections[key].WriteByteArray(Encoding.UTF8.GetBytes(SerializationHelper.Serialize(observer)));
+                }
+            }
+        }
+/*
         public override async Task Subscribe<TDatasetObserver>(Expression<Func<TDatasetObserver>> observer)
         {
             IShardedDataset<TKeyO, TPayloadO, TDataSetO> deployedDataset = null;
@@ -313,8 +469,14 @@ namespace CRA.ClientLibrary.DataProcessing
                     inputConnections[key].WriteInt32((int)CRATaskMessageType.RELEASE);
                 }
             }
+        }*/
+
+        public override async Task MultiSubscribe<TDatasetObserver>(Expression<Func<TDatasetObserver>> observer, int runsCount)
+        {
+            throw new NotImplementedException();
         }
 
+        /*
         public override async Task MultiSubscribe<TDatasetObserver>(Expression<Func<TDatasetObserver>> observer, int runsCount)
         {
             var inputConnections = _clientTerminal.ConnectionData.InputConnections;
@@ -338,7 +500,7 @@ namespace CRA.ClientLibrary.DataProcessing
 
             foreach (var key in inputConnections.Keys)
                 inputConnections[key].WriteInt32((int)CRATaskMessageType.RELEASE);
-        }
+        }*/
 
         public override Task Consume<TDatasetConsumer>(Expression<Func<TDatasetConsumer>> consumer)
         {

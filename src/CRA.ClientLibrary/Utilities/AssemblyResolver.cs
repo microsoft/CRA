@@ -50,12 +50,44 @@ namespace CRA.ClientLibrary
 
         private static Assembly Resolver(object sender, ResolveEventArgs arguments)
         {
+            Assembly assembly = null;
             byte[] assemblyBytes;
             if (assemblies.TryGetValue(arguments.Name, out assemblyBytes))
             {
-                return Assembly.Load(assemblyBytes);
+                if (IsAssemblyLoaded(arguments.Name, out assembly))
+                    return assembly;
+                else
+                    return Assembly.Load(assemblyBytes);
+            }
+            return assembly;
+        }
+        /*
+        private static Assembly Resolver(object sender, ResolveEventArgs arguments)
+        {
+            byte[] assemblyBytes;
+            if (assemblies.TryGetValue(arguments.Name, out assemblyBytes))
+            {
+                   return Assembly.Load(assemblyBytes);
             }
             return null;
         }
+        */
+        private static bool IsAssemblyLoaded(string fullName, out Assembly lAssembly)
+        {
+            Assembly[] assemblies = AppDomain.CurrentDomain.GetAssemblies();
+
+            foreach (Assembly assembly in assemblies)
+            {
+                if (assembly.FullName == fullName)
+                {
+                    lAssembly = assembly;
+                    return true;
+                }
+            }
+
+            lAssembly = null;
+            return false;
+        }
+
     }
 }

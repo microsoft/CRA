@@ -247,23 +247,23 @@ namespace CRA.ClientLibrary.DataProcessing
                             tmpTransformsTypes[i].Add(tasks[i].TransformsTypes[k]);
                             tmpTransformsInputs[i].Add(tasks[i].TransformsInputs[k]);
                         }
+                    }
 
-                        if (tasks[i].OperationType == OperatorType.Move)
+                    if (tasks[i].OperationType == OperatorType.Move)
+                    {
+                        var currentInput = ((ShuffleTask)tasks[i]).ShuffleTransformsInputs[0].InputId1;
+                        int inputTaskIndex = RetrieveTaskIndexOfOperator(currentInput, operatorsIds);
+
+                        if (!(tmpTransforms[inputTaskIndex].Count > 0 &&
+                            tmpTransformsOperations[inputTaskIndex][tmpTransforms[inputTaskIndex].Count - 1] == OperatorType.MoveSplit.ToString()))
                         {
-                            var currentInput = ((ShuffleTask)tasks[i]).ShuffleTransformsInputs[0].InputId1;
-                            int inputTaskIndex = RetrieveTaskIndexOfOperator(currentInput, operatorsIds);
-
-                            if (!(tmpTransforms[inputTaskIndex].Count > 0 &&
-                                tmpTransformsOperations[inputTaskIndex][tmpTransforms[inputTaskIndex].Count - 1] == OperatorType.MoveSplit.ToString()))
-                            {
-                                tmpTransforms[inputTaskIndex].Add(((ShuffleTask)tasks[i]).ShuffleTransforms[0]);
-                                tmpTransformsOperations[inputTaskIndex].Add(((ShuffleTask)tasks[i]).ShuffleTransformsOperations[0]);
-                                tmpTransformsTypes[inputTaskIndex].Add(((ShuffleTask)tasks[i]).ShuffleTransformsTypes[0]);
-                                tmpTransformsInputs[inputTaskIndex].Add(((ShuffleTask)tasks[i]).ShuffleTransformsInputs[0]);
-                                tasks[inputTaskIndex].SecondaryShuffleDescriptor = ((ShuffleTask)tasks[i]).ShuffleDescriptor;
-                            }
-                            
+                            tmpTransforms[inputTaskIndex].Add(((ShuffleTask)tasks[i]).ShuffleTransforms[0]);
+                            tmpTransformsOperations[inputTaskIndex].Add(((ShuffleTask)tasks[i]).ShuffleTransformsOperations[0]);
+                            tmpTransformsTypes[inputTaskIndex].Add(((ShuffleTask)tasks[i]).ShuffleTransformsTypes[0]);
+                            tmpTransformsInputs[inputTaskIndex].Add(((ShuffleTask)tasks[i]).ShuffleTransformsInputs[0]);
+                            tasks[inputTaskIndex].SecondaryShuffleDescriptor = ((ShuffleTask)tasks[i]).ShuffleDescriptor;
                         }
+
                     }
                 }
 

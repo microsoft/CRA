@@ -141,7 +141,6 @@ namespace CRA.ClientLibrary
             return stream;
         }
 
-
         /// <summary>
         /// Create connection stream from local output endpoint to remote input endpoint
         /// </summary>
