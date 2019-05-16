@@ -4,7 +4,7 @@
     <id>CRA</id>
     <version>$version$</version>
     <title>Common Runtime for Applications (CRA)</title>
-    <authors>CRA</authors>
+    <authors>Microsoft</authors>
     <owners>Microsoft</owners>
     <projectUrl>https://github.com/Microsoft/CRA</projectUrl>
     <licenseUrl>https://raw.githubusercontent.com/Microsoft/CRA/master/LICENSE</licenseUrl>
@@ -17,7 +17,8 @@
       as well as execution in a Kubernetes/Docker environment.
     </description>
     <releaseNotes>See project website</releaseNotes>
-    <copyright>Copyright 2018</copyright>
+    <copyright>© Microsoft Corporation. All rights reserved.</copyright>
+    <language>en-US</language>
     <tags>common runtime applications</tags>
     <dependencies>
       <group targetFramework="net46">
