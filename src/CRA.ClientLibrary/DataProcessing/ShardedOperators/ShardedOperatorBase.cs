@@ -47,6 +47,8 @@ namespace CRA.ClientLibrary.DataProcessing
                 _task = (SubscribeTask)vertexParameter;
             else if (vertexParameter is ShuffleTask)
                 _task = (ShuffleTask)vertexParameter;
+            else if (vertexParameter is ClientTerminalTask)
+                _task = (ClientTerminalTask)vertexParameter;
             else if (vertexParameter is TaskBase)
                 _task = (TaskBase)vertexParameter;
             else

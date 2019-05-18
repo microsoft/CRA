@@ -17,8 +17,8 @@ namespace CRA.ClientLibrary.DataProcessing
 
         public override async Task OperatorInputFromStreamAsync(Stream stream, string otherVertex, int otherShardId, string otherEndpoint, CancellationToken token)
         {
-            _receiveFromOtherOperatorShards.Signal();
-            _receiveFromOtherOperatorShards.Wait();
+            _startReceivingFromOtherOperatorShards.Signal();
+            _startReceivingFromOtherOperatorShards.Wait();
 
             if (_shardId == otherShardId)
             {
@@ -38,7 +38,6 @@ namespace CRA.ClientLibrary.DataProcessing
 
                     if (!_vertex._cachedDatasets[_shardId].ContainsKey(_vertex._task.InputIds.InputId1))
                     {
-                        Console.WriteLine("Output of subscribe shard ID: " + _shardId);
                         object dataset = CreateDatasetFromStream(stream, _vertex._task.OperationTypes.OutputKeyType,
                                                _vertex._task.OperationTypes.OutputPayloadType, _vertex._task.OperationTypes.OutputDatasetType);
                         _vertex._cachedDatasets[_shardId].Add(_vertex._task.InputIds.InputId1, dataset);
@@ -47,6 +46,9 @@ namespace CRA.ClientLibrary.DataProcessing
                     _vertex._runSubscribeOutput.Signal();
                 }
             }
+
+            _finishReceivingFromOtherOperatorShards.Signal();
+            _finishReceivingFromOtherOperatorShards.Wait();
         }
     }
 }

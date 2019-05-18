@@ -64,6 +64,9 @@ namespace CRA.ClientLibrary
     /// </summary>
     public class DetachedVertex : IDisposable
     {
+
+        public string VertexName { get { return _vertexName; } }
+
         /// <summary>
         /// Connection data
         /// </summary>
@@ -79,6 +82,7 @@ namespace CRA.ClientLibrary
         private string _instanceName;
         private bool _isEphemeralInstance;
 
+   
         /// <summary>
         /// 
         /// </summary>
@@ -140,6 +144,7 @@ namespace CRA.ClientLibrary
             ConnectionData.InputConnections.AddOrUpdate(conn, stream, (c, s1) => { s1?.Dispose(); return stream; });
             return stream;
         }
+
 
         /// <summary>
         /// Create connection stream from local output endpoint to remote input endpoint

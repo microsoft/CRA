@@ -278,61 +278,6 @@ namespace CRA.ClientLibrary.DataProcessing
                 _operatorsTasks = new List<TaskBase>(tasks);
             }
         }
-
-        /*
-        internal void PrepareFinalOperatorsTasks()
-        {
-            string[] operatorsIds = _operatorsIds.ToArray();
-            TaskBase[] tasks = _operatorsTasks.ToArray();
-            if (tasks.Length >= 2)
-            {
-                for (int i = 0; i < operatorsIds.Length - 1; i++)
-                {
-                    List<string> transforms = new List<string>();
-                    List<string> transformsOperations = new List<string>();
-                    List<string> transformsTypes = new List<string>();
-                    List<OperatorInputs> transformsInputs = new List<OperatorInputs>();
-
-                    if (tasks[i + 1].Transforms != null)
-                    {
-                        transforms.AddRange(tasks[i + 1].Transforms);
-                        transformsOperations.AddRange(tasks[i + 1].TransformsOperations);
-                        transformsTypes.AddRange(tasks[i + 1].TransformsTypes);
-                        transformsInputs.AddRange(tasks[i + 1].TransformsInputs);
-                    }
-
-                    IMoveDescriptor secondaryShuffleDescriptor = null;
-                    if (tasks[i + 1].OperationType == OperatorType.Move)
-                    {
-                        transforms.Add(((ShuffleTask)tasks[i + 1]).ShuffleTransforms[0]);
-                        transformsOperations.Add(((ShuffleTask)tasks[i + 1]).ShuffleTransformsOperations[0]);
-                        transformsTypes.Add(((ShuffleTask)tasks[i + 1]).ShuffleTransformsTypes[0]);
-                        transformsInputs.Add(((ShuffleTask)tasks[i + 1]).ShuffleTransformsInputs[0]);
-                        secondaryShuffleDescriptor = ((ShuffleTask)tasks[i + 1]).ShuffleDescriptor;
-                    }
-
-                    if (transforms.Count > 0)
-                    {
-                        tasks[i].Transforms = transforms.ToArray();
-                        tasks[i].TransformsOperations = transformsOperations.ToArray();
-                        tasks[i].TransformsTypes = transformsTypes.ToArray();
-                        tasks[i].TransformsInputs = transformsInputs.ToArray();
-                        tasks[i].SecondaryShuffleDescriptor = secondaryShuffleDescriptor;
-                        tasks[i + 1].ResetTaskTransformations();
-
-                        if (tasks[i].OperationType != OperatorType.Move && tasks[i + 1].OperationType != OperatorType.Move)
-                            UpdateOperatorsSecondaryInputs(operatorsIds[i], operatorsIds[i + 1]);
-                        else if (tasks[i].OperationType != OperatorType.Move && tasks[i + 1].OperationType == OperatorType.Move)
-                            UpdateOperatorsSecondaryInputs(operatorsIds[i], ((ShuffleTask)tasks[i + 1]).MapperVertexName);
-                        else if (tasks[i].OperationType == OperatorType.Move && tasks[i + 1].OperationType != OperatorType.Move)
-                            UpdateOperatorsSecondaryInputs(((ShuffleTask)tasks[i]).ReducerVertexName, operatorsIds[i + 1]);
-                        else
-                            UpdateOperatorsSecondaryInputs(((ShuffleTask)tasks[i]).ReducerVertexName, ((ShuffleTask)tasks[i + 1]).MapperVertexName);
-                    }
-                }
-                _operatorsTasks = new List<TaskBase>(tasks);
-            }
-        }*/
     }
 
     [Serializable, DataContract]

@@ -74,30 +74,6 @@ namespace CRA.ClientLibrary.DataProcessing
             return null;
         }
 
-        /*
-        public static object ApplySplitter<TKeyI1, TPayloadI1, TDatasetI1, TKeyI2, TPayloadI2, TDatasetI2>(
-                object dataset, IMoveDescriptor moveDescriptor, string splitter)
-            where TDatasetI1 : IDataset<TKeyI1, TPayloadI1>
-            where TDatasetI2 : IDataset<TKeyI2, TPayloadI2>
-        {
-            try
-            {
-                if (splitter != null)
-                {
-                    var transformer = (Expression<Func<TDatasetI1, IMoveDescriptor, TDatasetI2[]>>)SerializationHelper.Deserialize(splitter);
-                    var compiledTransformer = transformer.Compile();
-                    return compiledTransformer((TDatasetI1)dataset, moveDescriptor);
-                }
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine("Error: the CRA vertex failed to apply a splitter transform for an error of type " + e.GetType() + ": " + e.ToString());
-            }
-
-            return null;
-        }
-        */
-
         public static object ApplyMerger<TKeyI2, TPayloadI2, TDatasetI2, TKeyO, TPayloadO, TDatasetO>(
                    object[] datasets, IMoveDescriptor moveDescriptor, string merger)
             where TDatasetI2 : IDataset<TKeyI2, TPayloadI2>
@@ -124,33 +100,6 @@ namespace CRA.ClientLibrary.DataProcessing
 
             return null;
         }
-
-        /*
-        public static object ApplyMerger<TKeyI2, TPayloadI2, TDatasetI2, TKeyO, TPayloadO, TDatasetO>(
-                   object[] datasets, IMoveDescriptor moveDescriptor, string merger)
-            where TDatasetI2 : IDataset<TKeyI2, TPayloadI2>
-            where TDatasetO : IDataset<TKeyO, TPayloadO>
-        {
-            try
-            {
-                if (merger != null)
-                {
-                    TDatasetI2[] transientDatasets = new TDatasetI2[datasets.Length];
-                    for (int i = 0; i < transientDatasets.Length; i++)
-                        transientDatasets[i] = (TDatasetI2)datasets[i];
-
-                    var transformer = (Expression<Func<TDatasetI2[], IMoveDescriptor, TDatasetO>>)SerializationHelper.Deserialize(merger);
-                    var compiledTransformer = transformer.Compile();
-                    return compiledTransformer(transientDatasets, moveDescriptor);
-                }
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine("Error: The CRA vertex failed to apply a mergere transform for an error of type " + e.GetType() + " : " + e.ToString());
-            }
-
-            return null;
-        }*/
     }
 
     [DataContract]

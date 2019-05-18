@@ -18,8 +18,8 @@ namespace CRA.ClientLibrary.DataProcessing
 
         public override async Task OperatorOutputToStreamAsync(Stream stream, string otherVertex, int otherShardId, string otherEndpoint, CancellationToken token)
         {
-            _sendToOtherOperatorShards.Signal();  
-            _sendToOtherOperatorShards.Wait();
+            _startSendingToOtherOperatorShards.Signal();  
+            _startSendingToOtherOperatorShards.Wait();
 
             //TODO: Here we are assuming that we are starting from producing directly, and no inputs exist
             //TODO: we are starting running from here, and assuming all deployment has been done before, change in case we have an input
@@ -79,6 +79,9 @@ namespace CRA.ClientLibrary.DataProcessing
                     }
                 }
             }
+
+            _finishSendingToOtherOperatorShards.Signal();
+            _finishSendingToOtherOperatorShards.Wait();
         }
     }
 }

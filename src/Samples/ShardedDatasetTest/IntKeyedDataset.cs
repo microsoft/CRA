@@ -70,7 +70,6 @@ namespace ShardedDatasetTest
                 Array.Reverse(intBytes);
             byte[] result = intBytes;
 
-            Console.WriteLine("Current IntKeyedDataset Shift ToStream: " + _shift);
             stream.WriteAsync(result, 0, result.Length);
         }
 
@@ -83,7 +82,6 @@ namespace ShardedDatasetTest
                 Array.Reverse(intBytes);
             _shift = BitConverter.ToInt32(intBytes, 0);
 
-            Console.WriteLine("Current IntKeyedDataset Shift FromStream: " + _shift);
             return (IDataset<TKey, TPayload>)new IntKeyedDataset<int, int>(_shift);
         }
 

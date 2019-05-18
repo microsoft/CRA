@@ -16,10 +16,13 @@ namespace CRA.ClientLibrary.DataProcessing
 
         public override async Task OperatorInputFromStreamAsync(Stream stream, string otherVertex, int otherShardId, string otherEndpoint, CancellationToken token)
         {
-            _receiveFromOtherOperatorShards.Signal();
-            _receiveFromOtherOperatorShards.Wait();
+            _startReceivingFromOtherOperatorShards.Signal();
+            _startReceivingFromOtherOperatorShards.Wait();
 
             throw new NotImplementedException();
+
+            _finishReceivingFromOtherOperatorShards.Signal();
+            _finishReceivingFromOtherOperatorShards.Wait();
         }
     }
 }

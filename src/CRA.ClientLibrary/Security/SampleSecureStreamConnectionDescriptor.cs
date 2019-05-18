@@ -13,7 +13,6 @@ namespace CRA.ClientLibrary
     {
         public SampleSecureStreamConnectionDescriptor()
         {
-
         }
 
         public static bool ValidateCertificate(

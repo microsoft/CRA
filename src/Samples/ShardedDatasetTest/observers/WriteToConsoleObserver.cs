@@ -6,7 +6,9 @@ namespace ShardedDatasetTest
 {
     public class WriteToConsoleObserver<TKey, TPayload> : IIntKeyedDatasetObserver<TKey, TPayload>
     {
-        public WriteToConsoleObserver() { }
+        public WriteToConsoleObserver()
+        {
+        }
 
         public void ProcessIntKeyedDataset(IntKeyedDataset<TKey, TPayload> source)
         {

@@ -88,26 +88,6 @@ namespace CRA.ClientLibrary.DataProcessing
 
             operatorsTopology.AddOperatorBase(produceTask.OutputId, produceTask);
         }
-        /*
-        private void GenerateProduceTask(ref OperatorsToplogy operatorsTopology)
-        {
-            _shardedDatasetId = typeof(ProducerOperator).Name.ToLower() + Guid.NewGuid().ToString();
-
-            TaskBase produceTask = new ProduceTask(SerializationHelper.Serialize(_producer));
-            produceTask.OperationTypes = TransformUtils.FillBinaryTransformTypes(
-                            typeof(TKey), typeof(TPayload), typeof(TDataset),
-                            typeof(TKey), typeof(TPayload), typeof(TDataset),
-                            typeof(TKey), typeof(TPayload), typeof(TDataset));
-            produceTask.IsRightOperandInput = false;
-            produceTask.InputIds.SetInputId1(_shardedDatasetId);
-            produceTask.InputIds.SetInputId2(_shardedDatasetId);
-            produceTask.OutputId = _shardedDatasetId;
-            produceTask.NextInputIds.SetInputId1(_shardedDatasetId);
-            produceTask.NextInputIds.SetInputId2(_shardedDatasetId);
-            produceTask.PrepareTaskTransformations(new OperatorTransforms());
-
-            operatorsTopology.AddOperatorBase(produceTask.OutputId, produceTask);
-        }*/
 
         public override Task Subscribe<TDatasetObserver>(Expression<Func<TDatasetObserver>> observer)
         {

@@ -61,17 +61,7 @@ namespace CRA.ClientLibrary
             }
             return assembly;
         }
-        /*
-        private static Assembly Resolver(object sender, ResolveEventArgs arguments)
-        {
-            byte[] assemblyBytes;
-            if (assemblies.TryGetValue(arguments.Name, out assemblyBytes))
-            {
-                   return Assembly.Load(assemblyBytes);
-            }
-            return null;
-        }
-        */
+
         private static bool IsAssemblyLoaded(string fullName, out Assembly lAssembly)
         {
             Assembly[] assemblies = AppDomain.CurrentDomain.GetAssemblies();

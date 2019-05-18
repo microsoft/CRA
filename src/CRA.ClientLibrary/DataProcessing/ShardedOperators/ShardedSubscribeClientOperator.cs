@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 
 namespace CRA.ClientLibrary.DataProcessing
 {
-    public class ShardedSubscribeOperator : ShardedOperatorBase
+    public class ShardedSubscribeClientOperator : ShardedOperatorBase
     {
         internal CountdownEvent _deploySubscribeInput;
         internal CountdownEvent _deploySubscribeOutput;
@@ -20,7 +20,9 @@ namespace CRA.ClientLibrary.DataProcessing
 
         internal string _outputObserver;
 
-        public ShardedSubscribeOperator() : base()
+        internal int _numShardsConnectingTo;
+
+        public ShardedSubscribeClientOperator() : base()
         {
         }
 
@@ -28,21 +30,26 @@ namespace CRA.ClientLibrary.DataProcessing
         {
             _hasSplittedOutput = HasSplittedOutput();
 
+            _numShardsConnectingTo = 0;
+            var instancesMap = _task.DeployDescriptor.InstancesMap();
+            foreach (var entry in instancesMap.Keys)
+                _numShardsConnectingTo += instancesMap[entry];
+ 
             _deploySubscribeInput = new CountdownEvent(1);
-            _deploySubscribeOutput = new CountdownEvent(1);
+            _deploySubscribeOutput = new CountdownEvent(_numShardsConnectingTo);
 
             _runSubscribeInput = new CountdownEvent(1);
-            _runSubscribeOutput = new CountdownEvent(1);
+            _runSubscribeOutput = new CountdownEvent(_numShardsConnectingTo);
 
             string toEndpoint = GetEndpointNameForVertex(VertexName.Split('$')[0], _toFromConnections);
             /*var fromTuple = _toFromConnections[new Tuple<string, string>(VertexName.Split('$')[0], toEndpoint)];
             if (fromTuple.Item3)
                 throw new NotImplementedException("Shared memory endpoints are not supported yet!!");
             else*/
-                AddAsyncInputEndpoint(toEndpoint, new ShardedSubscribeInput(this, shardId, shardingInfo.AllShards.Length, toEndpoint));
+            AddAsyncInputEndpoint(toEndpoint, new ShardedSubscribeClientInput(this, shardId, shardingInfo.AllShards.Length, toEndpoint));
 
             string fromEndpoint = GetEndpointNameForVertex(VertexName.Split('$')[0], _fromToConnections);
-            AddAsyncOutputEndpoint(fromEndpoint, new ShardedSubscribeOutput(this, shardId, shardingInfo.AllShards.Length, fromEndpoint));
+            AddAsyncOutputEndpoint(fromEndpoint, new ShardedSubscribeClientOutput(this, shardId, shardingInfo.AllShards.Length, fromEndpoint));
         }
 
         internal override bool HasSplittedOutput()

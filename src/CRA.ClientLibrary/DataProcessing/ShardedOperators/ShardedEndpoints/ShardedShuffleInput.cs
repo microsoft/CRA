@@ -24,8 +24,8 @@ namespace CRA.ClientLibrary.DataProcessing
 
         public override async Task OperatorInputFromStreamAsync(Stream stream, string otherVertex, int otherShardId, string otherEndpoint, CancellationToken token)
         {
-            _receiveFromOtherOperatorShards.Signal();
-            _receiveFromOtherOperatorShards.Wait();
+            _startReceivingFromOtherOperatorShards.Signal();
+            _startReceivingFromOtherOperatorShards.Wait();
 
             // Start deploying
             _vertex._deployShuffleInput.Wait();
@@ -68,6 +68,9 @@ namespace CRA.ClientLibrary.DataProcessing
 
                 _vertex._runShuffleOutput.Signal();
             }
+
+            _finishReceivingFromOtherOperatorShards.Signal();
+            _finishReceivingFromOtherOperatorShards.Wait();
         }
 
         private object ApplyMergerOnInputs(ShuffleTask shuffleTask, BinaryOperatorTypes mergeTypes, object[] inputSplitDatasets)

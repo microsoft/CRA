@@ -43,8 +43,6 @@
                 vtEntries.Add(new ShardedVertexInfo(vt.VertexName, vt.EpochId, vt.AllInstances, vt.AllShards, vt.AddedShards, vt.RemovedShards, vt.ShardLocator));
 
             return vtEntries;
-            //return (await cloudTable.ExecuteQueryAsync(query))
-              //  .Select(vt => (ShardedVertexInfo)vt);
         }
 
         public async Task<ShardedVertexInfo> GetLatestEntryForVertex(string vertexName)

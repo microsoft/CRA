@@ -18,8 +18,8 @@ namespace CRA.ClientLibrary.DataProcessing
 
         public override async Task OperatorOutputToStreamAsync(Stream stream, string otherVertex, int otherShardId, string otherEndpoint, CancellationToken token)
         {
-            _sendToOtherOperatorShards.Signal();
-            _sendToOtherOperatorShards.Wait();
+            _startSendingToOtherOperatorShards.Signal();
+            _startSendingToOtherOperatorShards.Wait();
 
             if (!_vertex._hasSplittedOutput)
             {
@@ -75,6 +75,9 @@ namespace CRA.ClientLibrary.DataProcessing
                     }
                 }
             }
+
+            _finishSendingToOtherOperatorShards.Signal();
+            _finishSendingToOtherOperatorShards.Wait();
         }
     }
 }

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq.Expressions;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -14,7 +15,8 @@ namespace CRA.ClientLibrary.DataProcessing
 
         protected byte[] _deployMsgBuffer;
         protected byte[] _runMsgBuffer;
-        protected CountdownEvent _sendToOtherOperatorShards;
+        protected CountdownEvent _startSendingToOtherOperatorShards;
+        protected CountdownEvent _finishSendingToOtherOperatorShards;
 
         public ShardedOperatorOutputBase(int shardId, int numOtherOperatorShards, string endpointName)
         {
@@ -24,7 +26,8 @@ namespace CRA.ClientLibrary.DataProcessing
             _deployMsgBuffer = new byte[Encoding.ASCII.GetBytes("DEPLOY").Length];
             _runMsgBuffer = new byte[Encoding.ASCII.GetBytes("RUN").Length];
 
-            _sendToOtherOperatorShards = new CountdownEvent(numOtherOperatorShards);
+            _startSendingToOtherOperatorShards = new CountdownEvent(numOtherOperatorShards);
+            _finishSendingToOtherOperatorShards = new CountdownEvent(numOtherOperatorShards);
         }
 
         public override void Dispose()
@@ -51,5 +54,16 @@ namespace CRA.ClientLibrary.DataProcessing
         {
             ((TDataset)dataset).ToStream(stream);
         }
+
+        public void SubscribeObserver<TKey, TPayload, TDataset>(object dataset, string observerExpression)
+             where TDataset : IDataset<TKey, TPayload>
+        {
+            Expression observer = SerializationHelper.Deserialize(observerExpression);
+            Delegate compiledObserver = Expression.Lambda(observer).Compile();
+            Delegate observerConstructor = (Delegate)compiledObserver.DynamicInvoke();
+            object observerObject = observerConstructor.DynamicInvoke();
+            ((TDataset)dataset).Subscribe(observerObject);
+        }
+        
     }
 }

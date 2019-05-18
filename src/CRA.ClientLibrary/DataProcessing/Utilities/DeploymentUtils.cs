@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.Serialization;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace CRA.ClientLibrary.DataProcessing
@@ -163,32 +164,6 @@ namespace CRA.ClientLibrary.DataProcessing
             }
         }
 
-        public static async Task<bool> DeployProduceTaskOld(CRAClientLibrary client, ProduceTask task)
-        {
-            try { 
-                await client
-                    .DefineVertex(
-                        typeof(ProducerOperator).Name.ToLower(),
-                        () => new ProducerOperator(client.DataProvider));
-
-                CRAErrorCode status = client.InstantiateShardedVertex(
-                    task.OutputId,
-                    typeof(ProducerOperator).Name.ToLower(),
-                    task,
-                    task.DeployDescriptor.InstancesMap());
-
-                if (status == CRAErrorCode.Success)
-                    return true;
-                else
-                    return false;
-            }
-            catch(Exception e)
-            {
-                Console.WriteLine("Error in deploying a sharded CRA produce task. Please, double check your task configurations: " + e.ToString());
-                return false;
-            }
-        }
-
         public static async Task<bool> DeploySubscribeTask(CRAClientLibrary client, SubscribeTask task, OperatorsToplogy topology)
         {
             try
@@ -213,37 +188,6 @@ namespace CRA.ClientLibrary.DataProcessing
                 return false;
             }
         }
-
-        public static async Task<bool> DeploySubscribeTaskOld(
-            CRAClientLibrary client,
-            SubscribeTask task,
-            OperatorsToplogy topology)
-        {
-            try
-            {
-                await client.DefineVertex(
-                    typeof(SubscribeOperator).Name.ToLower(),
-                    () => new SubscribeOperator(client.DataProvider));
-
-                CRAErrorCode status =  client.InstantiateShardedVertex(task.OutputId, typeof(SubscribeOperator).Name.ToLower(),
-                                            task, task.DeployDescriptor.InstancesMap());
-                if (status == CRAErrorCode.Success)
-                {
-                    foreach (string fromInputId in task.EndpointsDescriptor.FromInputs.Keys)
-                        client.ConnectShardedVertices(task.VerticesConnectionsMap[fromInputId  + task.OutputId]);
-
-                    return true;
-                }
-                else
-                    return false;
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine("Error in deploying a sharded CRA Subscribe task. Please, double check your task configurations: " + e.ToString());
-                return false;
-            }
-        }
-
 
         private static async Task<bool> DeployShuffleReduceTask(
             CRAClientLibrary client,
@@ -278,92 +222,39 @@ namespace CRA.ClientLibrary.DataProcessing
             }
         }
 
-        private static async Task<bool> DeployShuffleReduceTaskOld(
+        public static async Task<bool> DeployClientTerminal(
             CRAClientLibrary client,
-            ShuffleTask task,
+            string workerName,
+            ClientTerminalTask task,
             OperatorsToplogy topology)
         {
             try
             {
-                await client.DefineVertex(
-                    typeof(ShuffleOperator).Name.ToLower(),
-                    () => new ShuffleOperator(client.DataProvider));
+                bool result = true;
 
-                var status =  client.InstantiateShardedVertex(
-                    task.ReducerVertexName,
-                    typeof(ShuffleOperator).Name.ToLower(),
-                    task,
-                    task.DeployDescriptor.InstancesMap());
+                client.DisableArtifactUploading();
+
+                await client.DefineVertex(typeof(ShardedSubscribeClientOperator).Name.ToLower(), () => new ShardedSubscribeClientOperator());
+                var status = await client.InstantiateVertex(new string[] {workerName}, task.OutputId, typeof(ShardedSubscribeClientOperator).Name.ToLower(), task, 1);
 
                 if (status == CRAErrorCode.Success)
                 {
-                    foreach (string fromInputId in task.SecondaryEndpointsDescriptor.FromInputs.Keys)
-                        client.ConnectShardedVertices(task.VerticesConnectionsMap[fromInputId + task.OutputId]);
+                    foreach (string fromInputId in task.EndpointsDescriptor.FromInputs.Keys)
+                    {
+                        string outputEndpoint = OperatorUtils.PrepareOutputEndpointIdForOperator(
+                                        task.OutputId, topology.OperatorsEndpointsDescriptors[fromInputId]);
+                        string inputEndpoint = OperatorUtils.PrepareInputEndpointIdForOperator(fromInputId, task.EndpointsDescriptor);
 
-                    var fromInput = task.EndpointsDescriptor.FromInputs.First().Key;
-                    var newFromInputId = fromInput.Substring(0, fromInput.Length - 1);
-                    client.ConnectShardedVertices(task.VerticesConnectionsMap[newFromInputId + task.ReducerVertexName]);
-
-                    return true;
+                        await client.Connect(fromInputId, outputEndpoint, task.OutputId, inputEndpoint);
+                    }
+                    result = true;
                 }
                 else
-                    return false;
-            }
-            catch(Exception)
-            {
-                Console.WriteLine("Error in deploying a sharded CRA shuffle mapper task. Please, double check your task configurations");
-                return false;
-            }
-        }
+                    result = false;
 
-        public static async Task<bool> DeployClientTerminal(
-            CRAClientLibrary client,
-            ClientTerminalTask task,
-            DetachedVertex clientTerminal,
-            OperatorsToplogy topology)
-        {
-            try
-            {
-                foreach (string fromInputId in task.EndpointsDescriptor.FromInputs.Keys)
-                {
-                    string inputEndpoint = OperatorUtils.PrepareInputEndpointIdForOperator(fromInputId, task.EndpointsDescriptor);
-                    string outputEndpoint = OperatorUtils.PrepareOutputEndpointIdForOperator(
-                                    task.OutputId, topology.OperatorsEndpointsDescriptors[fromInputId]);
-                    int shardsCount = client.CountVertexShards(task.DeployDescriptor.InstancesMap());
-                    for (int i = 0; i < shardsCount; i++)
-                            await clientTerminal.FromRemoteOutputEndpointStream(inputEndpoint + i, fromInputId + "$" + i, outputEndpoint);
-                }
-                return true;
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine("Error in deploying a CRA client terminal vertex. Please, double check your task configurations: " + e.ToString());
-                return false;
-            }
-        }
+                client.EnableArtifactUploading();
 
-        public static async Task<bool> DeployClientTerminalOld(
-            CRAClientLibrary client,
-            ClientTerminalTask task,
-            DetachedVertex clientTerminal,
-            OperatorsToplogy topology)
-        {
-            try
-            {
-                foreach (string fromInputId in task.EndpointsDescriptor.FromInputs.Keys)
-                {
-                    string[] inputEndpoints = OperatorUtils.PrepareInputEndpointsIdsForOperator(fromInputId, task.EndpointsDescriptor);
-                    string[] outputEndpoints = OperatorUtils.PrepareOutputEndpointsIdsForOperator(
-                                    task.OutputId, topology.OperatorsEndpointsDescriptors[fromInputId]);
-                    int shardsCount = client.CountVertexShards(task.DeployDescriptor.InstancesMap());
-                    for (int i = 0; i < shardsCount; i++)
-                        for (int j = 0; j < inputEndpoints.Length; j++)
-                            await clientTerminal.FromRemoteOutputEndpointStream(
-                                inputEndpoints[j] + i,
-                                fromInputId + "$" + i,
-                                outputEndpoints[j]);
-                }
-                return true;
+                return result;
             }
             catch (Exception e)
             {
@@ -392,31 +283,6 @@ namespace CRA.ClientLibrary.DataProcessing
             return fromToConnections;
         }
 
-        /*
-        private static List<ConnectionInfoWithLocality> PrepareFlatConnectionsMap(CRAClientLibrary client, int shardsCount, 
-                            string fromVertex, OperatorEndpointsDescriptor fromVertexDescriptor, ConcurrentDictionary<string, int> fromVertexShards,
-                            string toVertex, OperatorEndpointsDescriptor toVertexDescriptor, ConcurrentDictionary<string, int> toVertexShards)
-        {
-            List<ConnectionInfoWithLocality> fromToConnections = new List<ConnectionInfoWithLocality>();
-            string[] outputs = OperatorUtils.PrepareOutputEndpointsIdsForOperator(
-                                                            toVertex, fromVertexDescriptor);
-            string[] inputs = OperatorUtils.PrepareInputEndpointsIdsForOperator(
-                                                            fromVertex, toVertexDescriptor);
-            for (int i = 0; i < shardsCount; i++)
-            {
-                string currentFromVertex = fromVertex + "$" + i;
-                string currentToVertex = toVertex + "$" + i;
-                bool hasSameCRAInstances = client.AreTwoVerticessOnSameCRAInstance(currentFromVertex, fromVertexShards, currentToVertex, toVertexShards);
-                for (int j = 0; j < outputs.Length; j++)
-                {
-                    var fromVertexTuple = new Tuple<string, string>(currentFromVertex, outputs[j]);
-                    var toVertexTuple = new Tuple<string, string>(currentToVertex, inputs[j]);
-                    fromToConnections.Add(new ConnectionInfoWithLocality(currentFromVertex, outputs[j], currentToVertex, inputs[j], hasSameCRAInstances));
-                }
-            }
-            return fromToConnections;
-        }*/
-
         private static List<ConnectionInfoWithLocality> PrepareShuffleConnectionsMap(CRAClientLibrary client, int shardsCount, 
                             string fromVertex, OperatorEndpointsDescriptor fromVertexDescriptor, ConcurrentDictionary<string, int> fromVertexShards,
                             string toVertex, OperatorEndpointsDescriptor toVertexDescriptor, ConcurrentDictionary<string, int> toVertexShards)
@@ -440,31 +306,6 @@ namespace CRA.ClientLibrary.DataProcessing
             return fromToConnections; 
         }
 
-        /*
-        private static List<ConnectionInfoWithLocality> PrepareShuffleConnectionsMap(CRAClientLibrary client, int shardsCount,
-                    string fromVertex, OperatorEndpointsDescriptor fromVertexDescriptor, ConcurrentDictionary<string, int> fromVertexShards,
-                    string toVertex, OperatorEndpointsDescriptor toVertexDescriptor, ConcurrentDictionary<string, int> toVertexShards)
-        {
-            List<ConnectionInfoWithLocality> fromToConnections = new List<ConnectionInfoWithLocality>();
-            for (int i = 0; i < shardsCount; i++)
-            {
-                for (int j = 0; j < shardsCount; j++)
-                {
-                    string currentFromVertex = fromVertex + "$" + i;
-                    string currentToVertex = toVertex + "$" + j;
-                    string[] currentOutputs = OperatorUtils.PrepareOutputEndpointsIdsForOperator(
-                                                                toVertex + j, fromVertexDescriptor);
-                    string[] currentInputs = OperatorUtils.PrepareInputEndpointsIdsForOperator(
-                                                                fromVertex + i, toVertexDescriptor);
-                    bool hasSameCRAInstances = client.AreTwoVerticessOnSameCRAInstance(currentFromVertex, fromVertexShards, currentToVertex, toVertexShards);
-                    for (int k = 0; k < currentOutputs.Length; k++)
-                        fromToConnections.Add(new ConnectionInfoWithLocality(currentFromVertex, currentOutputs[k], currentToVertex, currentInputs[k], hasSameCRAInstances));
-                }
-            }
-
-            return fromToConnections;
-        }
-        */
         private static string[] CreateInstancesNames(ConcurrentDictionary<string, int> instancesMap)
         {
             var keys = instancesMap.Keys;

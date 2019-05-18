@@ -86,29 +86,6 @@ namespace CRA.ClientLibrary.DataProcessing
             return null;
         }
 
-        /*
-        public static object ApplyUnaryTransformer<TKeyI, TPayloadI, TDatasetI, TKeyO, TPayloadO, TDatasetO>(object dataset, string unaryTransformer)
-            where TDatasetI : IDataset<TKeyI, TPayloadI>
-            where TDatasetO : IDataset<TKeyO, TPayloadO>
-        {
-            try
-            {
-                if (unaryTransformer != null)
-                { 
-                    var transformer = (Expression<Func<TDatasetI, TDatasetO>>) SerializationHelper.Deserialize(unaryTransformer);
-                    var compiledTransformer = transformer.Compile();
-                    return compiledTransformer((TDatasetI)dataset);
-                }
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine("Error: The CRA vertex failed to apply an unary transformer for an error of type " + e.GetType() + ": " + e.ToString());
-            }
-
-            return null;
-        }*/
-
-
         public static object ApplyBinaryTransformer<TKeyI1, TPayloadI1, TDatasetI1,
                     TKeyI2, TPayloadI2, TDatasetI2, TKeyO, TPayloadO, TDatasetO>(object dataset1, object dataset2, string binaryTransformer)
             where TDatasetI1 : IDataset<TKeyI1, TPayloadI1>
@@ -132,31 +109,6 @@ namespace CRA.ClientLibrary.DataProcessing
 
             return null;
         }
-
-        /*
-        public static object ApplyBinaryTransformer<TKeyI1, TPayloadI1, TDatasetI1, 
-                    TKeyI2, TPayloadI2, TDatasetI2, TKeyO, TPayloadO, TDatasetO>(object dataset1, object dataset2, string binaryTransformer)
-            where TDatasetI1 : IDataset<TKeyI1, TPayloadI1>
-            where TDatasetI2 : IDataset<TKeyI2, TPayloadI2>
-            where TDatasetO : IDataset<TKeyO, TPayloadO>
-        {
-            try
-            {
-                if (binaryTransformer != null)
-                {
-                    var transformer = (Expression<Func<TDatasetI1, TDatasetI2, TDatasetO>>) SerializationHelper.Deserialize(binaryTransformer);
-                    var compiledTransformer = transformer.Compile();
-                    return compiledTransformer((TDatasetI1)dataset1, (TDatasetI2)dataset2);
-                }
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine("Error: The CRA vertex failed to apply a binary transformer for an error of type " + e.GetType() + ": " + e.ToString());
-            }
-
-            return null;
-        }
-        */
         
         public static void PrepareTransformInputs(OperatorInputs transformInputInfo, ref Object dataset1, ref string dataset1Id, 
             ref Object dataset2, ref string dataset2Id, Dictionary<string, object> cachedDatasets)

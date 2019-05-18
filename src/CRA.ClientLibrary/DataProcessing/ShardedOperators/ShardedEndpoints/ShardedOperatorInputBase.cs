@@ -16,7 +16,8 @@ namespace CRA.ClientLibrary.DataProcessing
         protected byte[] _deployMsgBuffer;
         protected byte[] _runMsgBuffer;
 
-        protected CountdownEvent _receiveFromOtherOperatorShards;
+        protected CountdownEvent _startReceivingFromOtherOperatorShards;
+        protected CountdownEvent _finishReceivingFromOtherOperatorShards;
 
         public ShardedOperatorInputBase(int shardId, int numOtherOperatorShards, string endpointName)
         {
@@ -29,7 +30,8 @@ namespace CRA.ClientLibrary.DataProcessing
             _runMsgBuffer = new byte[Encoding.ASCII.GetBytes("RUN").Length];
             _runMsgBuffer = Encoding.ASCII.GetBytes("RUN");
 
-            _receiveFromOtherOperatorShards = new CountdownEvent(numOtherOperatorShards);
+            _startReceivingFromOtherOperatorShards = new CountdownEvent(numOtherOperatorShards);
+            _finishReceivingFromOtherOperatorShards = new CountdownEvent(numOtherOperatorShards);
         }
 
         public override void Dispose()

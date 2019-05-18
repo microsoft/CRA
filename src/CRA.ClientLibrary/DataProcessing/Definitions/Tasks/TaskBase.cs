@@ -47,10 +47,8 @@ namespace CRA.ClientLibrary.DataProcessing
         [DataMember]
         internal OperatorInputs[] TransformsInputs { get; set; }
 
-
         [DataMember]
         internal IMoveDescriptor SecondaryShuffleDescriptor{ get; set; }
-
 
         [DataMember]
         internal IDeployDescriptor _deployDescriptor;
