@@ -2,7 +2,10 @@
 
 Common Runtime for Applications (CRA) is a software layer (library) that makes it easy to create and deploy distributed dataflow-style applications on top of resource managers such as Kubernetes, YARN, and stand-alone cluster execution. Currently, we support stand-alone execution (just deploy an .exe on every machine in your cluster) as well as execution in a Kubernetes/Docker environment.
 
-CRA has been used to build both offline and streaming analytics platforms such as [Quill](https://www.microsoft.com/en-us/research/wp-content/uploads/2016/08/quill-tr-2016.pdf) and online microservice fabrics such as [Ambrosia](https://github.com/Microsoft/AMBROSIA/). Learn more about CRA in out technical report, published [here](https://www.microsoft.com/en-us/research/publication/cra-a-common-runtime-for-applications/).
+CRA has been used to build both offline and streaming analytics platforms such as [Quill](https://www.microsoft.com/en-us/research/wp-content/uploads/2016/08/quill-tr-2016.pdf) and online microservice fabrics such as [Ambrosia](https://github.com/Microsoft/AMBROSIA/). Learn more about CRA here:
+
+* A [short paper](https://badrish.net/papers/cra-icde19-short.pdf) which appeared at the ICDE 2019 conference
+* Our [technical report](https://badrish.net/papers/cra-tr.pdf) has more details.
 
 After you clone the source code, check out the wiki at https://github.com/Microsoft/CRA/wiki for instruction on building CRA and running your first sample distributed application - either locally or in a Kubernetes (Windows) cluster using a Docker image of CRA. We have provided detailed step-by-step instructions for accomplishing this in the wiki. We show how to do this on [Azure Container Service](https://azure.microsoft.com/en-us/services/container-service/) (ACS), but CRA should work on any other Kubernetes cluster as well. 
 
