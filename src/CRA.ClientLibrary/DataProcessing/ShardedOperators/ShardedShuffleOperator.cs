@@ -24,47 +24,75 @@ namespace CRA.ClientLibrary.DataProcessing
         internal CountdownEvent _runShuffleInput;  
         internal CountdownEvent _runShuffleOutput;
 
+        internal Dictionary<string, CountdownEvent> _startCreatingSecondaryDatasets;
+        internal Dictionary<string, CountdownEvent> _finishCreatingSecondaryDatasets;
+        internal Dictionary<string, BinaryOperatorTypes> _binaryOperatorTypes;
+
         public ShardedShuffleOperator() : base()
         {
             _inputSplitDatasets = new Dictionary<int, object[]>();
+
+            _startCreatingSecondaryDatasets = new Dictionary<string, CountdownEvent>();
+            _finishCreatingSecondaryDatasets = new Dictionary<string, CountdownEvent>();
+            _binaryOperatorTypes = new Dictionary<string, BinaryOperatorTypes>();
         }
 
         internal override void InitializeOperator(int shardId, ShardingInfo shardingInfo)
         {
             _hasSplittedOutput = HasSplittedOutput();
+            string[] toEndpoints = GetEndpointNamesForVertex(VertexName.Split('$')[0], _toFromConnections);
+            string[] fromEndpoints = GetEndpointNamesForVertex(VertexName.Split('$')[0], _fromToConnections);
 
+            int secondaryOutputsCount = 0;
+            int ordinaryOutputSCount = 0;
+            foreach (var fromEndpoint in fromEndpoints)
+            {
+                var toTuple = _fromToConnections[new Tuple<string, string>(VertexName.Split('$')[0], fromEndpoint)];
+                if (toTuple.Item4)
+                    secondaryOutputsCount++;
+                else
+                    ordinaryOutputSCount++;
+            }
+            int deployShuffleInputCount = secondaryOutputsCount;
             if (_hasSplittedOutput)
-            {
-                _deployShuffleInput = new CountdownEvent(shardingInfo.AllShards.Length);
-                _runShuffleInput = new CountdownEvent(shardingInfo.AllShards.Length);
-            }
+                deployShuffleInputCount += shardingInfo.AllShards.Length;
             else
-            {
-                _deployShuffleInput = new CountdownEvent(1);
-                _runShuffleInput = new CountdownEvent(1);
-            }
+                deployShuffleInputCount += ordinaryOutputSCount;
+            _deployShuffleInput = new CountdownEvent(deployShuffleInputCount);
+            _runShuffleInput = new CountdownEvent(deployShuffleInputCount);
 
-            _deployShuffleOutput = new CountdownEvent(shardingInfo.AllShards.Length);
-            _runShuffleOutput = new CountdownEvent(shardingInfo.AllShards.Length);
+            int secondaryInputsCount = 0;
+            foreach (var toEndpoint in toEndpoints)
+            {
+                var fromTuple = _toFromConnections[new Tuple<string, string>(VertexName.Split('$')[0], toEndpoint)];
+                if (fromTuple.Item4) secondaryInputsCount++;
+            }
+            _deployShuffleOutput = new CountdownEvent(shardingInfo.AllShards.Length + secondaryInputsCount);
+            _runShuffleOutput = new CountdownEvent(shardingInfo.AllShards.Length + secondaryInputsCount);
 
             _inputSplitDatasets[shardId] = new object[shardingInfo.AllShards.Length];
 
-            //TODO: check for secondary input how to get it
+            foreach (var toEndpoint in toEndpoints)
+            {
+                var fromTuple = _toFromConnections[new Tuple<string, string>(VertexName.Split('$')[0], toEndpoint)];
+                if (!fromTuple.Item4)
+                    AddAsyncInputEndpoint(toEndpoint, new ShardedShuffleInput(this, shardId, shardingInfo.AllShards.Length, toEndpoint));
+                else
+                {
+                    _startCreatingSecondaryDatasets[fromTuple.Item1] = new CountdownEvent(1);
+                    _finishCreatingSecondaryDatasets[fromTuple.Item1] = new CountdownEvent(1);
+                    AddAsyncInputEndpoint(toEndpoint, new ShardedShuffleSecondaryInput(this, shardId, shardingInfo.AllShards.Length, toEndpoint));
+                }
+            }
 
-            string toEndpoint = GetEndpointNameForVertex(VertexName.Split('$')[0], _toFromConnections);
-            /*var fromTuple = _toFromConnections[new Tuple<string, string>(VertexName.Split('$')[0], toEndpoint)];
-            if (fromTuple.Item3)
-                throw new NotImplementedException("Shared memory endpoints are not supported yet!!");
-            else*/
-            AddAsyncInputEndpoint(toEndpoint, new ShardedShuffleInput(this, shardId, shardingInfo.AllShards.Length, toEndpoint));
-
-
-            string fromEndpoint = GetEndpointNameForVertex(VertexName.Split('$')[0], _fromToConnections);
-            /*var toTuple = _fromToConnections[new Tuple<string, string>(VertexName.Split('$')[0], fromEndpoint)];
-            if (toTuple.Item3)
-                throw new NotImplementedException("Shared memory endpoints are not supported yet!!");
-            else*/
-            AddAsyncOutputEndpoint(fromEndpoint, new ShardedShuffleOutput(this, shardId, shardingInfo.AllShards.Length, fromEndpoint));
+            foreach (var fromEndpoint in fromEndpoints)
+            {
+                var toTuple = _fromToConnections[new Tuple<string, string>(VertexName.Split('$')[0], fromEndpoint)];
+                if (!toTuple.Item4)
+                    AddAsyncOutputEndpoint(fromEndpoint, new ShardedShuffleOutput(this, shardId, shardingInfo.AllShards.Length, fromEndpoint));
+                else
+                    AddAsyncOutputEndpoint(fromEndpoint, new ShardedShuffleSecondaryOutput(this, shardId, shardingInfo.AllShards.Length, fromEndpoint));
+            }
         }
 
         internal override bool HasSplittedOutput()

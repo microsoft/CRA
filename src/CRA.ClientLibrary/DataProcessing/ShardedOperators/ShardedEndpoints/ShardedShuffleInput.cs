@@ -122,21 +122,19 @@ namespace CRA.ClientLibrary.DataProcessing
                     }
                     else if (transformType == OperatorType.BinaryTransform.ToString())
                     {
-                        //TODO: to be revisited
-                        /*
                         BinaryOperatorTypes binaryTransformTypes = new BinaryOperatorTypes();
                         binaryTransformTypes.FromString(_vertex._task.TransformsTypes[i]);
                         if (dataset1Id == "$" && dataset1 == null)
-                            throw new InvalidOperationException();
+                                       throw new InvalidOperationException();
                         if (dataset2Id == "$" && dataset2 == null)
                         {
                             dataset2Id = _vertex._task.TransformsInputs[i].InputId2;
-                            dataset2 = CreateDatasetFromSecondaryInput(dataset2Id, binaryTransformTypes.SecondaryKeyType,
-                                                                binaryTransformTypes.SecondaryPayloadType, binaryTransformTypes.SecondaryDatasetType);
-                            if (!_vertex._cachedDatasets[_shardId].ContainsKey(dataset2Id))
-                                _vertex._cachedDatasets[_shardId].Add(dataset2Id, dataset2);
-                            else
-                                _vertex._cachedDatasets[_shardId][dataset2Id] = dataset2;
+                            _vertex._binaryOperatorTypes[dataset2Id] = binaryTransformTypes;
+
+                            _vertex._startCreatingSecondaryDatasets[dataset2Id].Signal();
+                            _vertex._finishCreatingSecondaryDatasets[dataset2Id].Wait();
+
+                            dataset2 = _vertex._cachedDatasets[_shardId][dataset2Id];
                         }
 
                         method = typeof(TransformUtils).GetMethod("ApplyBinaryTransformer");
@@ -152,7 +150,7 @@ namespace CRA.ClientLibrary.DataProcessing
                         _vertex._outputKeyType = binaryTransformTypes.OutputKeyType;
                         _vertex._outputPayloadType = binaryTransformTypes.OutputPayloadType;
                         _vertex._outputDatasetType = binaryTransformTypes.OutputDatasetType;
-                        */
+                        
                     }
                     else if (transformType == OperatorType.MoveSplit.ToString())
                     {

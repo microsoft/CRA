@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using CRA.ClientLibrary.DataProvider;
 using Remote.Linq;
 using Remote.Linq.ExpressionVisitors;
+using System.Threading;
 
 namespace CRA.ClientLibrary.DataProcessing
 {
@@ -16,31 +17,95 @@ namespace CRA.ClientLibrary.DataProcessing
         internal Type _outputDatasetType;
         internal string _outputId;
 
+        internal CountdownEvent _deployProduceOutput;
+        internal CountdownEvent _runProduceOutput;
+
+        internal CountdownEvent _deployProduceInput;
+        internal CountdownEvent _runProduceInput;
+
+        internal CountdownEvent _continueAfterTransformation;
+
+        internal Dictionary<string, CountdownEvent> _startCreatingSecondaryDatasets;
+        internal Dictionary<string, CountdownEvent> _finishCreatingSecondaryDatasets;
+
+        internal Dictionary<string, BinaryOperatorTypes> _binaryOperatorTypes;
+
+        internal bool _isTransformationsApplied = false;
+        internal object _transformationLock = new object();
+
         public ShardedProducerOperator() : base()
         {
+            _startCreatingSecondaryDatasets = new Dictionary<string, CountdownEvent>();
+            _finishCreatingSecondaryDatasets = new Dictionary<string, CountdownEvent>();
+
+            _binaryOperatorTypes = new Dictionary<string, BinaryOperatorTypes>();
         }
 
         internal override void InitializeOperator(int shardId, ShardingInfo shardingInfo)
         {
             _hasSplittedOutput = HasSplittedOutput();
+            string[] toEndpoints = GetEndpointNamesForVertex(VertexName.Split('$')[0], _toFromConnections);
+            string[] fromEndpoints = GetEndpointNamesForVertex(VertexName.Split('$')[0], _fromToConnections);
 
-            string toEndpoint = GetEndpointNameForVertex(VertexName.Split('$')[0], _toFromConnections);
-            if (toEndpoint != "") {
-                /*var fromTuple = _toFromConnections[new Tuple<string, string>(VertexName.Split('$')[0], toEndpoint)];
-                if (fromTuple.Item3)
-                    throw new NotImplementedException("Shared memory endpoints are not supported yet!!");
-                else*/
-                AddAsyncInputEndpoint(toEndpoint, new ShardedProducerInput(this, shardId, shardingInfo.AllShards.Length, toEndpoint));
+            int secondaryOutputsCount = 0;
+            int ordinaryOutputSCount = 0;
+            foreach (var fromEndpoint in fromEndpoints)
+            {
+                var toTuple = _fromToConnections[new Tuple<string, string>(VertexName.Split('$')[0], fromEndpoint)];
+                if (toTuple.Item4)
+                    secondaryOutputsCount++;
+                else
+                    ordinaryOutputSCount++;
+            }
+            int deployProduceInputCount = secondaryOutputsCount;
+            if (_hasSplittedOutput)
+                deployProduceInputCount += shardingInfo.AllShards.Length;
+            else
+                deployProduceInputCount += ordinaryOutputSCount;
+            _deployProduceInput = new CountdownEvent(deployProduceInputCount);
+            _runProduceInput = new CountdownEvent(deployProduceInputCount);
+
+            int secondaryInputsCount = 0;
+            foreach (var toEndpoint in toEndpoints)
+            {
+                var fromTuple = _toFromConnections[new Tuple<string, string>(VertexName.Split('$')[0], toEndpoint)];
+                if (fromTuple.Item4) secondaryInputsCount++;
+            }
+            _deployProduceOutput = new CountdownEvent(secondaryInputsCount);
+            _runProduceOutput = new CountdownEvent(secondaryInputsCount);
+
+            _continueAfterTransformation = new CountdownEvent(1);
+
+            if (secondaryInputsCount > 0) _hasSecondaryInput = true;
+
+            foreach (var toEndpoint in toEndpoints)
+            {
+                var fromTuple = _toFromConnections[new Tuple<string, string>(VertexName.Split('$')[0], toEndpoint)];
+                if (!fromTuple.Item4)
+                    throw new NotImplementedException("Shared input endpoints are not supported in produce operators!!");
+                else
+                {
+                    _startCreatingSecondaryDatasets[fromTuple.Item1] = new CountdownEvent(1);
+                    _finishCreatingSecondaryDatasets[fromTuple.Item1] = new CountdownEvent(1);
+                    AddAsyncInputEndpoint(toEndpoint, new ShardedProducerSecondaryInput(this, shardId, shardingInfo.AllShards.Length, toEndpoint));
+                }
             }
 
-            CreateAndTransformDataset(shardId);
+            if (!_hasSecondaryInput)
+            {
+                CreateAndTransformDataset(shardId);
+                _isTransformationsApplied = true;
+                _continueAfterTransformation.Signal();
+            }
 
-            string fromEndpoint = GetEndpointNameForVertex(VertexName.Split('$')[0], _fromToConnections);
-            /*var toTuple = _fromToConnections[new Tuple<string, string>(VertexName.Split('$')[0], fromEndpoint)];
-            if (toTuple.Item3)
-                throw new NotImplementedException("Shared memory endpoints are not supported yet!!");
-            else*/
-                AddAsyncOutputEndpoint(fromEndpoint, new ShardedProducerOutput(this, shardId, shardingInfo.AllShards.Length, fromEndpoint));
+            foreach (var fromEndpoint in fromEndpoints)
+            {
+                var toTuple = _fromToConnections[new Tuple<string, string>(VertexName.Split('$')[0], fromEndpoint)];
+                if (!toTuple.Item4)
+                    AddAsyncOutputEndpoint(fromEndpoint, new ShardedProducerOutput(this, shardId, shardingInfo.AllShards.Length, fromEndpoint));
+                else
+                    AddAsyncOutputEndpoint(fromEndpoint, new ShardedProducerSecondaryOutput(this, shardId, shardingInfo.AllShards.Length, fromEndpoint));
+            }
         }
         
         public void CreateAndTransformDataset(int shardId)
@@ -92,21 +157,19 @@ namespace CRA.ClientLibrary.DataProcessing
                     }
                     else if (transformType == OperatorType.BinaryTransform.ToString())
                     {
-                        //TODO: to be handled
-                        /*
                         BinaryOperatorTypes binaryTransformTypes = new BinaryOperatorTypes();
                         binaryTransformTypes.FromString(_task.TransformsTypes[i]);
                         if (dataset1Id == "$" && dataset1 == null)
-                            throw new InvalidOperationException();
+                                      throw new InvalidOperationException();
                         if (dataset2Id == "$" && dataset2 == null)
                         {
                             dataset2Id = _task.TransformsInputs[i].InputId2;
-                            dataset2 = CreateDatasetFromInput(dataset2Id, binaryTransformTypes.SecondaryKeyType,
-                                                              binaryTransformTypes.SecondaryPayloadType, binaryTransformTypes.SecondaryDatasetType);
-                            if (!_cachedDatasets[shardId].ContainsKey(dataset2Id))
-                                _cachedDatasets[shardId].Add(dataset2Id, dataset2);
-                            else
-                                _cachedDatasets[shardId][dataset2Id] = dataset2;
+                            _binaryOperatorTypes[dataset2Id] = binaryTransformTypes;
+
+                            _startCreatingSecondaryDatasets[dataset2Id].Signal();
+                            _finishCreatingSecondaryDatasets[dataset2Id].Wait();
+
+                            dataset2 = _cachedDatasets[shardId][dataset2Id];
                         }
 
                         method = typeof(TransformUtils).GetMethod("ApplyBinaryTransformer");
@@ -122,7 +185,7 @@ namespace CRA.ClientLibrary.DataProcessing
                         _outputKeyType = binaryTransformTypes.OutputKeyType;
                         _outputPayloadType = binaryTransformTypes.OutputPayloadType;
                         _outputDatasetType = binaryTransformTypes.OutputDatasetType;
-                        */
+
                     }
                     else if (transformType == OperatorType.MoveSplit.ToString())
                     {

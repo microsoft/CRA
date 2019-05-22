@@ -38,10 +38,18 @@
             return null;
         }
 
-        public static string PrepareInputEndpointIdForOperator(string fromInputId, OperatorEndpointsDescriptor endpointsDescriptor)
+        public static string PrepareInputEndpointIdForOperator(string fromInputId, OperatorEndpointsDescriptor endpointsDescriptor, bool isSecondaryInput)
         {
-            if (endpointsDescriptor.FromInputs.Count != 0)
-                return "InputFrom" + fromInputId;
+            if (!isSecondaryInput)
+            {
+                if (endpointsDescriptor.FromInputs.Count != 0)
+                    return "InputFrom" + fromInputId;
+            }
+            else
+            {
+                if (endpointsDescriptor.SecondaryFromInputs.Count != 0)
+                    return "InputFrom" + fromInputId;
+            }
 
             return null;
         }

@@ -9,7 +9,7 @@ namespace CRA.ClientLibrary.DataProcessing
         : ShardedDatasetBase<TKey, TPayload, TDataset>, IDeployable, IDisposable
         where TDataset : IDataset<TKey, TPayload>
     {
-        string _shardedDatasetId;
+        string _shardedDatasetId = null;
         Expression<Func<int, TDataset>> _producer;
 
         bool _isDeployed = false;
@@ -26,6 +26,8 @@ namespace CRA.ClientLibrary.DataProcessing
             else
                 Console.WriteLine("The producer expression of the ShardedDataset should be provided !!");
             _dataProvider = dataProvider;
+
+            _craClient = new CRAClientLibrary(_dataProvider);
         }
 
         public void Deploy(ref TaskBase task, ref OperatorsToplogy operatorsTopology, ref OperatorTransforms operandTransforms)
@@ -61,7 +63,6 @@ namespace CRA.ClientLibrary.DataProcessing
 
                 GenerateProduceTask(ref operatorsTopology);
 
-                _craClient = new CRAClientLibrary(_dataProvider);
                 _isDeployed =  await DeploymentUtils.DeployOperators(_craClient, operatorsTopology);
                 if (!_isDeployed) return null;
             }
@@ -124,6 +125,11 @@ namespace CRA.ClientLibrary.DataProcessing
         {
             if (!_isDeployed) return Deploy();
             throw new NotImplementedException();
+        }
+
+        public void ResetCRAClient()
+        {
+            _craClient.Reset();
         }
     }
 }

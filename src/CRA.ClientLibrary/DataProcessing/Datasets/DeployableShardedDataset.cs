@@ -152,10 +152,17 @@ namespace CRA.ClientLibrary.DataProcessing
             {
                 foreach (OperatorInputs inputs in shuffleTask.TransformsInputs)
                 {
-                    topology.AddOperatorInput((shuffleTask as ShuffleTask).MapperVertexName, inputs.InputId1);
                     topology.AddOperatorSecondaryInput((shuffleTask as ShuffleTask).MapperVertexName, inputs.InputId2);
-                    topology.AddOperatorOutput(inputs.InputId1, (shuffleTask as ShuffleTask).MapperVertexName);
                     topology.AddOperatorOutput(inputs.InputId2, (shuffleTask as ShuffleTask).MapperVertexName);
+                }
+
+                foreach (OperatorInputs inputs in shuffleTask.TransformsInputs)
+                {
+                    if (!topology.ContainsSecondaryOperatorInput((shuffleTask as ShuffleTask).MapperVertexName, inputs.InputId1))
+                    {
+                        topology.AddOperatorInput((shuffleTask as ShuffleTask).MapperVertexName, inputs.InputId1);
+                        topology.AddOperatorOutput(inputs.InputId1, (shuffleTask as ShuffleTask).MapperVertexName);
+                    }
                 }
             }
 
@@ -264,10 +271,17 @@ namespace CRA.ClientLibrary.DataProcessing
                 {
                     foreach (OperatorInputs inputs in subscribeTask.TransformsInputs)
                     {
-                        toplogy.AddOperatorInput(subscribeTask.OutputId, inputs.InputId1);
                         toplogy.AddOperatorSecondaryInput(subscribeTask.OutputId, inputs.InputId2);
-                        toplogy.AddOperatorOutput(inputs.InputId1, subscribeTask.OutputId);
                         toplogy.AddOperatorOutput(inputs.InputId2, subscribeTask.OutputId);
+                    }
+
+                    foreach (OperatorInputs inputs in subscribeTask.TransformsInputs)
+                    {
+                        if (!toplogy.ContainsSecondaryOperatorInput(subscribeTask.OutputId, inputs.InputId1))
+                        {
+                            toplogy.AddOperatorInput(subscribeTask.OutputId, inputs.InputId1);
+                            toplogy.AddOperatorOutput(inputs.InputId1, subscribeTask.OutputId);
+                        }
                     }
                 }
 
@@ -347,32 +361,6 @@ namespace CRA.ClientLibrary.DataProcessing
         {
             throw new NotImplementedException();
         }
-
-        /*
-        public override async Task MultiSubscribe<TDatasetObserver>(Expression<Func<TDatasetObserver>> observer, int runsCount)
-        {
-            var inputConnections = _clientTerminal.ConnectionData.InputConnections;
-            for (int i = 0; i < runsCount; i++)
-            {
-                IShardedDataset<TKeyO, TPayloadO, TDataSetO> deployedDataset = null;
-                if (!_isDeployed)
-                    deployedDataset = await Deploy();
-
-                if (!_isDeployed && deployedDataset == null)
-                    throw new InvalidOperationException();
-                else
-                {
-                    foreach (var key in inputConnections.Keys)
-                    {
-                        inputConnections[key].WriteInt32((int)CRATaskMessageType.READY);
-                        inputConnections[key].WriteByteArray(Encoding.UTF8.GetBytes(SerializationHelper.Serialize(observer)));
-                    }
-                }
-            }
-
-            foreach (var key in inputConnections.Keys)
-                inputConnections[key].WriteInt32((int)CRATaskMessageType.RELEASE);
-        }*/
 
         public override Task Consume<TDatasetConsumer>(Expression<Func<TDatasetConsumer>> consumer)
         {

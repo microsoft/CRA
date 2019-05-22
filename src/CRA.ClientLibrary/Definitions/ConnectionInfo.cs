@@ -88,9 +88,13 @@ namespace CRA.ClientLibrary
         [DataMember]
         public bool IsOnSameCRAInstance { get; set; }
 
-        public ConnectionInfoWithLocality(string fromVertex, string fromEndpoint, string toVertex, string toEndpoint, bool isOnSameCRAInstance) : base(fromVertex, fromEndpoint, toVertex, toEndpoint)
+        [DataMember]
+        public bool IsSecondary { get; set; }
+
+        public ConnectionInfoWithLocality(string fromVertex, string fromEndpoint, string toVertex, string toEndpoint, bool isOnSameCRAInstance, bool isSecondary = false) : base(fromVertex, fromEndpoint, toVertex, toEndpoint)
         {
             IsOnSameCRAInstance = isOnSameCRAInstance;
+            IsSecondary = isSecondary;
         }
     }
 

@@ -34,15 +34,19 @@ namespace CRA.ClientLibrary.DataProcessing
             _runSubscribeInput = new CountdownEvent(1);
             _runSubscribeOutput = new CountdownEvent(1);
 
-            string toEndpoint = GetEndpointNameForVertex(VertexName.Split('$')[0], _toFromConnections);
-            /*var fromTuple = _toFromConnections[new Tuple<string, string>(VertexName.Split('$')[0], toEndpoint)];
-            if (fromTuple.Item3)
-                throw new NotImplementedException("Shared memory endpoints are not supported yet!!");
-            else*/
-                AddAsyncInputEndpoint(toEndpoint, new ShardedSubscribeInput(this, shardId, shardingInfo.AllShards.Length, toEndpoint));
+            string[] toEndpoints = GetEndpointNamesForVertex(VertexName.Split('$')[0], _toFromConnections);
+            var fromTuple = _toFromConnections[new Tuple<string, string>(VertexName.Split('$')[0], toEndpoints[0])];
+            if (!fromTuple.Item4)
+                AddAsyncInputEndpoint(toEndpoints[0], new ShardedSubscribeInput(this, shardId, shardingInfo.AllShards.Length, toEndpoints[0]));
+            else
+                throw new NotImplementedException("Shared secondary endpoints are not supported in subscribe operators!!");
 
-            string fromEndpoint = GetEndpointNameForVertex(VertexName.Split('$')[0], _fromToConnections);
-            AddAsyncOutputEndpoint(fromEndpoint, new ShardedSubscribeOutput(this, shardId, shardingInfo.AllShards.Length, fromEndpoint));
+            string[] fromEndpoints = GetEndpointNamesForVertex(VertexName.Split('$')[0], _fromToConnections);
+            var toTuple = _fromToConnections[new Tuple<string, string>(VertexName.Split('$')[0], fromEndpoints[0])];
+            if (!toTuple.Item4)
+                AddAsyncOutputEndpoint(fromEndpoints[0], new ShardedSubscribeOutput(this, shardId, shardingInfo.AllShards.Length, fromEndpoints[0]));
+            else
+                throw new NotImplementedException("Shared secondary endpoints are not supported in subscribe operators!!");
         }
 
         internal override bool HasSplittedOutput()
