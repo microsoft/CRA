@@ -121,12 +121,6 @@ namespace CRA.ClientLibrary.DataProcessing
             }
         }
 
-        public override Task Consume<TDatasetConsumer>(Expression<Func<TDatasetConsumer>> consumer)
-        {
-            if (!_isDeployed) return Deploy();
-            throw new NotImplementedException();
-        }
-
         public void ResetCRAClient()
         {
             _craClient.Reset();

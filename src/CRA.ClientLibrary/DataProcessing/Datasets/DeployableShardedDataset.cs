@@ -361,10 +361,5 @@ namespace CRA.ClientLibrary.DataProcessing
         {
             throw new NotImplementedException();
         }
-
-        public override Task Consume<TDatasetConsumer>(Expression<Func<TDatasetConsumer>> consumer)
-        {
-            throw new NotImplementedException();
-        }
     }
 }

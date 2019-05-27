@@ -70,7 +70,5 @@ namespace CRA.ClientLibrary.DataProcessing
         public abstract Task Subscribe<TDatasetObserver>(Expression<Func<TDatasetObserver>> observer);
 
         public abstract Task MultiSubscribe<TDatasetObserver>(Expression<Func<TDatasetObserver>> observer, int runsCount);
-
-        public abstract Task Consume<TDatasetConsumer>(Expression<Func<TDatasetConsumer>> observer);
     }
 }
