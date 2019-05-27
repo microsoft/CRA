@@ -18,8 +18,19 @@ namespace ShardedDatasetTest
 
             var shardedDatasetClient = new ShardedDatasetClient(new AzureProviderImpl(storageConnectionString));
 
-            TransformTest2(shardedDatasetClient);
+            ProduceTest(shardedDatasetClient);
         }
+
+        static private async void ProduceTest(ShardedDatasetClient client)
+        {
+            Expression<Func<int, IntKeyedDataset<int, int>>> sharder = x => new IntKeyedDataset<int, int>(x);
+            var shardedIntKeyedDS = client.CreateShardedDataset<int, int, IntKeyedDataset<int, int>>(sharder);
+
+            var deployedDS = await shardedIntKeyedDS.Deploy();
+
+            await deployedDS.Subscribe(() => new WriteToConsoleObserver<int, int>());
+        }
+
 
         static private async void TransformTest1(ShardedDatasetClient client)
         {
