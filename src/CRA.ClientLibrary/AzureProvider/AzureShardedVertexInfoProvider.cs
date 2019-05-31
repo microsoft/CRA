@@ -38,14 +38,14 @@
                         QueryComparisons.Equal,
                         vertexName));
             
-            List<ShardedVertexInfo> vtEntries = new List<ShardedVertexInfo>();
+            /*List<ShardedVertexInfo> vtEntries = new List<ShardedVertexInfo>();
             foreach (var vt in (await cloudTable.ExecuteQueryAsync(query)))
                 vtEntries.Add(new ShardedVertexInfo(vt.VertexName, vt.EpochId, vt.AllInstances, vt.AllShards, vt.AddedShards, vt.RemovedShards, vt.ShardLocator));
 
-            return vtEntries;
+            return vtEntries;*/
 
-            /*return (await cloudTable.ExecuteQueryAsync(query))
-                .Select(vt => (ShardedVertexInfo)vt);*/
+            return (await cloudTable.ExecuteQueryAsync(query))
+                .Select(vt => (ShardedVertexInfo)vt);
         }
 
         public async Task<ShardedVertexInfo> GetLatestEntryForVertex(string vertexName)

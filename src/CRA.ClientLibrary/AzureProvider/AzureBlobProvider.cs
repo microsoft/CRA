@@ -40,8 +40,8 @@
             CloudBlobContainer container = _blobClient
                 .GetContainerReference(_parentBlobName);
 
-            container.CreateIfNotExistsAsync().Wait();
-            //await container.CreateIfNotExistsAsync();
+            //container.CreateIfNotExistsAsync().Wait();
+            await container.CreateIfNotExistsAsync();
 
             return container.GetBlockBlobReference(pathKey);
         }
