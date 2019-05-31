@@ -938,6 +938,7 @@ namespace CRA.ClientLibrary
                     toVertexName,
                     toVertexInput,
                     reverse,
+                    true,
                     false,
                     killRemote);
 
