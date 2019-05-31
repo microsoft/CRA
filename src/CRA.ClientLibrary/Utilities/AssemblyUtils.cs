@@ -29,6 +29,8 @@ namespace CRA.ClientLibrary
             do
             {
                 TableQuerySegment<T> seg = table.ExecuteQuerySegmentedAsync<T>(query, token).GetAwaiter().GetResult();
+                //TableQuerySegment<T> seg = await table.ExecuteQuerySegmentedAsync<T>(query, token);
+
                 token = seg.ContinuationToken;
                 items.AddRange(seg);
                 if (onProgress != null) onProgress(items);
