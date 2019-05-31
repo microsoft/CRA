@@ -1,8 +1,0 @@
-{
-  "profiles": {
-    "CRA.Worker": {
-      "commandName": "Project",
-      "commandLineArgs": "crainst1 12000 127.0.0.1"
-    }
-  }
-}
