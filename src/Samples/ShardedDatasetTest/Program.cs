@@ -13,6 +13,7 @@ namespace ShardedDatasetTest
         {
             var storageConnectionString = Environment.GetEnvironmentVariable("AZURE_STORAGE_CONN_STRING");
 
+            // We assume two CRA instances with names: crainst0, crainst1
             int workersCount = 2;
             DeploymentUtils.DefaultDeployDescriptor = new DeployDescriptorBase(CreateDefaultDeployer(workersCount));
 

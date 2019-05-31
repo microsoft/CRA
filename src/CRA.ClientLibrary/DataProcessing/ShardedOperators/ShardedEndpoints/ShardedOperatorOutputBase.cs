@@ -18,6 +18,8 @@ namespace CRA.ClientLibrary.DataProcessing
         protected CountdownEvent _startSendingToOtherOperatorShards;
         protected CountdownEvent _finishSendingToOtherOperatorShards;
 
+        protected Dictionary<int, bool> _isEndpointEstablished;
+
         public ShardedOperatorOutputBase(int shardId, int numOtherOperatorShards, string endpointName)
         {
             _shardId = shardId;
@@ -28,6 +30,8 @@ namespace CRA.ClientLibrary.DataProcessing
 
             _startSendingToOtherOperatorShards = new CountdownEvent(numOtherOperatorShards);
             _finishSendingToOtherOperatorShards = new CountdownEvent(numOtherOperatorShards);
+
+            _isEndpointEstablished = new Dictionary<int, bool>();
         }
 
         public override void Dispose()
@@ -44,8 +48,14 @@ namespace CRA.ClientLibrary.DataProcessing
             }
         }
 
-        public override async Task ToStreamAsync(Stream stream, string otherVertex, int otherShardId, string otherEndpoint, CancellationToken token) 
-                => await OperatorOutputToStreamAsync(stream, otherVertex, otherShardId, otherEndpoint, token);
+        public override async Task ToStreamAsync(Stream stream, string otherVertex, int otherShardId, string otherEndpoint, CancellationToken token)
+        {
+            if (!(_isEndpointEstablished.ContainsKey(otherShardId) && _isEndpointEstablished[otherShardId]))
+            {
+                _isEndpointEstablished[otherShardId] = true;
+                await OperatorOutputToStreamAsync(stream, otherVertex, otherShardId, otherEndpoint, token);
+            }            
+        }
 
         public abstract Task OperatorOutputToStreamAsync(Stream stream, string otherVertex, int otherShardId, string otherEndpoint, CancellationToken token);
 
