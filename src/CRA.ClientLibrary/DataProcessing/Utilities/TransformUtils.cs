@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq.Expressions;
+using System.Reflection;
 
 namespace CRA.ClientLibrary.DataProcessing
 {
@@ -70,10 +71,11 @@ namespace CRA.ClientLibrary.DataProcessing
             try
             {
                 if (unaryTransformer != null)
-                { 
-                    var transformer = (Expression<Func<TDatasetI, TDatasetO>>) SerializationHelper.Deserialize(unaryTransformer);
-                    var compiledTransformer = transformer.Compile();
-                    return compiledTransformer((TDatasetI)dataset);
+                {
+                    Expression transformer = SerializationHelper.Deserialize(unaryTransformer);
+                    var compiledTransformer = Expression<Func<TDatasetI, TDatasetO>>.Lambda(transformer).Compile();
+                    Delegate compiledTransformerConstructor = (Delegate)compiledTransformer.DynamicInvoke();
+                    return compiledTransformerConstructor.DynamicInvoke((TDatasetI)dataset);
                 }
             }
             catch (Exception e)
@@ -84,7 +86,7 @@ namespace CRA.ClientLibrary.DataProcessing
             return null;
         }
 
-        public static object ApplyBinaryTransformer<TKeyI1, TPayloadI1, TDatasetI1, 
+        public static object ApplyBinaryTransformer<TKeyI1, TPayloadI1, TDatasetI1,
                     TKeyI2, TPayloadI2, TDatasetI2, TKeyO, TPayloadO, TDatasetO>(object dataset1, object dataset2, string binaryTransformer)
             where TDatasetI1 : IDataset<TKeyI1, TPayloadI1>
             where TDatasetI2 : IDataset<TKeyI2, TPayloadI2>
@@ -94,9 +96,10 @@ namespace CRA.ClientLibrary.DataProcessing
             {
                 if (binaryTransformer != null)
                 {
-                    var transformer = (Expression<Func<TDatasetI1, TDatasetI2, TDatasetO>>) SerializationHelper.Deserialize(binaryTransformer);
-                    var compiledTransformer = transformer.Compile();
-                    return compiledTransformer((TDatasetI1)dataset1, (TDatasetI2)dataset2);
+                    Expression transformer = SerializationHelper.Deserialize(binaryTransformer);
+                    var compiledTransformer = Expression<Func<TDatasetI1, TDatasetI2, TDatasetO>>.Lambda(transformer).Compile();
+                    Delegate compiledTransformerConstructor = (Delegate)compiledTransformer.DynamicInvoke();
+                    return compiledTransformerConstructor.DynamicInvoke((TDatasetI1)dataset1, (TDatasetI2)dataset2);
                 }
             }
             catch (Exception e)
@@ -106,7 +109,6 @@ namespace CRA.ClientLibrary.DataProcessing
 
             return null;
         }
-
         
         public static void PrepareTransformInputs(OperatorInputs transformInputInfo, ref Object dataset1, ref string dataset1Id, 
             ref Object dataset2, ref string dataset2Id, Dictionary<string, object> cachedDatasets)

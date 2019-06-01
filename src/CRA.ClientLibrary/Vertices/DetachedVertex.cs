@@ -64,6 +64,9 @@ namespace CRA.ClientLibrary
     /// </summary>
     public class DetachedVertex : IDisposable
     {
+
+        public string VertexName { get { return _vertexName; } }
+
         /// <summary>
         /// Connection data
         /// </summary>
@@ -79,6 +82,7 @@ namespace CRA.ClientLibrary
         private string _instanceName;
         private bool _isEphemeralInstance;
 
+   
         /// <summary>
         /// 
         /// </summary>

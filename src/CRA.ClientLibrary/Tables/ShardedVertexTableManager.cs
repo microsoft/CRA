@@ -64,8 +64,8 @@ namespace CRA.ClientLibrary
         {
             ShardingInfo result = new ShardingInfo();
 
-            if (await this.ExistsShardedVertex(vertexName))
-            { return result; }
+            //if (await this.ExistsShardedVertex(vertexName))
+            //{ return result; }
 
             var entry = await _shardedVertexInfoProvider.GetLatestEntryForVertex(vertexName);
             result.AllShards = entry.AllShards.Split(';').Select(e => Int32.Parse(e)).ToArray();

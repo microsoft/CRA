@@ -2,7 +2,7 @@
   "profiles": {
     "CRA.Worker": {
       "commandName": "Project",
-      "commandLineArgs": "crainst01 11000 127.0.0.1"
+      "commandLineArgs": "crainst02 12000 127.0.0.1"
     }
   }
 }

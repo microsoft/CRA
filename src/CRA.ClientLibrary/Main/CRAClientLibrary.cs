@@ -497,7 +497,6 @@ namespace CRA.ClientLibrary
 
             var par = SerializationHelper.DeserializeObject(parameterString);
             vertex.Initialize(par);
-            await vertex.InitializeAsync(par);
 
             // Activate vertex
             await ActivateVertex(vertexName, instanceName);
@@ -506,6 +505,11 @@ namespace CRA.ClientLibrary
         public void SideloadVertex(IVertex vertex, string vertexName)
         {
             _verticesToSideload[vertexName] = vertex;
+        }
+
+        public void EnableArtifactUploading()
+        {
+            _artifactUploading = true;
         }
 
         public void DisableArtifactUploading()

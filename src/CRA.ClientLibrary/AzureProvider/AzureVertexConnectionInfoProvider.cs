@@ -57,7 +57,10 @@
             if (retrievedResult.Result == null)
             { return null; }
 
-            return (VertexConnectionInfo)retrievedResult.Result;
+            var result = (ConnectionTable)retrievedResult.Result;
+            return new VertexConnectionInfo(result.FromVertex, result.FromEndpoint, result.ToVertex, result.ToEndpoint, result.ETag);
+
+            //return (VertexConnectionInfo)retrievedResult.Result;
         }
 
         public async Task<IEnumerable<VertexConnectionInfo>> GetAll()
