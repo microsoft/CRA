@@ -150,7 +150,7 @@ namespace CRA.ClientLibrary.DataProcessing
         {
             try { 
                 await client
-                    .DefineVertex(
+                    .DefineVertexAsync(
                         typeof(ProducerOperator).Name.ToLower(),
                         () => new ProducerOperator(client.DataProvider));
 
@@ -179,7 +179,7 @@ namespace CRA.ClientLibrary.DataProcessing
         {
             try
             {
-                await client.DefineVertex(
+                await client.DefineVertexAsync(
                     typeof(SubscribeOperator).Name.ToLower(),
                     () => new SubscribeOperator(client.DataProvider));
 
@@ -209,7 +209,7 @@ namespace CRA.ClientLibrary.DataProcessing
         {
             try
             {
-                await client.DefineVertex(
+                await client.DefineVertexAsync(
                     typeof(ShuffleOperator).Name.ToLower(),
                     () => new ShuffleOperator(client.DataProvider));
 
@@ -256,7 +256,7 @@ namespace CRA.ClientLibrary.DataProcessing
                     int shardsCount = client.CountVertexShards(task.DeployDescriptor.InstancesMap());
                     for (int i = 0; i < shardsCount; i++)
                         for (int j = 0; j < inputEndpoints.Length; j++)
-                            await clientTerminal.FromRemoteOutputEndpointStream(
+                            await clientTerminal.FromRemoteOutputEndpointStreamAsync(
                                 inputEndpoints[j] + i,
                                 fromInputId + "$" + i,
                                 outputEndpoints[j]);

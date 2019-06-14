@@ -79,7 +79,7 @@ namespace CRA.ClientLibrary
         /// </summary>
         /// <param name="vertexDefinition">Name of the vertex type</param>
         /// <param name="creator">Lambda that describes how to instantiate the vertex, taking in an object as parameter</param>
-        public async Task<CRAErrorCode> DefineVertex(string vertexDefinition, Expression<Func<IVertex>> creator)
+        public async Task<CRAErrorCode> DefineVertexAsync(string vertexDefinition, Expression<Func<IVertex>> creator)
         {
             if (_artifactUploading)
             {
@@ -110,28 +110,30 @@ namespace CRA.ClientLibrary
         /// </summary>
         /// <param name="vertexName"></param>
         /// <param name="instanceName"></param>
-        public Task ActivateVertex(string vertexName, string instanceName)
-            => _vertexManager.ActivateVertexOnInstance(vertexName, instanceName);
+        public async Task ActivateVertexAsync(string vertexName, string instanceName)
+            => await _vertexManager.ActivateVertexOnInstance(vertexName, instanceName);
 
         /// <summary>
         /// Make this vertex the current "inactive".
         /// </summary>
         /// <param name="vertexName"></param>
         /// <param name="instanceName"></param>
-        public Task DeactivateVertex(string vertexName, string instanceName)
-            => _vertexManager.DeactivateVertexOnInstance(vertexName, instanceName);
+        public async Task DeactivateVertexAsync(string vertexName, string instanceName)
+            => await _vertexManager.DeactivateVertexOnInstance(vertexName, instanceName);
 
         /// <summary>
         /// Make this vertex the current "active" on local worker.
         /// </summary>
         /// <param name="vertexName"></param>
         /// <param name="instanceName"></param>
-        public Task ActivateVertex(string vertexName)
+        public async Task ActivateVertexAsync(string vertexName)
         {
             if (_localWorker == null)
-            { throw new Exception("No local worker found to activate vertex on"); }
+            {
+                throw new Exception("No local worker found to activate vertex on");
+            }
 
-            return _vertexManager.ActivateVertexOnInstance(
+            await _vertexManager.ActivateVertexOnInstance(
                 vertexName,
                 _localWorker.InstanceName);
         }
@@ -139,8 +141,8 @@ namespace CRA.ClientLibrary
         /// <summary>
         /// Resets the cluster and deletes all knowledge of any CRA instances
         /// </summary>
-        public Task Reset()
-            => Task.WhenAll(
+        public async Task ResetAsync()
+            => await Task.WhenAll(
                 _connectionTableManager.DeleteTable(),
                 _vertexManager.DeleteTable(),
                 _endpointTableManager.DeleteTable());
@@ -162,12 +164,12 @@ namespace CRA.ClientLibrary
         /// <param name="vertexDefinition">Definition of the vertex (type)</param>
         /// <param name="vertexParameter">Parameters to be passed to the vertex in its constructor (serializable object)</param>
         /// <returns>Status of the command</returns>
-        public Task<CRAErrorCode> InstantiateVertex(
+        public async Task<CRAErrorCode> InstantiateVertexAsync(
             string instanceName,
             string vertexName,
             string vertexDefinition,
             object vertexParameter)
-            => InstantiateVertex(
+            => await InstantiateVertex(
                 instanceName,
                 vertexName,
                 vertexDefinition,
@@ -292,19 +294,19 @@ namespace CRA.ClientLibrary
         /// </summary>
         /// <param name="vertexName"></param>
         /// <param name="instanceName"></param>
-        public async Task DeleteVertex(string vertexName)
+        public async Task DeleteVertexAsync(string vertexName)
         {
-            foreach (var endpt in await GetInputEndpoints(vertexName))
+            foreach (var endpt in await GetInputEndpointsAsync(vertexName))
             { DeleteEndpoint(vertexName, endpt); }
 
-            foreach (var endpt in await GetOutputEndpoints(vertexName))
+            foreach (var endpt in await GetOutputEndpointsAsync(vertexName))
             { DeleteEndpoint(vertexName, endpt); }
 
-            foreach (var conn in await GetConnectionsFromVertex(vertexName))
-            { await DeleteConnectionInfo(conn); }
+            foreach (var conn in await GetConnectionsFromVertexAsync(vertexName))
+            { await DeleteConnectionInfoAsync(conn); }
 
-            foreach (var conn in await GetConnectionsToVertex(vertexName))
-            { await DeleteConnectionInfo(conn); }
+            foreach (var conn in await GetConnectionsToVertexAsync(vertexName))
+            { await DeleteConnectionInfoAsync(conn); }
 
             foreach (var item in await _vertexManager.VertexInfoProvider.GetRowsForVertex(vertexName))
             { await _vertexManager.VertexInfoProvider.DeleteVertexInfo(item); }
@@ -314,7 +316,7 @@ namespace CRA.ClientLibrary
         /// Delete vertex definition with given name
         /// </summary>
         /// <param name="vertexDefinition"></param>
-        public async Task DeleteVertexDefinition(string vertexDefinition)
+        public async Task DeleteVertexDefinitionAsync(string vertexDefinition)
         {
             await _vertexManager.DeleteInstanceVertex("", vertexDefinition);
 
@@ -358,7 +360,7 @@ namespace CRA.ClientLibrary
             // Deactivate vertex
             await _vertexManager.DeactivateVertexOnInstance(vertexName, instanceName);
 
-            var vertex = await CreateVertex(vertexDefinition);
+            var vertex = await CreateVertexAsync(vertexDefinition);
             if (vertex == null)
             {
                 if (_verticesToSideload.ContainsKey(vertexName))
@@ -389,7 +391,7 @@ namespace CRA.ClientLibrary
             return vertex;
         }
 
-        public async Task<IVertex> CreateVertex(string vertexDefinition)
+        public async Task<IVertex> CreateVertexAsync(string vertexDefinition)
         {
             if (_dynamicLoadingEnabled)
             {
@@ -496,11 +498,10 @@ namespace CRA.ClientLibrary
             }
 
             var par = SerializationHelper.DeserializeObject(parameterString);
-            vertex.Initialize(par);
             await vertex.InitializeAsync(par);
 
             // Activate vertex
-            await ActivateVertex(vertexName, instanceName);
+            await ActivateVertexAsync(vertexName, instanceName);
         }
 
         public void SideloadVertex(IVertex vertex, string vertexName)
@@ -524,7 +525,7 @@ namespace CRA.ClientLibrary
         /// </summary>
         /// <param name="thisInstanceName"></param>
         /// <returns></returns>
-        public async Task<ConcurrentDictionary<string, IVertex>> LoadAllVertices(string thisInstanceName)
+        public async Task<ConcurrentDictionary<string, IVertex>> LoadAllVerticesAsync(string thisInstanceName)
         {
             ConcurrentDictionary<string, IVertex> result = new ConcurrentDictionary<string, IVertex>();
             var rows = await _vertexManager
@@ -549,9 +550,9 @@ namespace CRA.ClientLibrary
         /// <param name="fromEndpoint"></param>
         /// <param name="toVertexName"></param>
         /// <param name="toEndpoint"></param>
-        public void AddConnectionInfo(string fromVertexName, string fromEndpoint, string toVertexName, string toEndpoint)
+        public async Task AddConnectionInfoAsync(string fromVertexName, string fromEndpoint, string toVertexName, string toEndpoint)
         {
-            _connectionTableManager.AddConnection(fromVertexName, fromEndpoint, toVertexName, toEndpoint);
+            await _connectionTableManager.AddConnection(fromVertexName, fromEndpoint, toVertexName, toEndpoint);
         }
 
 
@@ -562,29 +563,29 @@ namespace CRA.ClientLibrary
         /// <param name="fromEndpoint"></param>
         /// <param name="toVertexName"></param>
         /// <param name="toEndpoint"></param>
-        public Task DeleteConnectionInfo(string fromVertexName, string fromEndpoint, string toVertexName, string toEndpoint)
-            => _connectionTableManager.DeleteConnection(fromVertexName, fromEndpoint, toVertexName, toEndpoint);
+        public async Task DeleteConnectionInfoAsync(string fromVertexName, string fromEndpoint, string toVertexName, string toEndpoint)
+            => await _connectionTableManager.DeleteConnection(fromVertexName, fromEndpoint, toVertexName, toEndpoint);
 
         /// <summary>
         /// Delete connection info from metadata table
         /// </summary>
         /// <param name="connInfo">Connection info as a struct</param>
-        public Task DeleteConnectionInfo(ConnectionInfo connInfo)
-            => _connectionTableManager.DeleteConnection(connInfo.FromVertex, connInfo.FromEndpoint, connInfo.ToVertex, connInfo.ToEndpoint);
+        public async Task DeleteConnectionInfoAsync(ConnectionInfo connInfo)
+            => await _connectionTableManager.DeleteConnection(connInfo.FromVertex, connInfo.FromEndpoint, connInfo.ToVertex, connInfo.ToEndpoint);
 
-        public Task<CRAErrorCode> Connect(
+        public async Task<CRAErrorCode> ConnectAsync(
             string fromVertexName,
             string fromEndpoint,
             string toVertexName,
             string toEndpoint)
-            => Connect(
+            => await ConnectAsync(
                 fromVertexName,
                 fromEndpoint,
                 toVertexName,
                 toEndpoint,
                 ConnectionInitiator.FromSide);
 
-        public async Task<CRAErrorCode> Connect(
+        public async Task<CRAErrorCode> ConnectAsync(
             string fromVertexName,
             string fromEndpoint,
             string toVertexName,
@@ -726,7 +727,7 @@ namespace CRA.ClientLibrary
                     direction);
         }
 
-        public async Task<string> GetDefaultInstanceName()
+        public async Task<string> GetDefaultInstanceNameAsync()
             => (await _vertexManager.GetRowForDefaultInstance()).InstanceName;
 
         /// <summary>
@@ -734,23 +735,23 @@ namespace CRA.ClientLibrary
         /// </summary>
         /// <param name="vertexName"></param>
         /// <returns></returns>
-        public Task<IEnumerable<string>> GetOutputEndpoints(string vertexName)
-            => _endpointTableManager.GetOutputEndpoints(vertexName);
+        public async Task<IEnumerable<string>> GetOutputEndpointsAsync(string vertexName)
+            => await _endpointTableManager.GetOutputEndpoints(vertexName);
 
         /// <summary>
         /// Get a list of all input endpoint names for a given vertex
         /// </summary>
         /// <param name="vertexName"></param>
         /// <returns></returns>
-        public Task<IEnumerable<string>> GetInputEndpoints(string vertexName)
-            => _endpointTableManager.GetInputEndpoints(vertexName);
+        public async Task<IEnumerable<string>> GetInputEndpointsAsync(string vertexName)
+            => await _endpointTableManager.GetInputEndpoints(vertexName);
 
         /// <summary>
         /// Get all outgoing connection from a given vertex
         /// </summary>
         /// <param name="vertexName"></param>
         /// <returns></returns>
-        public async Task<IEnumerable<ConnectionInfo>> GetConnectionsFromVertex(string vertexName)
+        public async Task<IEnumerable<ConnectionInfo>> GetConnectionsFromVertexAsync(string vertexName)
             => (await _connectionTableManager.GetConnectionsFromVertex(vertexName))
             .Select(_ =>
                 new ConnectionInfo(
@@ -764,7 +765,7 @@ namespace CRA.ClientLibrary
         /// </summary>
         /// <param name="vertexName"></param>
         /// <returns></returns>
-        public async Task<IEnumerable<ConnectionInfo>> GetConnectionsToVertex(string vertexName)
+        public async Task<IEnumerable<ConnectionInfo>> GetConnectionsToVertexAsync(string vertexName)
             => (await _connectionTableManager.GetConnectionsToVertex(vertexName))
             .Select(_ =>
                 new ConnectionInfo(
@@ -778,22 +779,22 @@ namespace CRA.ClientLibrary
         /// Gets a list of all vertices registered with CRA
         /// </summary>
         /// <returns></returns>
-        public Task<IEnumerable<string>> GetVertexNames()
-            => _vertexManager.GetVertexNames();
+        public async Task<IEnumerable<string>> GetVertexNamesAsync()
+            => await _vertexManager.GetVertexNames();
 
         /// <summary>
         /// Gets a list of all vertex definitions registered with CRA
         /// </summary>
         /// <returns></returns>
-        public Task<IEnumerable<string>> GetVertexDefinitions()
-            => _vertexManager.GetVertexDefinitions();
+        public async Task<IEnumerable<string>> GetVertexDefinitionsAsync()
+            => await _vertexManager.GetVertexDefinitions();
 
         /// <summary>
         /// Gets a list of all registered CRA instances
         /// </summary>
         /// <returns></returns>
-        public Task<IEnumerable<string>> GetInstanceNames()
-            => _vertexManager.GetInstanceNames();
+        public async Task<IEnumerable<string>> GetInstanceNamesAsync()
+            => await _vertexManager.GetInstanceNames();
 
         /// <summary>
         /// Disconnect a CRA connection
@@ -802,8 +803,8 @@ namespace CRA.ClientLibrary
         /// <param name="fromVertexOutput"></param>
         /// <param name="toVertexName"></param>
         /// <param name="toVertexInput"></param>
-        public Task Disconnect(string fromVertexName, string fromVertexOutput, string toVertexName, string toVertexInput)
-            => _connectionTableManager.DeleteConnection(fromVertexName, fromVertexOutput, toVertexName, toVertexInput);
+        public async Task DisconnectAsync(string fromVertexName, string fromVertexOutput, string toVertexName, string toVertexInput)
+            => await _connectionTableManager.DeleteConnection(fromVertexName, fromVertexOutput, toVertexName, toVertexInput);
 
         /// <summary>
         /// Terminal local worker process.

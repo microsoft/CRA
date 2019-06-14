@@ -107,9 +107,9 @@ namespace CRA.ClientLibrary
         /// <param name="localOutputEndpoint">Local output endpoint</param>
         /// <param name="remoteVertex">Remote vertex name</param>
         /// <param name="remoteInputEndpoint">Remote input endpoint</param>
-        public void ConnectLocalOutputEndpoint(string localOutputEndpoint, string remoteVertex, string remoteInputEndpoint)
+        public async Task ConnectLocalOutputEndpointAsync(string localOutputEndpoint, string remoteVertex, string remoteInputEndpoint)
         {
-            _clientLibrary.Connect(_vertexName, localOutputEndpoint, remoteVertex, remoteInputEndpoint);
+            await _clientLibrary.ConnectAsync(_vertexName, localOutputEndpoint, remoteVertex, remoteInputEndpoint);
         }
 
         /// <summary>
@@ -118,9 +118,9 @@ namespace CRA.ClientLibrary
         /// <param name="localInputEndpoint">Local input endpoint</param>
         /// <param name="remoteVertex">Remote vertex name</param>
         /// <param name="remoteOutputEndpoint">Remote output endpoint</param>
-        public void ConnectLocalInputEndpoint(string localInputEndpoint, string remoteVertex, string remoteOutputEndpoint)
+        public async Task ConnectLocalInputEndpointAsync(string localInputEndpoint, string remoteVertex, string remoteOutputEndpoint)
         {
-            _clientLibrary.Connect(remoteVertex, remoteOutputEndpoint, _vertexName, localInputEndpoint, ConnectionInitiator.ToSide);
+            await _clientLibrary.ConnectAsync(remoteVertex, remoteOutputEndpoint, _vertexName, localInputEndpoint, ConnectionInitiator.ToSide);
         }
 
 
@@ -276,21 +276,13 @@ namespace CRA.ClientLibrary
             }
         }
 
-
-        /// <summary>
-        /// Initialize vertex
-        /// </summary>
-        /// <param name="vertexParameter"></param>
-        public void Initialize(object vertexParameter)
-        { this.InitializeAsync(vertexParameter).Wait(); }
-
         /// <summary>
         /// Initialize vertex
         /// </summary>
         /// <param name="vertexParameter"></param>
         public virtual Task InitializeAsync(object vertexParameter)
         {
-            return Task.FromResult(true);
+            return Task.CompletedTask;
         }
 
         /// <summary>
@@ -355,11 +347,11 @@ namespace CRA.ClientLibrary
         public override async Task InitializeAsync(object vertexParameter)
         {
             var par = (Tuple<int, object>)vertexParameter;
-            var shardingInfo = await ClientLibrary.GetShardingInfo(GetVertexName());
-            Initialize(par.Item1, shardingInfo, par.Item2);
+            var shardingInfo = await ClientLibrary.GetShardingInfoAsync(GetVertexName());
+            await InitializeAsync(par.Item1, shardingInfo, par.Item2);
         }
 
-        public abstract void Initialize(int shardId, ShardingInfo shardingInfo, object vertexParameter);
+        public abstract Task InitializeAsync(int shardId, ShardingInfo shardingInfo, object vertexParameter);
 
         public virtual void UpdateShardingInfo(ShardingInfo shardingInfo)
         {

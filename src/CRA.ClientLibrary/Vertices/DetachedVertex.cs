@@ -130,11 +130,11 @@ namespace CRA.ClientLibrary
         /// <param name="remoteVertex"></param>
         /// <param name="remoteOutputEndpoint"></param>
         /// <returns></returns>
-        public async Task<Stream> FromRemoteOutputEndpointStream(string localInputEndpointName, string remoteVertex, string remoteOutputEndpoint)
+        public async Task<Stream> FromRemoteOutputEndpointStreamAsync(string localInputEndpointName, string remoteVertex, string remoteOutputEndpoint)
         {
             AddInputEndpoint(localInputEndpointName);
 
-            _clientLibrary.AddConnectionInfo(remoteVertex, remoteOutputEndpoint, _vertexName, localInputEndpointName);
+            await _clientLibrary.AddConnectionInfoAsync(remoteVertex, remoteOutputEndpoint, _vertexName, localInputEndpointName);
             var stream = await Connect_InitiatorSide(remoteVertex, remoteOutputEndpoint, _vertexName, localInputEndpointName, true);
             var conn = new ConnectionInfo(remoteVertex, remoteOutputEndpoint, _vertexName, localInputEndpointName);
             ConnectionData.InputConnections.AddOrUpdate(conn, stream, (c, s1) => { s1?.Dispose(); return stream; });
@@ -149,11 +149,11 @@ namespace CRA.ClientLibrary
         /// <param name="remoteVertex"></param>
         /// <param name="remoteInputEndpoint"></param>
         /// <returns></returns>
-        public async Task<Stream> ToRemoteInputEndpointStream(string localOutputEndpointName, string remoteVertex, string remoteInputEndpoint)
+        public async Task<Stream> ToRemoteInputEndpointStreamAsync(string localOutputEndpointName, string remoteVertex, string remoteInputEndpoint)
         {
             AddOutputEndpoint(localOutputEndpointName);
 
-            _clientLibrary.AddConnectionInfo(_vertexName, localOutputEndpointName, remoteVertex, remoteInputEndpoint);
+            await _clientLibrary.AddConnectionInfoAsync(_vertexName, localOutputEndpointName, remoteVertex, remoteInputEndpoint);
             var stream = await Connect_InitiatorSide(_vertexName, localOutputEndpointName, remoteVertex, remoteInputEndpoint, false);
             var conn = new ConnectionInfo(_vertexName, localOutputEndpointName, remoteVertex, remoteInputEndpoint);
             ConnectionData.OutputConnections.AddOrUpdate(
@@ -172,14 +172,14 @@ namespace CRA.ClientLibrary
         /// Restore information about endpoints of this detached vertex
         /// </summary>
         /// <returns></returns>
-        public async Task RestoreEndpointData()
+        public async Task RestoreEndpointDataAsync()
         {
-            foreach (var endpt in await _clientLibrary.GetInputEndpoints(_vertexName))
+            foreach (var endpt in await _clientLibrary.GetInputEndpointsAsync(_vertexName))
             {
                 EndpointData.InputEndpoints.TryAdd(endpt, true);
             }
 
-            foreach (var endpt in await _clientLibrary.GetOutputEndpoints(_vertexName))
+            foreach (var endpt in await _clientLibrary.GetOutputEndpointsAsync(_vertexName))
             {
                 EndpointData.OutputEndpoints.TryAdd(endpt, true);
             }
@@ -189,17 +189,17 @@ namespace CRA.ClientLibrary
         /// Restore all connections from/to this vertex, in the CRA connection graph
         /// </summary>
         /// <returns></returns>
-        public async Task RestoreAllConnections()
+        public async Task RestoreAllConnectionsAsync()
         {
-            foreach (var outConn in await _clientLibrary.GetConnectionsFromVertex(_vertexName))
+            foreach (var outConn in await _clientLibrary.GetConnectionsFromVertexAsync(_vertexName))
             {
-                var stream = await ToRemoteInputEndpointStream(outConn.FromEndpoint, outConn.ToVertex, outConn.ToEndpoint);
+                var stream = await ToRemoteInputEndpointStreamAsync(outConn.FromEndpoint, outConn.ToVertex, outConn.ToEndpoint);
                 ConnectionData.OutputConnections.AddOrUpdate(outConn, stream, (c, s1) => { s1?.Dispose(); return stream; });
             }
 
-            foreach (var inConn in await _clientLibrary.GetConnectionsToVertex(_vertexName))
+            foreach (var inConn in await _clientLibrary.GetConnectionsToVertexAsync(_vertexName))
             {
-                var stream = await FromRemoteOutputEndpointStream(inConn.ToEndpoint, inConn.FromVertex, inConn.FromEndpoint);
+                var stream = await FromRemoteOutputEndpointStreamAsync(inConn.ToEndpoint, inConn.FromVertex, inConn.FromEndpoint);
                 ConnectionData.OutputConnections.AddOrUpdate(inConn, stream, (c, s1) => { s1?.Dispose(); return stream; });
             }
         }
@@ -207,23 +207,23 @@ namespace CRA.ClientLibrary
         /// <summary>
         /// Restore a vertex/instance pair
         /// </summary>
-        public Task Restore()
-            => Task.WhenAll(
-                RestoreEndpointData(),
-                RestoreAllConnections());
+        public async Task RestoreAsync()
+            => await Task.WhenAll(
+                RestoreEndpointDataAsync(),
+                RestoreAllConnectionsAsync());
 
 
         /// <summary>
         /// Restore all connections from/to this vertex that are set to 'null' locally, in the CRA connection graph
         /// </summary>
         /// <returns></returns>
-        public async Task<ConnectionData> RestoreNullConnections()
+        public async Task<ConnectionData> RestoreNullConnectionsAsync()
         {
             foreach (var outConn in ConnectionData.OutputConnections)
             {
                 if (outConn.Value == null)
                 {
-                    var stream = await ToRemoteInputEndpointStream(
+                    var stream = await ToRemoteInputEndpointStreamAsync(
                         outConn.Key.FromEndpoint,
                         outConn.Key.ToVertex,
                         outConn.Key.ToEndpoint);
@@ -236,7 +236,7 @@ namespace CRA.ClientLibrary
             {
                 if (inConn.Value == null)
                 {
-                    var stream = await FromRemoteOutputEndpointStream(
+                    var stream = await FromRemoteOutputEndpointStreamAsync(
                         inConn.Key.ToEndpoint,
                         inConn.Key.FromVertex,
                         inConn.Key.FromEndpoint);
@@ -254,19 +254,19 @@ namespace CRA.ClientLibrary
         /// </summary>
         public void Dispose()
         {
-            Close();
+            CloseAsync().Wait();
             GC.SuppressFinalize(this);
 
         }
 
-        protected async void Close()
+        protected async Task CloseAsync()
         {
             if (_isEphemeralInstance)
             {
                 _clientLibrary.DeleteInstance(_instanceName);
             }
 
-            await _clientLibrary.DeleteVertex(_vertexName);
+            await _clientLibrary.DeleteVertexAsync(_vertexName);
 
             foreach (var endpt in EndpointData.InputEndpoints.Keys)
             {
@@ -283,7 +283,7 @@ namespace CRA.ClientLibrary
 
             foreach (var kvp in ConnectionData.InputConnections)
             {
-                await _clientLibrary.DeleteConnectionInfo(kvp.Key.FromVertex, kvp.Key.FromEndpoint, kvp.Key.ToVertex, kvp.Key.ToEndpoint);
+                await _clientLibrary.DeleteConnectionInfoAsync(kvp.Key.FromVertex, kvp.Key.FromEndpoint, kvp.Key.ToVertex, kvp.Key.ToEndpoint);
 
                 if (kvp.Value != null)
                 {
@@ -293,7 +293,7 @@ namespace CRA.ClientLibrary
 
             foreach (var kvp in ConnectionData.OutputConnections)
             {
-                await _clientLibrary.DeleteConnectionInfo(kvp.Key.FromVertex, kvp.Key.FromEndpoint, kvp.Key.ToVertex, kvp.Key.ToEndpoint);
+                await _clientLibrary.DeleteConnectionInfoAsync(kvp.Key.FromVertex, kvp.Key.FromEndpoint, kvp.Key.ToVertex, kvp.Key.ToEndpoint);
                 if (kvp.Value != null)
                 {
                     kvp.Value.Dispose();

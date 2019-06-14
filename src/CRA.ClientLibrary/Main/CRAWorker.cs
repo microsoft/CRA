@@ -594,7 +594,7 @@ namespace CRA.ClientLibrary
 #pragma warning restore CS4014
                     }
 
-                    await _craClient.Disconnect(fromVertexName, fromVertexOutput, toVertexName, toVertexInput);
+                    await _craClient.DisconnectAsync(fromVertexName, fromVertexOutput, toVertexName, toVertexInput);
                 }
             }
             catch (Exception e)
@@ -661,7 +661,7 @@ namespace CRA.ClientLibrary
                 if (outConnections.TryRemove(fromVertexName + ":" + fromVertexOutput + ":" + toVertexName + ":" + toVertexInput, out oldSource))
                 {
                     oldSource.Dispose();
-                    await _craClient.Disconnect(fromVertexName, fromVertexOutput, toVertexName, toVertexInput);
+                    await _craClient.DisconnectAsync(fromVertexName, fromVertexOutput, toVertexName, toVertexInput);
                 }
             }
             catch (Exception e)

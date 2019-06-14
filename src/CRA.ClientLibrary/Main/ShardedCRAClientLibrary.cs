@@ -47,8 +47,8 @@ namespace CRA.ClientLibrary
             return CRAErrorCode.Success;
         }
 
-        public Task<ShardingInfo> GetShardingInfo(string vertexName)
-            => _shardedVertexTableManager.GetLatestShardingInfo(vertexName);
+        public async Task<ShardingInfo> GetShardingInfoAsync(string vertexName)
+            => await _shardedVertexTableManager.GetLatestShardingInfo(vertexName);
 
         /// <summary>
         /// Instantiate a sharded vertex on a set of CRA instances.
@@ -58,7 +58,7 @@ namespace CRA.ClientLibrary
         /// <param name="vertexParameter">Parameters to be passed to each vertex of the sharded vertex in its constructor (serializable object)</param>
         /// <param name="vertexShards"> A map that holds the number of vertices from a sharded vertex needs to be instantiated for each CRA instance </param>
         /// <returns>Status of the command</returns>
-        public async Task<CRAErrorCode> InstantiateVertex(
+        public async Task<CRAErrorCode> InstantiateVertexAsync(
             string[] instanceNames,
             string vertexName,
             string vertexDefinition,
@@ -90,7 +90,7 @@ namespace CRA.ClientLibrary
             }
 
             await _shardedVertexTableManager.DeleteShardedVertex(vertexName);
-            await _shardedVertexTableManager.RegisterShardedVertex(vertexName, allInstances, allShards, addedShards, removedShards, shardLocator);
+            await _shardedVertexTableManager.RegisterShardedVertexAsync(vertexName, allInstances, allShards, addedShards, removedShards, shardLocator);
 
             CRAErrorCode[] results = Task.WhenAll(tasks).Result;
 
@@ -234,7 +234,7 @@ namespace CRA.ClientLibrary
         /// </summary>
         /// <param name="vertexName"></param>
         /// <param name="instancesNames"></param>
-        public void DeleteShardedVertexFromInstances(string vertexName, string[] instancesNames)
+        public async Task DeleteShardedVertexFromInstancesAsync(string vertexName, string[] instancesNames)
         {
             Task[] tasks = new Task[instancesNames.Length];
             for (int i = 0; i < tasks.Length; i++)
@@ -242,16 +242,10 @@ namespace CRA.ClientLibrary
                 int threadIndex = i;
                 tasks[threadIndex] = DeleteVerticesFromInstanceAsync(vertexName, instancesNames[threadIndex]);
             }
-            Task.WhenAll(tasks);
+            await Task.WhenAll(tasks);
         }
 
-        internal Task DeleteVerticesFromInstanceAsync(string vertexName, string instanceName)
-        {
-            return Task.Factory.StartNew(
-                () => { DeleteVerticesFromInstance(vertexName, instanceName); });
-        }
-
-        private async Task DeleteVerticesFromInstance(string vertexName, string instanceName)
+        internal async Task DeleteVerticesFromInstanceAsync(string vertexName, string instanceName)
         {
             var tasks = new List<Task>();
             foreach(var vertex in 
@@ -367,19 +361,6 @@ namespace CRA.ClientLibrary
 
             return result;
         }
-
-        internal Task<CRAErrorCode> ConnectAsync(
-            string fromVertexName,
-            string fromEndpoint,
-            string toVertexName,
-            string toEndpoint,
-            ConnectionInitiator direction)
-            => Connect(
-                fromVertexName,
-                fromEndpoint,
-                toVertexName,
-                toEndpoint,
-                direction);
 
 
         /// <summary>
@@ -567,17 +548,5 @@ namespace CRA.ClientLibrary
                 await Task.WhenAll(tasks);
             }
         }
-
-
-        internal Task DisconnectAsync(
-            string fromVertexName,
-            string fromVertexOutput,
-            string toVertexName,
-            string toVertexInput)
-            => Disconnect(
-                fromVertexName,
-                fromVertexOutput,
-                toVertexName,
-                toVertexInput);
     }
 }

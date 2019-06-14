@@ -8,14 +8,14 @@ namespace FusableConnectionPair
         static void Main(string[] args)
         {
             var client = new CRAClientLibrary();
-            client.Reset();
+            client.ResetAsync().Wait();
 
-            client.DefineVertex("fusableconnectionpairvertex", () => new FusableConnectionPairVertex());
+            client.DefineVertexAsync("fusableconnectionpairvertex", () => new FusableConnectionPairVertex()).Wait();
 
-            client.InstantiateVertex("crainst01", "fvertex1", "fusableconnectionpairvertex", null);
-            client.InstantiateVertex("crainst01", "fvertex2", "fusableconnectionpairvertex", null);
+            client.InstantiateVertexAsync("crainst01", "fvertex1", "fusableconnectionpairvertex", null).Wait();
+            client.InstantiateVertexAsync("crainst01", "fvertex2", "fusableconnectionpairvertex", null).Wait();
 
-            client.Connect("fvertex1", "output", "fvertex2", "input");
+            client.ConnectAsync("fvertex1", "output", "fvertex2", "input").Wait();
 
             Console.ReadLine();
         }

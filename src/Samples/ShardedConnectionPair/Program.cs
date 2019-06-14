@@ -9,21 +9,22 @@ namespace ShardedConnectionPair
         {
             var client = new CRAClientLibrary();
 
-            client.DefineVertex("shardedconnectionpairvertex", () => new ShardedConnectionPairVertex());
+            client.DefineVertexAsync("shardedconnectionpairvertex", () => new ShardedConnectionPairVertex()).Wait();
 
-            client.InstantiateVertex(
+            client.InstantiateVertexAsync(
                 new[] { "crainst01", "crainst02" },
                 "vertex1", 
                 "shardedconnectionpairvertex",
-                null, 1, e => e % 2);
-            client.InstantiateVertex(
+                null, 1, e => e % 2).Wait();
+
+            client.InstantiateVertexAsync(
                 new[] { "crainst01", "crainst02" }, 
                 "vertex2", 
                 "shardedconnectionpairvertex", 
-                null, 1, e => e % 2);
+                null, 1, e => e % 2).Wait();
 
-            client.Connect("vertex1", "output", "vertex2", "input");
-            client.Connect("vertex2", "output", "vertex1", "input");
+            client.ConnectAsync("vertex1", "output", "vertex2", "input").Wait();
+            client.ConnectAsync("vertex2", "output", "vertex1", "input").Wait();
 
             Console.ReadLine();
         }
