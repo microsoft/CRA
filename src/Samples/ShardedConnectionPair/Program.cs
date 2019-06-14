@@ -9,7 +9,7 @@ namespace ShardedConnectionPair
         {
             var client = new CRAClientLibrary();
 
-            client.DefineVertexAsync("shardedconnectionpairvertex", () => new ShardedConnectionPairVertex()).Wait();
+            client.DefineVertexAsync("shardedconnectionpairvertex", (System.Linq.Expressions.Expression<Func<IVertex>>)(() => new ShardedConnectionPairVertex())).Wait();
 
             client.InstantiateVertexAsync(
                 new[] { "crainst01", "crainst02" },

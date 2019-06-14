@@ -31,20 +31,19 @@ namespace ShardedConnectionPair
             }
         }
 
-        public override async Task FromStreamAsync(Stream stream, string otherVertex, int otherShardId, string otherEndpoint, CancellationToken token)
+        public override Task FromStreamAsync(Stream stream, string otherVertex, int otherShardId, string otherEndpoint, CancellationToken token)
         {
-            Console.WriteLine("UPDATE!!!!!!!!!!!!!!!");
-
             Console.WriteLine("Receiving data from vertex: " + otherVertex + ", endpoint: " + otherEndpoint);
 
             for (int i = 0; i < int.MaxValue; i++)
             {
                 int val = stream.ReadInt32();
-                Console.WriteLine("AARead value: " + val);
+                Console.WriteLine("Read value: " + val);
                 token.ThrowIfCancellationRequested();
 
                 if (!_running) break;
             }
+            return Task.CompletedTask;
         }
     }
 }

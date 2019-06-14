@@ -169,14 +169,14 @@ namespace CRA.ClientLibrary
             string vertexName,
             string vertexDefinition,
             object vertexParameter)
-            => await InstantiateVertex(
+            => await InstantiateVertexAsync(
                 instanceName,
                 vertexName,
                 vertexDefinition,
                 vertexParameter,
                 false);
 
-        internal async Task<CRAErrorCode> InstantiateVertex(
+        internal async Task<CRAErrorCode> InstantiateVertexAsync(
             string instanceName,
             string vertexName,
             string vertexDefinition,
@@ -507,6 +507,11 @@ namespace CRA.ClientLibrary
         public void SideloadVertex(IVertex vertex, string vertexName)
         {
             _verticesToSideload[vertexName] = vertex;
+        }
+
+        public void EnableArtifactUploading()
+        {
+            _artifactUploading = true;
         }
 
         public void DisableArtifactUploading()

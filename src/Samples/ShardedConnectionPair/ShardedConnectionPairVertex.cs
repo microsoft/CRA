@@ -12,7 +12,7 @@ namespace ShardedConnectionPair
 
         public override Task InitializeAsync(int shardId, ShardingInfo shardingInfo, object vertexParameter)
         {
-            Console.WriteLine("Sharded vertex name", GetVertexName());
+            Console.WriteLine("Sharded vertex name: {0}", GetVertexName());
 
             AddAsyncInputEndpoint("input", new MyAsyncInput(this));
             AddAsyncOutputEndpoint("output", new MyAsyncOutput(this));

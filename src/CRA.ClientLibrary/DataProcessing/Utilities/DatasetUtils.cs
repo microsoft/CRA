@@ -146,8 +146,6 @@ namespace CRA.ClientLibrary.DataProcessing
 
         public void Subscribe(object observer){}
 
-        public void Consume(object consumer) { }
-
         public IDataset<Empty, Empty> ToObject()
         {
             throw new NotImplementedException();

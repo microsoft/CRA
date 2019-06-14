@@ -60,9 +60,10 @@ namespace CRA.ClientLibrary.DataProcessing
             {
                 if (splitter != null)
                 {
-                    var transformer = (Expression<Func<TDatasetI1, IMoveDescriptor, TDatasetI2[]>>) SerializationHelper.Deserialize(splitter);
-                    var compiledTransformer = transformer.Compile();
-                    return compiledTransformer((TDatasetI1)dataset, moveDescriptor);
+                    Expression transformer = SerializationHelper.Deserialize(splitter);
+                    var compiledTransformer = Expression<Func<TDatasetI1, IMoveDescriptor, TDatasetI2[]>>.Lambda(transformer).Compile();
+                    Delegate compiledTransformerConstructor = (Delegate)compiledTransformer.DynamicInvoke();
+                    return compiledTransformerConstructor.DynamicInvoke((TDatasetI1)dataset, moveDescriptor);
                 }
             }
             catch (Exception e)
@@ -86,9 +87,10 @@ namespace CRA.ClientLibrary.DataProcessing
                     for (int i = 0; i < transientDatasets.Length; i++)
                             transientDatasets[i] = (TDatasetI2)datasets[i];
 
-                    var transformer = (Expression<Func<TDatasetI2[], IMoveDescriptor, TDatasetO>>) SerializationHelper.Deserialize(merger);
-                    var compiledTransformer = transformer.Compile();
-                    return compiledTransformer(transientDatasets, moveDescriptor);
+                    Expression transformer = SerializationHelper.Deserialize(merger);
+                    var compiledTransformer = Expression<Func<TDatasetI2[], IMoveDescriptor, TDatasetO>>.Lambda(transformer).Compile();
+                    Delegate compiledTransformerConstructor = (Delegate)compiledTransformer.DynamicInvoke();
+                    return compiledTransformerConstructor.DynamicInvoke(transientDatasets, moveDescriptor);
                 }
             }
             catch (Exception e)

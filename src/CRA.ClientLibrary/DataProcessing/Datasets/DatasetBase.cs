@@ -39,12 +39,6 @@ namespace CRA.ClientLibrary.DataProcessing
             throw new NotImplementedException();
         }
 
-        public virtual void Consume(object consumer)
-        {
-            throw new NotImplementedException();
-        }
-
-
         public virtual IDataset<TKey, TPayload> ToObject()
         {
             throw new NotImplementedException();

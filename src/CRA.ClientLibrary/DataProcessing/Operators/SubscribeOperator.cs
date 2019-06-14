@@ -12,7 +12,7 @@ namespace CRA.ClientLibrary.DataProcessing
     //NOTE: Currently, subscribe is working properly with one output endpoint only
     public class SubscribeOperator : OperatorBase
     {
-        internal Dictionary<string, object> _cachedDatasets;
+        internal Dictionary<string, object> _cachedDatasets; 
 
         private string[] _outputsObservers;
 

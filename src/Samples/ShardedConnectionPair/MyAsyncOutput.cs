@@ -40,7 +40,7 @@ namespace ShardedConnectionPair
                 for (int j = 0; j < 1; j++)
                 {
                     stream.WriteInt32(i + j);
-                    Console.WriteLine("AAWritten value: " + (i + j));
+                    Console.WriteLine("Written value: " + (i + j));
                 }
 
 

@@ -20,7 +20,7 @@ namespace CRA.ClientLibrary
         /// </summary>
         /// <param name="vertexDefinition">Name of the vertex type</param>
         /// <param name="creator">Lambda that describes how to instantiate the vertex, taking in an object as parameter</param>
-        public async Task<CRAErrorCode> DefineVertex(
+        public async Task<CRAErrorCode> DefineVertexAsync(
             string vertexDefinition,
             Expression<Func<IShardedVertex>> creator)
         {
@@ -42,7 +42,8 @@ namespace CRA.ClientLibrary
                 isActive: true,
                 isSharded: false);
 
-            await _vertexManager.VertexInfoProvider.InsertOrReplace(newRow);
+             _vertexManager.VertexInfoProvider.InsertOrReplace(newRow).Wait();
+             //await _vertexManager.VertexInfoProvider.InsertOrReplace(newRow);
 
             return CRAErrorCode.Success;
         }
@@ -89,9 +90,11 @@ namespace CRA.ClientLibrary
                 }
             }
 
-            await _shardedVertexTableManager.DeleteShardedVertex(vertexName);
-            await _shardedVertexTableManager.RegisterShardedVertexAsync(vertexName, allInstances, allShards, addedShards, removedShards, shardLocator);
-
+            _shardedVertexTableManager.DeleteShardedVertexAsync(vertexName).Wait();
+            //await _shardedVertexTableManager.DeleteShardedVertex(vertexName);
+            _shardedVertexTableManager.RegisterShardedVertexAsync(vertexName, allInstances, allShards, addedShards, removedShards, shardLocator).Wait();
+            //await _shardedVertexTableManager.RegisterShardedVertex(vertexName, allInstances, allShards, addedShards, removedShards, shardLocator);
+            
             CRAErrorCode[] results = Task.WhenAll(tasks).Result;
 
             // Check for the status of instantiated vertices
@@ -166,7 +169,7 @@ namespace CRA.ClientLibrary
             string vertexName,
             string vertexDefinition,
             object vertexParameter)
-            => InstantiateVertex(
+            => InstantiateVertexAsync(
                 instanceName,
                 vertexName,
                 vertexDefinition,
