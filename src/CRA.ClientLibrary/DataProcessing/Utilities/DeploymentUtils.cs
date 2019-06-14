@@ -201,17 +201,17 @@ namespace CRA.ClientLibrary.DataProcessing
             {
                 if (!_isProduceOperatorDefined)
                 {
-                    await client.DefineVertex(typeof(ShardedProducerOperator).Name.ToLower(), () => new ShardedProducerOperator());
+                    await client.DefineVertexAsync(typeof(ShardedProducerOperator).Name.ToLower(), () => new ShardedProducerOperator());
                     _isProduceOperatorDefined = true;
                 }
 
-                var status = await client.InstantiateVertex(CreateInstancesNames(task.DeployDescriptor.InstancesMap()), task.OutputId, typeof(ShardedProducerOperator).Name.ToLower(), task, 1);
+                var status = await client.InstantiateVertexAsync(CreateInstancesNames(task.DeployDescriptor.InstancesMap()), task.OutputId, typeof(ShardedProducerOperator).Name.ToLower(), task, 1);
                 if (status == CRAErrorCode.Success)
                 {
                     foreach (string fromSecondaryInputId in task.EndpointsDescriptor.SecondaryFromInputs.Keys)
                     {
                         var fromToConnection = task.VerticesConnectionsMap[fromSecondaryInputId + task.OutputId][0];
-                        await client.Connect(fromToConnection.FromVertex, fromToConnection.FromEndpoint, fromToConnection.ToVertex, fromToConnection.ToEndpoint);
+                        await client.ConnectAsync(fromToConnection.FromVertex, fromToConnection.FromEndpoint, fromToConnection.ToVertex, fromToConnection.ToEndpoint);
                     }
                     return true;
                 }
@@ -231,17 +231,17 @@ namespace CRA.ClientLibrary.DataProcessing
             {
                 if (!_isSubscribeOperatorDefined)
                 {
-                    await client.DefineVertex(typeof(ShardedSubscribeOperator).Name.ToLower(), () => new ShardedSubscribeOperator());
+                    await client.DefineVertexAsync(typeof(ShardedSubscribeOperator).Name.ToLower(), () => new ShardedSubscribeOperator());
                     _isSubscribeOperatorDefined = true;
                 }
 
-                var status = await client.InstantiateVertex(CreateInstancesNames(task.DeployDescriptor.InstancesMap()), task.OutputId, typeof(ShardedSubscribeOperator).Name.ToLower(), task, 1);
+                var status = await client.InstantiateVertexAsync(CreateInstancesNames(task.DeployDescriptor.InstancesMap()), task.OutputId, typeof(ShardedSubscribeOperator).Name.ToLower(), task, 1);
                 if (status == CRAErrorCode.Success)
                 {
                     foreach (string fromInputId in task.EndpointsDescriptor.FromInputs.Keys)
                     {
                         var fromToConnection = task.VerticesConnectionsMap[fromInputId + task.OutputId][0];
-                        await client.Connect(fromToConnection.FromVertex, fromToConnection.FromEndpoint, fromToConnection.ToVertex, fromToConnection.ToEndpoint);
+                        await client.ConnectAsync(fromToConnection.FromVertex, fromToConnection.FromEndpoint, fromToConnection.ToVertex, fromToConnection.ToEndpoint);
                     }
                     return true;
                 }
@@ -264,23 +264,23 @@ namespace CRA.ClientLibrary.DataProcessing
             {
                 if (!_isShuffleOperatorDefined)
                 {
-                    await client.DefineVertex(typeof(ShardedShuffleOperator).Name.ToLower(), () => new ShardedShuffleOperator());
+                    await client.DefineVertexAsync(typeof(ShardedShuffleOperator).Name.ToLower(), () => new ShardedShuffleOperator());
                     _isShuffleOperatorDefined = true;
                 }
 
-                var status = await client.InstantiateVertex(CreateInstancesNames(task.DeployDescriptor.InstancesMap()), task.ReducerVertexName, typeof(ShardedShuffleOperator).Name.ToLower(), task, 1);
+                var status = await client.InstantiateVertexAsync(CreateInstancesNames(task.DeployDescriptor.InstancesMap()), task.ReducerVertexName, typeof(ShardedShuffleOperator).Name.ToLower(), task, 1);
                 if (status == CRAErrorCode.Success) {
 
                     foreach (string fromInputId in task.EndpointsDescriptor.FromInputs.Keys)
                     {
                         var fromToConnection = task.VerticesConnectionsMap[fromInputId + task.ReducerVertexName][0];
-                        await client.Connect(fromToConnection.FromVertex, fromToConnection.FromEndpoint, fromToConnection.ToVertex, fromToConnection.ToEndpoint);
+                        await client.ConnectAsync(fromToConnection.FromVertex, fromToConnection.FromEndpoint, fromToConnection.ToVertex, fromToConnection.ToEndpoint);
                     }
 
                     foreach (string fromSecondaryInputId in task.EndpointsDescriptor.SecondaryFromInputs.Keys)
                     {
                         var fromToConnection = task.VerticesConnectionsMap[fromSecondaryInputId + task.ReducerVertexName][0];
-                        await client.Connect(fromToConnection.FromVertex, fromToConnection.FromEndpoint, fromToConnection.ToVertex, fromToConnection.ToEndpoint);
+                        await client.ConnectAsync(fromToConnection.FromVertex, fromToConnection.FromEndpoint, fromToConnection.ToVertex, fromToConnection.ToEndpoint);
                     }
                     return true;
                 }
@@ -308,11 +308,11 @@ namespace CRA.ClientLibrary.DataProcessing
 
                 if (!_isSubscribeClientOperatorDefined)
                 {
-                    await client.DefineVertex(typeof(ShardedSubscribeClientOperator).Name.ToLower(), () => new ShardedSubscribeClientOperator());
+                    await client.DefineVertexAsync(typeof(ShardedSubscribeClientOperator).Name.ToLower(), () => new ShardedSubscribeClientOperator());
                     _isSubscribeClientOperatorDefined = true;
                 }
 
-                var status = await client.InstantiateVertex(new string[] {workerName}, task.OutputId, typeof(ShardedSubscribeClientOperator).Name.ToLower(), task, 1);
+                var status = await client.InstantiateVertexAsync(new string[] {workerName}, task.OutputId, typeof(ShardedSubscribeClientOperator).Name.ToLower(), task, 1);
 
                 if (status == CRAErrorCode.Success)
                 {
@@ -322,7 +322,7 @@ namespace CRA.ClientLibrary.DataProcessing
                                         task.OutputId, topology.OperatorsEndpointsDescriptors[fromInputId]);
                         string inputEndpoint = OperatorUtils.PrepareInputEndpointIdForOperator(fromInputId, task.EndpointsDescriptor, false);
 
-                        await client.Connect(fromInputId, outputEndpoint, task.OutputId, inputEndpoint);
+                        await client.ConnectAsync(fromInputId, outputEndpoint, task.OutputId, inputEndpoint);
                     }
                     result = true;
                 }

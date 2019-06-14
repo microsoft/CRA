@@ -167,7 +167,7 @@ namespace CRA.ClientLibrary.DataProcessing
 
         public void ResetCRAClient()
         {
-            _craClient.Reset();
+            _craClient.ResetAsync().Wait();
         }
     }
 }

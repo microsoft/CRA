@@ -31,7 +31,7 @@ namespace ShardedConnectionPair
             }
         }
 
-        public override async Task FromStreamAsync(Stream stream, string otherVertex, int otherShardId, string otherEndpoint, CancellationToken token)
+        public override Task FromStreamAsync(Stream stream, string otherVertex, int otherShardId, string otherEndpoint, CancellationToken token)
         {
             Console.WriteLine("Receiving data from vertex: " + otherVertex + ", endpoint: " + otherEndpoint);
 
@@ -43,6 +43,7 @@ namespace ShardedConnectionPair
 
                 if (!_running) break;
             }
+            return Task.CompletedTask;
         }
     }
 }

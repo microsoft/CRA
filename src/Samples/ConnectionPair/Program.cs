@@ -15,15 +15,15 @@ namespace ConnectionPair
         {
             var client = new CRAClientLibrary();
 
-            client.DefineVertex("connectionpairvertex", () => new ConnectionPairVertex());
+            client.DefineVertexAsync("connectionpairvertex", () => new ConnectionPairVertex()).Wait();
 
-            client.InstantiateVertex("crainst01", "vertex1", "connectionpairvertex", new MyParam { field1 = 33, field2 = "foo" });
+            client.InstantiateVertexAsync("crainst01", "vertex1", "connectionpairvertex", new MyParam { field1 = 33, field2 = "foo" }).Wait();
 
 
-            client.InstantiateVertex("crainst02", "vertex2", "connectionpairvertex", new MyParam { field1 = 34 });
+            client.InstantiateVertexAsync("crainst02", "vertex2", "connectionpairvertex", new MyParam { field1 = 34 }).Wait();
 
-            client.Connect("vertex1", "output", "vertex2", "input");
-            client.Connect("vertex2", "output", "vertex1", "input");
+            client.ConnectAsync("vertex1", "output", "vertex2", "input").Wait();
+            client.ConnectAsync("vertex2", "output", "vertex1", "input").Wait();
 
             Console.ReadLine();
         }
