@@ -4,7 +4,7 @@
     <id>CRA</id>
     <version>$version$</version>
     <title>Common Runtime for Applications (CRA)</title>
-    <authors>CRA</authors>
+    <authors>Microsoft</authors>
     <owners>Microsoft</owners>
     <projectUrl>https://github.com/Microsoft/CRA</projectUrl>
     <licenseUrl>https://raw.githubusercontent.com/Microsoft/CRA/master/LICENSE</licenseUrl>
