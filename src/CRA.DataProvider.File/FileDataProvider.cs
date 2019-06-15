@@ -1,20 +1,20 @@
-﻿namespace CRA.FileSyncDataProvider
+﻿namespace CRA.DataProvider.File
 {
-    using CRA.ClientLibrary.DataProvider;
     using System;
     using System.IO;
+    using CRA.DataProvider;
 
     /// <summary>
     /// Definition for FileProviderImpl
     /// </summary>
-    public class FileProviderImpl : IDataProvider
+    public class FileDataProvider : IDataProvider
     {
         private readonly string _directoryPath;
 
-        public FileProviderImpl()
+        public FileDataProvider()
         { _directoryPath = FileUtils.GetDirectory(GetDefaultDirectory()); }
 
-        public FileProviderImpl(string directoryPath)
+        public FileDataProvider(string directoryPath)
         { _directoryPath = FileUtils.GetDirectory(directoryPath); }
 
         public IBlobStorageProvider GetBlobStorageProvider()

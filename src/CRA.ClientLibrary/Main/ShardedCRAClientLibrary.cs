@@ -1,4 +1,4 @@
-﻿using CRA.ClientLibrary.DataProvider;
+﻿using CRA.DataProvider;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Microsoft.WindowsAzure.Storage.Table;
 using System;

@@ -1,8 +1,8 @@
-﻿namespace CRA.ClientLibrary.DataProvider
+﻿namespace CRA.DataProvider
 {
     using System;
-    using System.Collections.Generic;
     using System.Linq.Expressions;
+    using CRA.ClientLibrary;
 
     /// <summary>
     /// Definition for DataProviderExtensions

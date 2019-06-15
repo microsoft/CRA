@@ -1,4 +1,4 @@
-﻿namespace CRA.ClientLibrary.DataProvider
+﻿namespace CRA.DataProvider
 {
     using System;
     using System.Collections.Generic;

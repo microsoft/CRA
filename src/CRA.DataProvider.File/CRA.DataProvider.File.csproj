@@ -4,7 +4,7 @@
     <TargetFrameworks>netcoreapp2.0;net46;netstandard2.0</TargetFrameworks>
     <SignAssembly>true</SignAssembly>
     <DelaySign>false</DelaySign>
-    <AssemblyOriginatorKeyFile>../../CRA.snk</AssemblyOriginatorKeyFile>
+    <AssemblyOriginatorKeyFile>../CRA.snk</AssemblyOriginatorKeyFile>
   </PropertyGroup>
 
   <ItemGroup>
@@ -13,7 +13,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\CRA.ClientLibrary\CRA.ClientLibrary.csproj" />
+    <ProjectReference Include="..\CRA.ClientLibrary\CRA.ClientLibrary.csproj" />
   </ItemGroup>
 
 </Project>

@@ -4,8 +4,8 @@ using System.Net.Sockets;
 using System.Configuration;
 using CRA.ClientLibrary;
 using System.Reflection;
-using CRA.ClientLibrary.AzureProvider;
-using CRA.ClientLibrary.DataProvider;
+using CRA.DataProvider;
+using CRA.DataProvider.Azure;
 
 namespace CRA.Worker
 {
@@ -44,9 +44,9 @@ namespace CRA.Worker
             }
 
             if (storageConnectionString != null)
-            { dataProvider = new AzureProviderImpl(storageConnectionString); }
+            { dataProvider = new AzureDataProvider(storageConnectionString); }
             else if (storageConnectionString == null)
-            { dataProvider = new FileSyncDataProvider.FileProviderImpl(); }
+            { dataProvider = new DataProvider.File.FileDataProvider(); }
 
 #if !DOTNETCORE
             connectionsPoolPerWorkerString = ConfigurationManager.AppSettings.Get("CRA_WORKER_MAX_CONN_POOL");

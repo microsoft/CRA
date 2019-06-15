@@ -1,5 +1,6 @@
 ﻿using System;
 using CRA.ClientLibrary;
+using CRA.DataProvider.File;
 
 namespace BandwidthTest
 {
@@ -7,7 +8,7 @@ namespace BandwidthTest
     {
         static void Main(string[] args)
         {
-            var client = new CRAClientLibrary(new CRA.FileSyncDataProvider.FileProviderImpl());
+            var client = new CRAClientLibrary(new FileDataProvider());
 
             int chunkSize = 10*1024*1024;
 

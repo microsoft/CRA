@@ -3,7 +3,7 @@ using System.Reflection;
 using System.Linq.Expressions;
 using System.Threading.Tasks;
 using System.Collections.Generic;
-using CRA.ClientLibrary.DataProvider;
+using CRA.DataProvider;
 using Remote.Linq;
 using Remote.Linq.ExpressionVisitors;
 using System.Threading;

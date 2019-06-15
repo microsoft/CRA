@@ -3,13 +3,8 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Linq.Expressions;
-using System.Text;
-using System.IO;
-using System.Configuration;
-using Microsoft.WindowsAzure.Storage;
-using Microsoft.WindowsAzure.Storage.Blob;
 using Microsoft.WindowsAzure.Storage.Table;
-using CRA.ClientLibrary.DataProvider;
+using CRA.DataProvider;
 
 namespace CRA.ClientLibrary
 {

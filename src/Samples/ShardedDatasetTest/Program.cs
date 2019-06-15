@@ -2,7 +2,7 @@
 using System.Collections.Concurrent;
 using System.Linq.Expressions;
 using CRA.ClientLibrary;
-using CRA.ClientLibrary.AzureProvider;
+using CRA.DataProvider.Azure;
 using CRA.ClientLibrary.DataProcessing;
 
 namespace ShardedDatasetTest
@@ -17,7 +17,7 @@ namespace ShardedDatasetTest
             int workersCount = 2;
             DeploymentUtils.DefaultDeployDescriptor = new DeployDescriptorBase(CreateDefaultDeployer(workersCount));
 
-            var shardedDatasetClient = new ShardedDatasetClient(new AzureProviderImpl(storageConnectionString));
+            var shardedDatasetClient = new ShardedDatasetClient(new AzureDataProvider(storageConnectionString));
 
             ProduceTest(shardedDatasetClient);
         }

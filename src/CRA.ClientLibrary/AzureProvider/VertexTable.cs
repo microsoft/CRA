@@ -9,9 +9,9 @@ using System.Configuration;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Microsoft.WindowsAzure.Storage.Table;
-using CRA.ClientLibrary.DataProvider;
+using CRA.ClientLibrary;
 
-namespace CRA.ClientLibrary.AzureProvider
+namespace CRA.DataProvider.Azure
 {
     /// <summary>
     /// An assignment of one machine to a group

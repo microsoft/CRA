@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Table;
 using System.Linq.Expressions;
-using CRA.ClientLibrary.DataProvider;
+using CRA.DataProvider;
 using System.Threading.Tasks;
 
 namespace CRA.ClientLibrary

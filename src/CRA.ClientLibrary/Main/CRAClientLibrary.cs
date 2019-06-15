@@ -1,4 +1,4 @@
-﻿using CRA.ClientLibrary.DataProvider;
+﻿using CRA.DataProvider;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -9,6 +9,7 @@ using System.Linq.Expressions;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading.Tasks;
+using CRA.DataProvider.Azure;
 
 namespace CRA.ClientLibrary
 {
@@ -33,7 +34,7 @@ namespace CRA.ClientLibrary
         private bool _dynamicLoadingEnabled = true;
         private bool _artifactUploading = true;
 
-        public CRAClientLibrary() : this(new AzureProvider.AzureProviderImpl(), null)
+        public CRAClientLibrary() : this(new AzureDataProvider(), null)
         { }
 
         /// <summary>

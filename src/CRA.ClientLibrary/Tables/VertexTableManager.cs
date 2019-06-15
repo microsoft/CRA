@@ -3,7 +3,7 @@ using System.Linq;
 using System.Collections.Generic;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Table;
-using CRA.ClientLibrary.DataProvider;
+using CRA.DataProvider;
 using System.Threading.Tasks;
 
 namespace CRA.ClientLibrary

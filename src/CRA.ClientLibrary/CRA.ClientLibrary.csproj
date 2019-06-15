@@ -19,11 +19,6 @@
     <Reference Include="System.Configuration" />
     <Reference Include="System.Management" />
   </ItemGroup>
-  <ItemGroup Condition="'$(TargetFramework)' == 'netcoreapp2.0'">
-    <PackageReference Include="AsyncLazy">
-      <Version>1.6.4</Version>
-    </PackageReference>
-  </ItemGroup>
 
   <PropertyGroup Condition="'$(TargetFramework)' != 'net46'">
     <DefineConstants>$(DefineConstants);DOTNETCORE</DefineConstants>

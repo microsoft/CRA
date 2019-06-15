@@ -1,4 +1,4 @@
-﻿using CRA.ClientLibrary.DataProvider;
+﻿using CRA.DataProvider;
 using System;
 using System.IO;
 using System.Linq.Expressions;
@@ -113,7 +113,7 @@ namespace CRA.ClientLibrary.DataProcessing
             }
         }
 
-        public async Task MultiSubscribe<TDatasetObserver>(Expression<Func<TDatasetObserver>> observer, int runsCount)
+        public Task MultiSubscribe<TDatasetObserver>(Expression<Func<TDatasetObserver>> observer, int runsCount)
         {
             throw new NotImplementedException();
         }

@@ -1,7 +1,5 @@
 ﻿#define SHARDING
 
-using CRA.ClientLibrary.AzureProvider;
-using CRA.ClientLibrary.DataProvider;
 using System;
 using System.Collections.Concurrent;
 using System.Diagnostics;
@@ -12,6 +10,7 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using CRA.DataProvider;
 
 namespace CRA.ClientLibrary
 {
