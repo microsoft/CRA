@@ -6,8 +6,8 @@
     <title>Common Runtime for Applications (CRA)</title>
     <authors>Microsoft</authors>
     <owners>Microsoft</owners>
-    <projectUrl>https://github.com/Microsoft/CRA</projectUrl>
-    <licenseUrl>https://raw.githubusercontent.com/Microsoft/CRA/master/LICENSE</licenseUrl>
+    <projectUrl>https://github.com/microsoft/CRA</projectUrl>
+    <licenseUrl>https://raw.githubusercontent.com/microsoft/CRA/master/LICENSE</licenseUrl>
     <requireLicenseAcceptance>true</requireLicenseAcceptance>
     <description>
       Common Runtime for Applications (CRA) is a software layer (library) that makes it 
@@ -16,8 +16,8 @@
       support stand-alone execution (just deploy an .exe on every machine in your cluster)
       as well as execution in a Kubernetes/Docker environment.
     </description>
-    <releaseNotes>See project website</releaseNotes>
-    <copyright>Copyright 2018</copyright>
+    <releaseNotes>See the project website at https://github.com/microsoft/CRA for more details</releaseNotes>
+    <copyright>© Microsoft Corporation. All rights reserved.</copyright>
     <tags>common runtime applications</tags>
     <dependencies>
       <group targetFramework="net46">
