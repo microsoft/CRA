@@ -65,6 +65,10 @@
         }
 
         public Task Delete(ShardedVertexInfo entry)
-            => cloudTable.ExecuteAsync(TableOperation.Delete((ShardedVertexTable)entry));
-    }
+        {
+            var row = (ShardedVertexTable)entry;
+            row.ETag = "*";
+            return cloudTable.ExecuteAsync(TableOperation.Delete(row));
+        }
+}
 }
