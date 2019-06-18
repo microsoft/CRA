@@ -1,4 +1,4 @@
-﻿using CRA.ClientLibrary.DataProvider;
+﻿using CRA.DataProvider;
 using System;
 using System.Linq.Expressions;
 using System.Threading;
@@ -167,7 +167,7 @@ namespace CRA.ClientLibrary.DataProcessing
 
         public void ResetCRAClient()
         {
-            _craClient.Reset();
+            _craClient.ResetAsync().Wait();
         }
     }
 }

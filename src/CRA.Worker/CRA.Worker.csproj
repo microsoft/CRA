@@ -16,8 +16,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Core\CRA.FileSyncDataProvider\CRA.FileSyncDataProvider.csproj" />
     <ProjectReference Include="..\CRA.ClientLibrary\CRA.ClientLibrary.csproj" />
+    <ProjectReference Include="..\CRA.DataProvider.File\CRA.DataProvider.File.csproj" />
   </ItemGroup>
 
   <ItemGroup Condition="'$(TargetFramework)' == 'net46'">

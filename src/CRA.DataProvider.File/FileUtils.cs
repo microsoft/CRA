@@ -1,4 +1,4 @@
-﻿namespace CRA.FileSyncDataProvider
+﻿namespace CRA.DataProvider.File
 {
     using Newtonsoft.Json;
     using System;

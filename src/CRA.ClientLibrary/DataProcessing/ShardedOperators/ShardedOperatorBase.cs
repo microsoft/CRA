@@ -1,4 +1,4 @@
-﻿using CRA.ClientLibrary.DataProvider;
+﻿using CRA.DataProvider;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -27,7 +27,7 @@ namespace CRA.ClientLibrary.DataProcessing
             _cachedDatasets = new Dictionary<int, Dictionary<string, object>>();
         }
 
-        public override void Initialize(int shardId, ShardingInfo shardingInfo, object vertexParameter)
+        public override Task InitializeAsync(int shardId, ShardingInfo shardingInfo, object vertexParameter)
         {
             _shardingInfo = shardingInfo;   
 
@@ -37,6 +37,8 @@ namespace CRA.ClientLibrary.DataProcessing
             _cachedDatasets[shardId] = new Dictionary<string, object>();
 
             InitializeOperator(shardId, shardingInfo);
+
+            return Task.CompletedTask;
         }
 
         private void PrepareOperatorParameter(object vertexParameter)

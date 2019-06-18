@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Table;
 using System.Linq.Expressions;
-using CRA.ClientLibrary.DataProvider;
+using CRA.DataProvider;
 using System.Threading.Tasks;
 
 namespace CRA.ClientLibrary
@@ -23,10 +23,10 @@ namespace CRA.ClientLibrary
             _vertexTableManager = new VertexTableManager(azureImpl);
         }
 
-        public Task DeleteTable()
-            => _shardedVertexInfoProvider.Delete();
+        public async Task DeleteTableAsync()
+            => await _shardedVertexInfoProvider.Delete();
 
-        public Task RegisterShardedVertex(
+        public async Task RegisterShardedVertexAsync(
             string vertexName,
             List<string> allInstances,
             List<int> allShards,
@@ -34,7 +34,7 @@ namespace CRA.ClientLibrary
             List<int> removedShards,
             Expression<Func<int, int>> shardLocator)
         {
-            return _shardedVertexInfoProvider.Insert(
+            await _shardedVertexInfoProvider.Insert(
                 ShardedVertexInfo.Create(
                     vertexName,
                     "0",
@@ -83,7 +83,7 @@ namespace CRA.ClientLibrary
             return result;
         }
 
-        public async Task DeleteShardedVertex(string vertexName)
+        public async Task DeleteShardedVertexAsync(string vertexName)
         {
             await _vertexTableManager.DeleteShardedVertex(vertexName, "");
 

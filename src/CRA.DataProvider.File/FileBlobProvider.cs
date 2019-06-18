@@ -1,10 +1,8 @@
-﻿namespace CRA.FileSyncDataProvider
+﻿namespace CRA.DataProvider.File
 {
-    using CRA.ClientLibrary.DataProvider;
-    using System;
-    using System.Collections.Generic;
     using System.IO;
     using System.Threading.Tasks;
+    using CRA.DataProvider;
 
     /// <summary>
     /// Definition for FileBlobProvider

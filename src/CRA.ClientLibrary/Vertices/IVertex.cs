@@ -68,12 +68,6 @@ namespace CRA.ClientLibrary
         CRAClientLibrary ClientLibrary { get; }
 
         /// <summary>
-        /// Initialize vertex with specified params
-        /// </summary>
-        /// <param name="vertexParameter"></param>
-        void Initialize(object vertexParameter);
-
-        /// <summary>
         /// Initialize vertex asynchronously with specified params
         /// </summary>
         /// <param name="vertexParameter"></param>
@@ -91,7 +85,7 @@ namespace CRA.ClientLibrary
         /// </summary>
         /// <param name="shardId"></param>
         /// <param name="vertexParameter"></param>
-        void Initialize(int shardId, ShardingInfo shardingInfo, object vertexParameter);
+        Task InitializeAsync(int shardId, ShardingInfo shardingInfo, object vertexParameter);
 
         /// <summary>
         /// Update sharding info

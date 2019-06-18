@@ -1,4 +1,4 @@
-﻿using CRA.ClientLibrary.DataProvider;
+﻿using CRA.DataProvider;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -17,8 +17,6 @@ namespace CRA.ClientLibrary.DataProcessing
 
         internal CountdownEvent _runSubscribeInput;
         internal CountdownEvent _runSubscribeOutput;
-
-        internal string _outputObserver;
 
         public ShardedSubscribeOperator() : base()
         {

@@ -10,6 +10,7 @@ using System.Runtime.Serialization;
 using System.Threading.Tasks;
 using Microsoft.WindowsAzure.Storage.Table;
 using System.Threading;
+using System.Collections.Concurrent;
 
 namespace CRA.ClientLibrary
 {
@@ -684,6 +685,8 @@ namespace CRA.ClientLibrary
             }
         }
 
+        static ConcurrentDictionary<string, bool> assemblyLock = new ConcurrentDictionary<string, bool>();
+
         public static void LoadAssembliesFromStream(Stream stream)
         {
             int numAssemblies = stream.ReadInt32();
@@ -704,19 +707,22 @@ namespace CRA.ClientLibrary
                 AssemblyName assemblyFullName = new AssemblyName(assemblyName);
                 var assemblyPath = Path.Combine(AssemblyDirectory, assemblyFullName.Name + ".dll");
 
-                try
+                if (assemblyLock.TryAdd(assemblyPath, true))
                 {
-                    File.WriteAllBytes(assemblyPath, assemblyFileBytes);
-                }
-                catch (Exception)
-                {
-                    Console.WriteLine("INFO: Unable to update " + assemblyFullName.Name + ".dll (perhaps another CRA worker holds the file lock?)");
-                }
+                    try
+                    {
+                        File.WriteAllBytes(assemblyPath, assemblyFileBytes);
+                    }
+                    catch (Exception)
+                    {
+                        Console.WriteLine("INFO: Unable to update " + assemblyFullName.Name + ".dll (perhaps another CRA worker holds the file lock?)");
+                    }
 
-                if (managedAssembly)
-                {
-                    AssemblyResolver.Register(assemblyName, assemblyFileBytes);
-                    Assembly.Load(assemblyName);
+                    if (managedAssembly)
+                    {
+                        AssemblyResolver.Register(assemblyName, assemblyFileBytes);
+                        Assembly.Load(assemblyName);
+                    }
                 }
             }
         }

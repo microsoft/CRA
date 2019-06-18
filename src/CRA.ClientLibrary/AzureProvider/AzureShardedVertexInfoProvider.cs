@@ -1,11 +1,11 @@
-﻿namespace CRA.ClientLibrary.AzureProvider
+﻿namespace CRA.DataProvider.Azure
 {
-    using CRA.ClientLibrary.DataProvider;
     using Microsoft.WindowsAzure.Storage.Table;
     using System;
     using System.Collections.Generic;
     using System.Linq;
     using System.Threading.Tasks;
+    using CRA.ClientLibrary;
 
     /// <summary>
     /// Definition for AzureShardedShardedVertexInfoProvider
@@ -66,6 +66,10 @@
         }
 
         public Task Delete(ShardedVertexInfo entry)
-            => cloudTable.ExecuteAsync(TableOperation.Delete((ShardedVertexTable)entry));
-    }
+        {
+            var row = (ShardedVertexTable)entry;
+            row.ETag = "*";
+            return cloudTable.ExecuteAsync(TableOperation.Delete(row));
+        }
+}
 }

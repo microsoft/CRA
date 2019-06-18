@@ -1,8 +1,8 @@
-﻿namespace CRA.FileSyncDataProvider
+﻿namespace CRA.DataProvider.File
 {
-    using CRA.ClientLibrary.DataProvider;
     using System.Collections.Generic;
     using System.Threading.Tasks;
+    using CRA.DataProvider;
 
     /// <summary>
     /// Definition for FileVertexConnectionProvider

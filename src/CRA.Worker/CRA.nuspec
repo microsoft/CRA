@@ -4,10 +4,10 @@
     <id>CRA</id>
     <version>$version$</version>
     <title>Common Runtime for Applications (CRA)</title>
-    <authors>CRA</authors>
+    <authors>Microsoft</authors>
     <owners>Microsoft</owners>
-    <projectUrl>https://github.com/Microsoft/CRA</projectUrl>
-    <licenseUrl>https://raw.githubusercontent.com/Microsoft/CRA/master/LICENSE</licenseUrl>
+    <projectUrl>https://github.com/microsoft/CRA</projectUrl>
+    <licenseUrl>https://raw.githubusercontent.com/microsoft/CRA/master/LICENSE</licenseUrl>
     <requireLicenseAcceptance>true</requireLicenseAcceptance>
     <description>
       Common Runtime for Applications (CRA) is a software layer (library) that makes it 
@@ -16,22 +16,22 @@
       support stand-alone execution (just deploy an .exe on every machine in your cluster)
       as well as execution in a Kubernetes/Docker environment.
     </description>
-    <releaseNotes>See project website</releaseNotes>
-    <copyright>Copyright 2018</copyright>
+    <releaseNotes>See the project website at https://github.com/microsoft/CRA for more details</releaseNotes>
+    <copyright>© Microsoft Corporation. All rights reserved.</copyright>
     <tags>common runtime applications</tags>
     <dependencies>
       <group targetFramework="net46">
-        <dependency id="Newtonsoft.Json" version="12.0.1" />
+        <dependency id="Newtonsoft.Json" version="12.0.2" />
         <dependency id="Remote.Linq" version="5.8.2" />
         <dependency id="WindowsAzure.Storage" version="9.3.3" />
       </group>
       <group targetFramework="netstandard2.0">
-        <dependency id="Newtonsoft.Json" version="12.0.1" />
+        <dependency id="Newtonsoft.Json" version="12.0.2" />
         <dependency id="Remote.Linq" version="5.8.2" />
         <dependency id="WindowsAzure.Storage" version="9.3.3" />
       </group>
       <group targetFramework="netcoreapp2.0">
-        <dependency id="Newtonsoft.Json" version="12.0.1" />
+        <dependency id="Newtonsoft.Json" version="12.0.2" />
         <dependency id="Remote.Linq" version="5.8.2" />
         <dependency id="WindowsAzure.Storage" version="9.3.3" />
       </group>
@@ -41,9 +41,9 @@
     <file src="..\CRA.ClientLibrary\bin\Release\net46\CRA.ClientLibrary.dll" target="lib\net46" />
     <file src="..\CRA.ClientLibrary\bin\Release\netcoreapp2.0\CRA.ClientLibrary.dll" target="lib\netcoreapp2.0" />
     <file src="..\CRA.ClientLibrary\bin\Release\netstandard2.0\CRA.ClientLibrary.dll" target="lib\netstandard2.0" />
-    <file src="..\CRA.ClientLibrary\bin\Release\net46\CRA.FileSyncDataProvider.dll" target="lib\net46" />
-    <file src="..\CRA.ClientLibrary\bin\Release\netcoreapp2.0\CRA.FileSyncDataProvider.dll" target="lib\netcoreapp2.0" />
-    <file src="..\CRA.ClientLibrary\bin\Release\netstandard2.0\CRA.FileSyncDataProvider.dll" target="lib\netstandard2.0" />
+    <file src="..\CRA.DataProvider.File\bin\Release\net46\CRA.DataProvider.File.dll" target="lib\net46" />
+    <file src="..\CRA.DataProvider.File\bin\Release\netcoreapp2.0\CRA.DataProvider.File.dll" target="lib\netcoreapp2.0" />
+    <file src="..\CRA.DataProvider.File\bin\Release\netstandard2.0\CRA.DataProvider.File.dll" target="lib\netstandard2.0" />
     <file src="bin\Release\net46\CRA.Worker.exe" target="lib\net46" />
     <file src="bin\Release\netcoreapp2.0\CRA.Worker.dll" target="lib\netcoreapp2.0" />
     <file src="bin\Release\netcoreapp2.0\CRA.Worker.dll" target="lib\netstandard2.0" />

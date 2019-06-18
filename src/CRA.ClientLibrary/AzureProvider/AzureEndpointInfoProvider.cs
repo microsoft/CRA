@@ -1,10 +1,11 @@
-﻿namespace CRA.ClientLibrary.AzureProvider
+﻿namespace CRA.DataProvider.Azure
 {
-    using CRA.ClientLibrary.DataProvider;
     using Microsoft.WindowsAzure.Storage.Table;
     using System.Collections.Generic;
     using System.Linq;
     using System.Threading.Tasks;
+    using CRA.ClientLibrary;
+    using CRA.DataProvider;
 
     /// <summary>
     /// Definition for AzureEndpointInfoProvider

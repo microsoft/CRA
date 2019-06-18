@@ -1,10 +1,10 @@
-﻿using CRA.ClientLibrary.DataProvider;
-using Microsoft.WindowsAzure.Storage.Table;
+﻿using Microsoft.WindowsAzure.Storage.Table;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using CRA.ClientLibrary;
 
-namespace CRA.ClientLibrary.AzureProvider
+namespace CRA.DataProvider.Azure
 {
     /// <summary>
     /// An assignment of one machine to a group

@@ -1,22 +1,21 @@
-﻿namespace CRA.ClientLibrary.AzureProvider
+﻿namespace CRA.DataProvider.Azure
 {
-    using CRA.ClientLibrary.DataProvider;
+    using System;
+    using System.Configuration;
     using Microsoft.WindowsAzure.Storage;
     using Microsoft.WindowsAzure.Storage.Table;
-    using System;
-    using System.Collections.Generic;
-    using System.Configuration;
+    using CRA.ClientLibrary;
 
     /// <summary>
-    /// Definition for AzureProviderImpl
+    /// Definition for AzureDataProvider
     /// </summary>
-    public class AzureProviderImpl : IDataProvider
+    public class AzureDataProvider : IDataProvider
     {
         private readonly CloudStorageAccount _storageAccount;
         private readonly CloudTableClient _tableClient;
         private readonly string _storageConnectionString;
 
-        public AzureProviderImpl()
+        public AzureDataProvider()
         {
             _storageConnectionString = null;
 #if !DOTNETCORE
@@ -35,7 +34,7 @@
             _tableClient = _storageAccount.CreateCloudTableClient();
         }
 
-        public AzureProviderImpl(string storageConnectionString)
+        public AzureDataProvider(string storageConnectionString)
         {
             _storageConnectionString = storageConnectionString;
             _storageAccount = CloudStorageAccount.Parse(_storageConnectionString);

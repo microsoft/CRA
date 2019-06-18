@@ -1,7 +1,5 @@
 ﻿#define SHARDING
 
-using CRA.ClientLibrary.AzureProvider;
-using CRA.ClientLibrary.DataProvider;
 using System;
 using System.Collections.Concurrent;
 using System.Diagnostics;
@@ -12,6 +10,7 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using CRA.DataProvider;
 
 namespace CRA.ClientLibrary
 {
@@ -540,7 +539,7 @@ namespace CRA.ClientLibrary
                                 var si = shardingInfoTable[skey];
                                 if (si.AllShards.Contains(GetShardedVertexShardId(toVertexName)))
                                     break;
-                                var newSI = await _craClient.GetShardingInfo(GetShardedVertexName(toVertexName));
+                                var newSI = await _craClient.GetShardingInfoAsync(GetShardedVertexName(toVertexName));
                                 if (shardingInfoTable.TryUpdate(skey, newSI, si))
                                 {
                                     ((IAsyncShardedVertexOutputEndpoint)_localVertexTable[fromVertexName].AsyncOutputEndpoints[key]).UpdateShardingInfo(GetShardedVertexName(toVertexName), newSI);
@@ -549,7 +548,7 @@ namespace CRA.ClientLibrary
                             }
                             else
                             {
-                                var newSI = await _craClient.GetShardingInfo(GetShardedVertexName(toVertexName));
+                                var newSI = await _craClient.GetShardingInfoAsync(GetShardedVertexName(toVertexName));
                                 if (shardingInfoTable.TryAdd(skey, newSI))
                                 {
                                     ((IAsyncShardedVertexOutputEndpoint)_localVertexTable[fromVertexName].AsyncOutputEndpoints[key]).UpdateShardingInfo(GetShardedVertexName(toVertexName), newSI);
@@ -607,7 +606,7 @@ namespace CRA.ClientLibrary
 #pragma warning restore CS4014
                     }
 
-                    await _craClient.Disconnect(fromVertexName, fromVertexOutput, toVertexName, toVertexInput);
+                    await _craClient.DisconnectAsync(fromVertexName, fromVertexOutput, toVertexName, toVertexInput);
                 }
             }
             catch (Exception e)
@@ -674,7 +673,7 @@ namespace CRA.ClientLibrary
                 if (outConnections.TryRemove(fromVertexName + ":" + fromVertexOutput + ":" + toVertexName + ":" + toVertexInput, out oldSource))
                 {
                     oldSource.Dispose();
-                    await _craClient.Disconnect(fromVertexName, fromVertexOutput, toVertexName, toVertexInput);
+                    await _craClient.DisconnectAsync(fromVertexName, fromVertexOutput, toVertexName, toVertexInput);
                 }
             }
             catch (Exception e)
@@ -771,7 +770,7 @@ namespace CRA.ClientLibrary
                                 var si = shardingInfoTable[skey];
                                 if (si.AllShards.Contains(GetShardedVertexShardId(fromVertexName)))
                                     break;
-                                var newSI = await _craClient.GetShardingInfo(GetShardedVertexName(fromVertexName));
+                                var newSI = await _craClient.GetShardingInfoAsync(GetShardedVertexName(fromVertexName));
                                 if (shardingInfoTable.TryUpdate(skey, newSI, si))
                                 {
                                     ((IAsyncShardedVertexInputEndpoint)_localVertexTable[toVertexName].AsyncInputEndpoints[key]).UpdateShardingInfo(GetShardedVertexName(fromVertexName), newSI);
@@ -780,7 +779,7 @@ namespace CRA.ClientLibrary
                             }
                             else
                             {
-                                var newSI = await _craClient.GetShardingInfo(GetShardedVertexName(fromVertexName));
+                                var newSI = await _craClient.GetShardingInfoAsync(GetShardedVertexName(fromVertexName));
                                 if (shardingInfoTable.TryAdd(skey, newSI))
                                 {
                                     ((IAsyncShardedVertexInputEndpoint)_localVertexTable[toVertexName].AsyncInputEndpoints[key]).UpdateShardingInfo(GetShardedVertexName(fromVertexName), newSI);

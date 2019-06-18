@@ -1,5 +1,5 @@
 ﻿using System.Collections.Generic;
-using CRA.ClientLibrary.DataProvider;
+using CRA.DataProvider;
 using System.Threading.Tasks;
 
 namespace CRA.ClientLibrary

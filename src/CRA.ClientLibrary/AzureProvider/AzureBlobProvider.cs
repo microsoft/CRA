@@ -1,6 +1,6 @@
-﻿namespace CRA.ClientLibrary.AzureProvider
+﻿namespace CRA.DataProvider.Azure
 {
-    using CRA.ClientLibrary.DataProvider;
+    using CRA.DataProvider;
     using Microsoft.WindowsAzure.Storage.Blob;
     using System;
     using System.IO;
@@ -24,25 +24,19 @@
         }
 
         public async Task Delete(string pathKey)
-            => await (await this.CreateBlockBlob(pathKey))
-            .DeleteIfExistsAsync();
+            => await CreateBlockBlob(pathKey).DeleteIfExistsAsync();
 
         public async Task<Stream> GetReadStream(string pathKey)
-            => await (await this.CreateBlockBlob(pathKey))
-            .OpenReadAsync();
+            => await CreateBlockBlob(pathKey).OpenReadAsync();
 
         public async Task<Stream> GetWriteStream(string pathKey)
-            => await (await this.CreateBlockBlob(pathKey))
-            .OpenWriteAsync();
+            => await CreateBlockBlob(pathKey).OpenWriteAsync();
 
-        private async Task<CloudBlockBlob> CreateBlockBlob(string pathKey)
+        private CloudBlockBlob CreateBlockBlob(string pathKey)
         {
             CloudBlobContainer container = _blobClient
                 .GetContainerReference(_parentBlobName);
-
             container.CreateIfNotExistsAsync().Wait();
-           //await container.CreateIfNotExistsAsync();
-
             return container.GetBlockBlobReference(pathKey);
         }
     }
