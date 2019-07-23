@@ -51,14 +51,64 @@ namespace CRA.ClientLibrary
         public async Task<ShardingInfo> GetShardingInfoAsync(string vertexName)
             => await _shardedVertexTableManager.GetLatestShardingInfo(vertexName);
 
+        public string ShardName(string vertexName, int shardID)
+        {
+            return vertexName + "$" + shardID;
+        }
+
+        /// <summary>
+        /// Instantiate a sharded vertex on a given CRA instance with the specified shard ID.
+        /// </summary>
+        /// <param name="instanceName">Name of the CRA instance</param>
+        /// <param name="vertexName">Name of the sharded vertex (particular instance)</param>
+        /// <param name="vertexDefinition">Definition of the vertex (type)</param>
+        /// <param name="vertexParameter">Parameters to be passed to each vertex of the sharded vertex in its constructor (serializable object)</param>
+        /// <param name="shardID">ID for the sharded vertex</param>
+        /// <param name="shardLocator">ID for the sharded vertex</param>
+        /// <returns>Status of the command</returns>
+        public async Task<CRAErrorCode> InstantiateVertexAsync(
+            string instanceName,
+            string vertexName,
+            string vertexDefinition,
+            object vertexParameter,
+            int shardID,
+            Expression<Func<int, int>> shardLocator = null)
+        {
+
+            var addedShards = new List<int>();
+            var removedShards = new List<int>();
+            var vertices = await _shardedVertexTableManager.GetLatestShardedVertex(vertexName);
+            if (!vertices.allInstances.Contains(instanceName))
+            {
+                vertices.allInstances.Add(instanceName);
+            }
+
+            if (vertices.allShards.Contains(shardID))
+            {
+                Console.WriteLine("Shard ID {0} already exists", shardID);
+                return CRAErrorCode.VertexAlreadyExists;
+            }
+
+            vertices.allShards.Add(shardID);
+            addedShards.Add(shardID);
+
+            var task = InstantiateShardedVertexAsync
+                        (instanceName, ShardName(vertexName, shardID),
+                            vertexDefinition,new Tuple<int, object>(shardID, vertexParameter));
+
+            _shardedVertexTableManager.DeleteShardedVertexAsync(vertexName).Wait();
+            _shardedVertexTableManager.RegisterShardedVertexAsync(vertexName, vertices.allInstances, vertices.allShards, addedShards, removedShards, shardLocator).Wait();
+
+            return task.Result;
+        }
+
         /// <summary>
         /// Instantiate a sharded vertex on a set of CRA instances.
         /// </summary>
         /// <param name="vertexName">Name of the sharded vertex (particular instance)</param>
         /// <param name="vertexDefinition">Definition of the vertex (type)</param>
         /// <param name="vertexParameter">Parameters to be passed to each vertex of the sharded vertex in its constructor (serializable object)</param>
-        /// <param name="vertexShards"> A map that holds the number of vertices from a sharded vertex needs to be instantiated for each CRA instance </param>
-        /// <returns>Status of the command</returns>
+        /// <param name="vertexShards">Function mapping grain ID to shard ID</returns>
         public async Task<CRAErrorCode> InstantiateVertexAsync(
             string[] instanceNames,
             string vertexName,
@@ -83,7 +133,7 @@ namespace CRA.ClientLibrary
                     allShards.Add(index);
                     addedShards.Add(index);
                     tasks[index] = InstantiateShardedVertexAsync
-                        (instanceName, vertexName + "$" + index,
+                        (instanceName, ShardName(vertexName, index),
                         vertexDefinition,
                         new Tuple<int, object>(index, vertexParameter));
                     index++;
@@ -134,7 +184,7 @@ namespace CRA.ClientLibrary
                 for (int i = currentCount; i < currentCount + vertexShards[key]; i++)
                 {
                     int threadIndex = i; string currInstanceName = key;
-                    tasks[threadIndex] = InstantiateShardedVertexAsync(currInstanceName, vertexName + "$" + threadIndex,
+                    tasks[threadIndex] = InstantiateShardedVertexAsync(currInstanceName, ShardName(vertexName, threadIndex),
                                                                         vertexDefinition, new Tuple<int, VertexParameterType>(threadIndex, vertexParameter));
                 }
 
