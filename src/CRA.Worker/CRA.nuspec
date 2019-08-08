@@ -1,13 +1,13 @@
 <?xml version="1.0"?>
 <package >
   <metadata>
-    <id>CRA</id>
+    <id>Microsoft.CRA</id>
     <version>$version$</version>
     <title>Common Runtime for Applications (CRA)</title>
     <authors>Microsoft</authors>
     <owners>Microsoft</owners>
     <projectUrl>https://github.com/microsoft/CRA</projectUrl>
-    <licenseUrl>https://raw.githubusercontent.com/microsoft/CRA/master/LICENSE</licenseUrl>
+    <license type="expression">MIT</license>
     <requireLicenseAcceptance>true</requireLicenseAcceptance>
     <description>
       Common Runtime for Applications (CRA) is a software layer (library) that makes it 
