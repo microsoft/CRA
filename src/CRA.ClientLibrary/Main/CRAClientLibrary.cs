@@ -298,10 +298,10 @@ namespace CRA.ClientLibrary
         public async Task DeleteVertexAsync(string vertexName)
         {
             foreach (var endpt in await GetInputEndpointsAsync(vertexName))
-            { DeleteEndpoint(vertexName, endpt); }
+            { await DeleteEndpoint(vertexName, endpt); }
 
             foreach (var endpt in await GetOutputEndpointsAsync(vertexName))
-            { DeleteEndpoint(vertexName, endpt); }
+            { await DeleteEndpoint(vertexName, endpt); }
 
             foreach (var conn in await GetConnectionsFromVertexAsync(vertexName))
             { await DeleteConnectionInfoAsync(conn); }
@@ -332,9 +332,9 @@ namespace CRA.ClientLibrary
         /// <param name="endpointName"></param>
         /// <param name="isInput"></param>
         /// <param name="isAsync"></param>
-        public void AddEndpoint(string vertexName, string endpointName, bool isInput, bool isAsync)
+        public async Task AddEndpointAsync(string vertexName, string endpointName, bool isInput, bool isAsync)
         {
-            _endpointTableManager.AddEndpoint(vertexName, endpointName, isInput, isAsync);
+            await _endpointTableManager.AddEndpoint(vertexName, endpointName, isInput, isAsync);
         }
 
         /// <summary>
@@ -342,9 +342,9 @@ namespace CRA.ClientLibrary
         /// </summary>
         /// <param name="vertexName"></param>
         /// <param name="endpointName"></param>
-        public void DeleteEndpoint(string vertexName, string endpointName)
+        public async Task DeleteEndpoint(string vertexName, string endpointName)
         {
-            _endpointTableManager.DeleteEndpoint(vertexName, endpointName);
+            await _endpointTableManager.DeleteEndpoint(vertexName, endpointName);
         }
 
         /// <summary>

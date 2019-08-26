@@ -113,7 +113,7 @@ namespace CRA.ClientLibrary
         /// <param name="endpointName">Endpoint name</param>
         public void AddInputEndpoint(string endpointName)
         {
-            _clientLibrary.AddEndpoint(_vertexName, endpointName, true, false);
+            _clientLibrary.AddEndpointAsync(_vertexName, endpointName, true, false).Wait();
             EndpointData.InputEndpoints.TryAdd(endpointName, true);
         }
 
@@ -123,7 +123,7 @@ namespace CRA.ClientLibrary
         /// <param name="endpointName">Endpoint name</param>
         public void AddOutputEndpoint(string endpointName)
         {
-            _clientLibrary.AddEndpoint(_vertexName, endpointName, false, false);
+            _clientLibrary.AddEndpointAsync(_vertexName, endpointName, false, false).Wait();
             EndpointData.OutputEndpoints.TryAdd(endpointName, true);
         }
 
