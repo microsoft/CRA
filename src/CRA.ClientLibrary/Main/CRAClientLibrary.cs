@@ -692,9 +692,9 @@ namespace CRA.ClientLibrary
                 else
                 { TryAddSenderStreamToPool(row.Address, row.Port.ToString(), stream); }
             }
-            catch
+            catch (Exception e)
             {
-                Console.WriteLine("The connection-initiating CRA instance appears to be down or could not be found. Restart it and this connection will be completed automatically");
+                Console.WriteLine("Exception: " + e.ToString() + "\nPossible reason: The connection-initiating CRA instance appears to be down or could not be found. Restart it and this connection will be completed automatically");
             }
 
             return result;

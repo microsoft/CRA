@@ -990,10 +990,11 @@ namespace CRA.ClientLibrary
             if (otherInstance != InstanceName)
                 return false;
 
-
             CancellationTokenSource source = new CancellationTokenSource();
 
-            if (_localVertexTable[fromVertexName].OutputEndpoints.ContainsKey(fromVertexOutput) &&
+            if (_localVertexTable.ContainsKey(fromVertexName) &&
+                _localVertexTable[fromVertexName].OutputEndpoints.ContainsKey(fromVertexOutput) &&
+                _localVertexTable.ContainsKey(toVertexName) &&
                 _localVertexTable[toVertexName].InputEndpoints.ContainsKey(toVertexInput))
             {
                 var fromVertex = _localVertexTable[fromVertexName].OutputEndpoints[fromVertexOutput] as IFusableVertexOutputEndpoint;
@@ -1012,7 +1013,9 @@ namespace CRA.ClientLibrary
                 else
                     return false;
             }
-            else if (_localVertexTable[fromVertexName].AsyncOutputEndpoints.ContainsKey(fromVertexOutput) &&
+            else if (_localVertexTable.ContainsKey(fromVertexName) &&
+                _localVertexTable[fromVertexName].AsyncOutputEndpoints.ContainsKey(fromVertexOutput) &&
+                _localVertexTable.ContainsKey(toVertexName) &&
                 _localVertexTable[toVertexName].AsyncInputEndpoints.ContainsKey(toVertexInput))
             {
                 var fromVertex = _localVertexTable[fromVertexName].AsyncOutputEndpoints[fromVertexOutput] as IAsyncFusableVertexOutputEndpoint;
