@@ -881,7 +881,7 @@ namespace CRA.ClientLibrary
                 await RetryRestoreConnection(row.FromVertex, row.FromEndpoint, row.ToVertex, row.ToEndpoint, false);
             }
 
-            var inRows = await _connectionInfoProvider.GetAllConnectionsFromVertex(_row.VertexName);
+            var inRows = await _connectionInfoProvider.GetAllConnectionsToVertex(_row.VertexName);
             foreach (var row in inRows)
             {
                 await RetryRestoreConnection(row.FromVertex, row.FromEndpoint, row.ToVertex, row.ToEndpoint, true);
