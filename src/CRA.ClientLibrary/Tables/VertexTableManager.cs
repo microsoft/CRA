@@ -62,12 +62,22 @@ namespace CRA.ClientLibrary
 
         internal async Task ActivateVertexOnInstance(string vertexName, string instanceName)
         {
-            var newActiveVertex = (await _vertexInfoProvider.GetAll())
-                .Where(gn => instanceName == gn.InstanceName && vertexName == gn.VertexName)
+            var allVertices = (await _vertexInfoProvider.GetAll()).Where(gn => vertexName == gn.VertexName);
+
+            // First deactivate this vertex on all instances
+            foreach (var vertex in allVertices)
+            {
+                await DeactivateVertexOnInstance(vertexName, vertex.InstanceName);
+            }
+
+            // Then activate this vertex/instance
+            var newActiveVertex = allVertices
+                .Where(gn => instanceName == gn.InstanceName)
                 .First()
                 .Activate();
 
             await _vertexInfoProvider.InsertOrReplace(newActiveVertex);
+
         }
 
         internal async Task DeactivateVertexOnInstance(
