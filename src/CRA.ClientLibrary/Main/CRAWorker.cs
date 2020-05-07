@@ -40,6 +40,21 @@ namespace CRA.ClientLibrary
         private readonly ConcurrentDictionary<string, ShardingInfo> shardingInfoTable = new ConcurrentDictionary<string, ShardingInfo>();
 
         /// <summary>
+        /// Delay between connection retries
+        /// </summary>
+        private int _retryDelayMs = 5000;
+
+        /// <summary>
+        /// TCP connection timeout
+        /// </summary>
+        private int _tcpConnectTimeoutMs = 5000;
+
+        /// <summary>
+        /// Enable parallel connection establishment for a given vertex
+        /// </summary>
+        private bool _parallelConnect = false;
+
+        /// <summary>
         /// Define a new worker instance of Common Runtime for Applications (CRA)
         /// </summary>
         /// <param name="workerInstanceName">Name of the worker instance</param>
@@ -94,6 +109,36 @@ namespace CRA.ClientLibrary
         {
             Console.WriteLine("Disabling dynamic assembly loading");
             _craClient.DisableDynamicLoading();
+        }
+
+        /// <summary>
+        /// Set connection retry delay (in milliseconds)
+        /// </summary>
+        /// <param name="retryDelayMs"></param>
+        public void SetConnectionRetryDelay(int retryDelayMs)
+        {
+            Console.WriteLine("Setting connection retry delay (ms) to {0}", retryDelayMs);
+            _retryDelayMs = retryDelayMs;
+        }
+
+        /// <summary>
+        /// Set TCP connection timeout (in milliseconds)
+        /// </summary>
+        /// <param name="tcpConnectTimeoutMs"></param>
+        public void SetTcpConnectionTimeout(int tcpConnectTimeoutMs)
+        {
+            Console.WriteLine("Setting TCP connection timeout (ms) to {0}", tcpConnectTimeoutMs);
+            _tcpConnectTimeoutMs = tcpConnectTimeoutMs;
+        }
+
+
+        /// <summary>
+        /// Enable parallel connection establishment from given vertex
+        /// </summary>
+        public void EnableParallelConnections()
+        {
+            Console.WriteLine("Enabling parallel connection establishment");
+            _parallelConnect = true;
         }
 
         public void Dispose()
@@ -214,8 +259,12 @@ namespace CRA.ClientLibrary
                 // Get a stream connection from the pool if available
                 if (!_craClient.TryGetSenderStreamFromPool(_row.Address, _row.Port.ToString(), out ns))
                 {
-                    TcpClient client = new TcpClient(_row.Address, _row.Port);
+                    var client = new TcpClient();
                     client.NoDelay = true;
+                    if (!client.ConnectAsync(_row.Address, _row.Port).Wait(_tcpConnectTimeoutMs))
+                    {
+                        throw new Exception("Failed to connect.");
+                    }
 
                     ns = _craClient.SecureStreamConnectionDescriptor
                           .CreateSecureClient(client.GetStream(), row.InstanceName);
@@ -890,20 +939,28 @@ namespace CRA.ClientLibrary
                 if (outQueue.Count > 0)
                 {
                     var row = outQueue.Dequeue();
-                    bool done = await RetryRestoreConnection(row.FromVertex, row.FromEndpoint, row.ToVertex, row.ToEndpoint, false, false);
-                    if (!done)
+                    var task = RetryRestoreConnection(row.FromVertex, row.FromEndpoint, row.ToVertex, row.ToEndpoint, false, _parallelConnect);
+                    if (!_parallelConnect)
                     {
-                        outQueue.Enqueue(row);
+                        bool done = await task;
+                        if (!done)
+                        {
+                            outQueue.Enqueue(row);
+                        }
                     }
                 }
 
                 if (inQueue.Count > 0)
                 {
                     var row = inQueue.Dequeue();
-                    bool done = await RetryRestoreConnection(row.FromVertex, row.FromEndpoint, row.ToVertex, row.ToEndpoint, true, false);
-                    if (!done)
+                    var task = RetryRestoreConnection(row.FromVertex, row.FromEndpoint, row.ToVertex, row.ToEndpoint, true, _parallelConnect);
+                    if (!_parallelConnect)
                     {
-                        inQueue.Enqueue(row);
+                        bool done = await task;
+                        if (!done)
+                        {
+                            inQueue.Enqueue(row);
+                        }
                     }
                 }
             }
@@ -970,11 +1027,11 @@ namespace CRA.ClientLibrary
                         if (killRemote && !retryForever)
                             return false;
                         killRemote = true;
-                        await Task.Delay(5000);
+                        await Task.Delay(_retryDelayMs);
                     }
                     else
                     {
-                        await Task.Delay(5000);
+                        await Task.Delay(_retryDelayMs);
                         if (!retryForever)
                             return false;
                     }
