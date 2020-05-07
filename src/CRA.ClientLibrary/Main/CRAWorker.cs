@@ -2,6 +2,7 @@
 
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -875,16 +876,36 @@ namespace CRA.ClientLibrary
         {
             // Decide what to do if connection creation fails
             var outRows = await _connectionInfoProvider.GetAllConnectionsFromVertex(_row.VertexName);
-
+            var outQueue = new Queue<VertexConnectionInfo>();
             foreach (var row in outRows)
-            {
-                var _ = RetryRestoreConnection(row.FromVertex, row.FromEndpoint, row.ToVertex, row.ToEndpoint, false);
-            }
+                outQueue.Enqueue(row);
 
             var inRows = await _connectionInfoProvider.GetAllConnectionsToVertex(_row.VertexName);
+            var inQueue = new Queue<VertexConnectionInfo>();
             foreach (var row in inRows)
+                inQueue.Enqueue(row);
+
+            while (outQueue.Count > 0 || inQueue.Count > 0)
             {
-                var _ = RetryRestoreConnection(row.FromVertex, row.FromEndpoint, row.ToVertex, row.ToEndpoint, true);
+                if (outQueue.Count > 0)
+                {
+                    var row = outQueue.Dequeue();
+                    bool done = await RetryRestoreConnection(row.FromVertex, row.FromEndpoint, row.ToVertex, row.ToEndpoint, false, false);
+                    if (!done)
+                    {
+                        outQueue.Enqueue(row);
+                    }
+                }
+
+                if (inQueue.Count > 0)
+                {
+                    var row = inQueue.Dequeue();
+                    bool done = await RetryRestoreConnection(row.FromVertex, row.FromEndpoint, row.ToVertex, row.ToEndpoint, true, false);
+                    if (!done)
+                    {
+                        inQueue.Enqueue(row);
+                    }
+                }
             }
         }
 
@@ -905,12 +926,13 @@ namespace CRA.ClientLibrary
             }
         }
 
-        private async Task RetryRestoreConnection(
+        private async Task<bool> RetryRestoreConnection(
             string fromVertexName,
             string fromVertexOutput,
             string toVertexName,
             string toVertexInput,
-            bool reverse)
+            bool reverse,
+            bool retryForever = true)
         {
             var conn = reverse ? inConnections : outConnections;
 
@@ -944,13 +966,23 @@ namespace CRA.ClientLibrary
                 if (result != 0)
                 {
                     if (result == CRAErrorCode.ServerRecovering)
-                    { killRemote = true; }
-
-                    await Task.Delay(5000);
+                    {
+                        if (killRemote && !retryForever)
+                            return false;
+                        killRemote = true;
+                        await Task.Delay(5000);
+                    }
+                    else
+                    {
+                        await Task.Delay(5000);
+                        if (!retryForever)
+                            return false;
+                    }
                 }
                 else
                     break;
             }
+            return true;
         }
 
         private async Task StartServer()
