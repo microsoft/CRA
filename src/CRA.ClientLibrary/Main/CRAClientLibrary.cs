@@ -34,6 +34,11 @@ namespace CRA.ClientLibrary
         private bool _dynamicLoadingEnabled = true;
         private bool _artifactUploading = true;
 
+        /// <summary>
+        /// TCP connection timeout
+        /// </summary>
+        private int _tcpConnectTimeoutMs = 5000;
+
         public CRAClientLibrary() : this(new AzureDataProvider(), null)
         { }
 
@@ -62,6 +67,24 @@ namespace CRA.ClientLibrary
             _endpointTableManager = new EndpointTableManager(dataProvider);
             _connectionTableManager = new ConnectionTableManager(dataProvider);
             this.DataProvider = dataProvider;
+        }
+
+        /// <summary>
+        /// Set TCP connection timeout (in milliseconds)
+        /// </summary>
+        /// <param name="tcpConnectTimeoutMs"></param>
+        public void SetTcpConnectionTimeout(int tcpConnectTimeoutMs)
+        {
+            Console.WriteLine("Setting TCP connection timeout (ms) to {0}", tcpConnectTimeoutMs);
+            _tcpConnectTimeoutMs = tcpConnectTimeoutMs;
+        }
+
+        /// <summary>
+        /// Get TCP connection timeout (in milliseconds)
+        /// </summary>
+        internal int GetTcpConnectionTimeout()
+        {
+            return _tcpConnectTimeoutMs;
         }
 
         public IDataProvider DataProvider { get; }
@@ -220,8 +243,12 @@ namespace CRA.ClientLibrary
                 Stream stream;
                 if (!TryGetSenderStreamFromPool(instanceRow.Address, instanceRow.Port.ToString(), out stream))
                 {
-                    TcpClient client = new TcpClient(instanceRow.Address, instanceRow.Port);
+                    var client = new TcpClient();
                     client.NoDelay = true;
+                    if (!client.ConnectAsync(instanceRow.Address, instanceRow.Port).Wait(_tcpConnectTimeoutMs))
+                    {
+                        throw new Exception("Failed to connect.");
+                    }
 
                     stream = client.GetStream();
                     if (SecureStreamConnectionDescriptor != null)
@@ -666,8 +693,12 @@ namespace CRA.ClientLibrary
                     row.Port.ToString(),
                     out stream))
                 {
-                    client = new TcpClient(row.Address, row.Port);
+                    client = new TcpClient();
                     client.NoDelay = true;
+                    if (!client.ConnectAsync(row.Address, row.Port).Wait(_tcpConnectTimeoutMs))
+                    {
+                        throw new Exception("Failed to connect.");
+                    }
 
                     stream = client.GetStream();
 

@@ -339,8 +339,12 @@ namespace CRA.ClientLibrary
                     vertexRow.Port.ToString(),
                     out ns))
                 {
-                    TcpClient client = new TcpClient(vertexRow.Address, vertexRow.Port);
+                    var client = new TcpClient();
                     client.NoDelay = true;
+                    if (!client.ConnectAsync(vertexRow.Address, vertexRow.Port).Wait(_clientLibrary.GetTcpConnectionTimeout()))
+                    {
+                        throw new Exception("Failed to connect.");
+                    }
 
                     ns = _clientLibrary.SecureStreamConnectionDescriptor
                           .CreateSecureClient(client.GetStream(), vertexConnectionRow.InstanceName);
