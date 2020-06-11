@@ -707,6 +707,13 @@ namespace CRA.ClientLibrary
                 AssemblyName assemblyFullName = new AssemblyName(assemblyName);
                 var assemblyPath = Path.Combine(AssemblyDirectory, assemblyFullName.Name + ".dll");
 
+                if (assemblyName.Equals(assemblyFullName.Name))
+                {   //this means the public key info etc is missing
+                    //this assembly is probably an uploaded project reference
+                    //just skip over it, the actual assembly will show up on the stream
+                    continue;
+                }
+
                 if (assemblyLock.TryAdd(assemblyPath, true))
                 {
                     try
