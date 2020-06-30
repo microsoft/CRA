@@ -245,10 +245,7 @@ namespace CRA.ClientLibrary
                 {
                     var client = new TcpClient();
                     client.NoDelay = true;
-                    if (!client.ConnectAsync(instanceRow.Address, instanceRow.Port).Wait(_tcpConnectTimeoutMs))
-                    {
-                        throw new Exception("Failed to connect.");
-                    }
+                    await client.ConnectAsync(instanceRow.Address, instanceRow.Port, _tcpConnectTimeoutMs);
 
                     stream = client.GetStream();
                     if (SecureStreamConnectionDescriptor != null)
@@ -571,7 +568,7 @@ namespace CRA.ClientLibrary
                 if (row.VertexName == "") continue;
                 t.Add(LoadVertexAsync(row.VertexName, row.VertexDefinition, row.VertexParameter, thisInstanceName, result));
             }
-            Task.WaitAll(t.ToArray());
+            await Task.WhenAll(t.ToArray());
 
             return result;
         }
@@ -695,10 +692,7 @@ namespace CRA.ClientLibrary
                 {
                     client = new TcpClient();
                     client.NoDelay = true;
-                    if (!client.ConnectAsync(row.Address, row.Port).Wait(_tcpConnectTimeoutMs))
-                    {
-                        throw new Exception("Failed to connect.");
-                    }
+                    await client.ConnectAsync(row.Address, row.Port, _tcpConnectTimeoutMs);
 
                     stream = client.GetStream();
 

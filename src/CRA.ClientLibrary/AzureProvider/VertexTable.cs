@@ -10,6 +10,7 @@ using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Microsoft.WindowsAzure.Storage.Table;
 using CRA.ClientLibrary;
+using System.Threading.Tasks;
 
 namespace CRA.DataProvider.Azure
 {
@@ -232,7 +233,7 @@ namespace CRA.DataProvider.Azure
             return actionExpr.Compile();
         }
 
-        internal object GetVertexParam()
+        internal async Task<object> GetVertexParam()
         {
             string storageConnectionString = null;
 #if !DOTNETCORE
@@ -249,7 +250,7 @@ namespace CRA.DataProvider.Azure
             string blobName = VertexName + "-" + InstanceName;
 
             CloudBlobContainer container = blobClient.GetContainerReference("cra");
-            container.CreateIfNotExistsAsync().Wait();
+            await container.CreateIfNotExistsAsync();
             var blockBlob = container.GetBlockBlobReference(VertexDefinition + "/" + blobName);
             Stream blobStream = blockBlob.OpenReadAsync().GetAwaiter().GetResult();
             byte[] parameterBytes = blobStream.ReadByteArray();
