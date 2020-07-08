@@ -24,19 +24,19 @@
         }
 
         public async Task Delete(string pathKey)
-            => await CreateBlockBlob(pathKey).DeleteIfExistsAsync();
+            => await (await CreateBlockBlobAsync(pathKey)).DeleteIfExistsAsync();
 
         public async Task<Stream> GetReadStream(string pathKey)
-            => await CreateBlockBlob(pathKey).OpenReadAsync();
+            => await (await CreateBlockBlobAsync(pathKey)).OpenReadAsync();
 
         public async Task<Stream> GetWriteStream(string pathKey)
-            => await CreateBlockBlob(pathKey).OpenWriteAsync();
+            => await (await CreateBlockBlobAsync(pathKey)).OpenWriteAsync();
 
-        private CloudBlockBlob CreateBlockBlob(string pathKey)
+        private async Task<CloudBlockBlob> CreateBlockBlobAsync(string pathKey)
         {
             CloudBlobContainer container = _blobClient
                 .GetContainerReference(_parentBlobName);
-            container.CreateIfNotExistsAsync().Wait();
+            await container.CreateIfNotExistsAsync();
             return container.GetBlockBlobReference(pathKey);
         }
     }
