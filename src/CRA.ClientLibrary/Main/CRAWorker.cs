@@ -192,7 +192,7 @@ namespace CRA.ClientLibrary
             _craClient.SideloadVertex(vertex, vertexName);
         }
 
-        public async Task InstantSideloadVertex(IVertex vertex, string vertexDefinition, string vertexName, bool loadParamFromMetadata = true, object param = null, bool loadConnectionsFromMetadata = true, IEnumerable<VertexConnectionInfo> outRows = null, IEnumerable<VertexConnectionInfo> inRows = null, bool waitForMetadata = false)
+        public async Task InstantSideloadVertexAsync(IVertex vertex, string vertexDefinition, string vertexName, bool loadParamFromMetadata = true, object param = null, bool loadConnectionsFromMetadata = true, IEnumerable<VertexConnectionInfo> outRows = null, IEnumerable<VertexConnectionInfo> inRows = null, bool waitForMetadata = false)
         {
             Console.WriteLine("Enabling sideload for vertex: " + vertexName + " (" + vertex.GetType().FullName + ")");
             if (loadParamFromMetadata)
@@ -995,7 +995,7 @@ namespace CRA.ClientLibrary
             string vertexDefinition = Encoding.UTF8.GetString(stream.ReadByteArray());
 
             await _craClient
-                .LoadVertexAsync(vertexName, vertexDefinition, vertexParam, _workerinstanceName, _localVertexTable, true);
+                .LoadVertexAsync(vertexName, vertexDefinition, _workerinstanceName, _localVertexTable, true);
 
             stream.WriteInt32(0);
 
@@ -1056,7 +1056,7 @@ namespace CRA.ClientLibrary
             await RestoreConnections(outRows, inRows);
         }
         
-        internal async void RestoreVertexAndConnections(VertexInfo _row)
+        internal async Task RestoreVertexAndConnectionsAsync(VertexInfo _row)
         {
             if (!_localVertexTable.ContainsKey(_row.VertexName))
             {
@@ -1065,14 +1065,16 @@ namespace CRA.ClientLibrary
             }
         }
 
-        private async Task RestoreVerticesAndConnections()
+        private async Task RestoreVerticesAndConnectionsAsync()
         {
             var rows = await _vertexInfoProvider.GetAllRowsForInstance(_workerinstanceName);
 
             foreach (var _row in rows)
             {
                 if (string.IsNullOrEmpty(_row.VertexName)) continue;
-                RestoreVertexAndConnections(_row);
+                
+                // Restore vertices in parallel tasks
+                var _ = RestoreVertexAndConnectionsAsync(_row);
             }
         }
 
@@ -1141,7 +1143,7 @@ namespace CRA.ClientLibrary
         private async Task StartServerAsync()
         {
             // Restore vertices on machine
-            RestoreVerticesAndConnections();
+            await RestoreVerticesAndConnectionsAsync();
 
             var server = new TcpListener(IPAddress.Parse(_address), _port);
 
