@@ -544,7 +544,6 @@ namespace CRA.ClientLibrary
             {
                 param = await GetParam(vertexDefinition, vertexName, instanceName);
             }
-
             await vertex.InitializeAsync(param);
 
             if (performActivation)
@@ -557,13 +556,13 @@ namespace CRA.ClientLibrary
         private async Task<object> GetParam(string vertexDefinition, string vertexName, string instanceName)
         {
             string blobName = vertexName + "-" + instanceName;
-            string parameterString;
+                string parameterString;
 
-            using (var parametersStream = await _blobStorage.GetReadStream(vertexDefinition + "/" + blobName))
-            {
-                byte[] parametersBytes = parametersStream.ReadByteArray();
-                parameterString = Encoding.UTF8.GetString(parametersBytes);
-            }
+                using (var parametersStream = await _blobStorage.GetReadStream(vertexDefinition + "/" + blobName))
+                {
+                    byte[] parametersBytes = parametersStream.ReadByteArray();
+                    parameterString = Encoding.UTF8.GetString(parametersBytes);
+                }
 
             return SerializationHelper.DeserializeObject(parameterString);
         }

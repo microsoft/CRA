@@ -195,6 +195,7 @@ namespace CRA.ClientLibrary
         public async Task InstantSideloadVertexAsync(IVertex vertex, string vertexDefinition, string vertexName, bool loadParamFromMetadata = true, object param = null, bool loadConnectionsFromMetadata = true, IEnumerable<VertexConnectionInfo> outRows = null, IEnumerable<VertexConnectionInfo> inRows = null, bool waitForMetadata = false)
         {
             Console.WriteLine("Enabling sideload for vertex: " + vertexName + " (" + vertex.GetType().FullName + ")");
+            
             if (loadParamFromMetadata)
                 _craClient.SideloadVertex(vertex, vertexName);
             else
@@ -213,14 +214,11 @@ namespace CRA.ClientLibrary
                     outRows = await _connectionInfoProvider.GetAllConnectionsFromVertex(vertexName);
                     inRows = await _connectionInfoProvider.GetAllConnectionsToVertex(vertexName);
                 }
-
                 // Do not await this: happens in background
                 var _ = RestoreConnections(outRows, inRows);
             }
-
             // Update metadata table with sideload information
             _craClient.DisableArtifactUploading();
-
             var taskList = new List<Task>();
             taskList.Add(_craClient.DefineVertexAsync(vertexDefinition, null));
             taskList.Add(_craClient.InstantiateVertexAsync(_workerinstanceName, vertexName, vertexDefinition, param, false, true, true, true));
@@ -254,7 +252,7 @@ namespace CRA.ClientLibrary
 
             // Then start server. This ensures that others can establish 
             // connections to local vertices at this point.
-            Thread serverThread = new Thread(()=> StartServerAsync().Wait());
+            Thread serverThread = new Thread(() => StartServerAsync().Wait());
             serverThread.IsBackground = true;
             serverThread.Start();
 
@@ -269,7 +267,6 @@ namespace CRA.ClientLibrary
         {
             // Update vertex table
             _craClient.RegisterInstance(_workerinstanceName, _address, _port);
-
             // Then start server. This ensures that others can establish 
             // connections to local vertices at this point.
             await StartServerAsync();
@@ -1003,7 +1000,7 @@ namespace CRA.ClientLibrary
         }
 
         private async Task RestoreConnections(IEnumerable<VertexConnectionInfo> outRows, IEnumerable<VertexConnectionInfo> inRows)
-        {
+        {            
             var outQueue = new Queue<VertexConnectionInfo>();
 
             if (outRows != null)
@@ -1015,7 +1012,6 @@ namespace CRA.ClientLibrary
             if (inRows != null)
                 foreach (var row in inRows)
                     inQueue.Enqueue(row);
-
 
             while (outQueue.Count > 0 || inQueue.Count > 0)
             {
@@ -1055,7 +1051,7 @@ namespace CRA.ClientLibrary
             var inRows = await _connectionInfoProvider.GetAllConnectionsToVertex(_row.VertexName);
             await RestoreConnections(outRows, inRows);
         }
-        
+
         internal async Task RestoreVertexAndConnectionsAsync(VertexInfo _row)
         {
             if (!_localVertexTable.ContainsKey(_row.VertexName))
@@ -1072,7 +1068,6 @@ namespace CRA.ClientLibrary
             foreach (var _row in rows)
             {
                 if (string.IsNullOrEmpty(_row.VertexName)) continue;
-                
                 // Restore vertices in parallel tasks
                 var _ = RestoreVertexAndConnectionsAsync(_row);
             }
@@ -1103,7 +1098,6 @@ namespace CRA.ClientLibrary
                     break;
                 }
                 first = false;
-
 
                 Debug.WriteLine("Connecting " + fromVertexName + ":" + fromVertexOutput + ":" + toVertexName + ":" + toVertexInput);
                 Debug.WriteLine("Connecting with killRemote set to " + (killRemote ? "true" : "false"));

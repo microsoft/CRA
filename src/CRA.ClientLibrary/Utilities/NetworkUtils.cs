@@ -15,9 +15,7 @@ namespace CRA.ClientLibrary
         {
             var cancelTask = Task.Delay(timeoutMs);
             var connectTask = tcpClient.ConnectAsync(host, port);
-
             await await Task.WhenAny(connectTask, cancelTask);
-
             if (cancelTask.IsCompleted)
             {
                 throw new Exception("Timed out");
