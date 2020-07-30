@@ -4,11 +4,24 @@ using System.Linq;
 using System.Text;
 using System.Net.NetworkInformation;
 using System.Net;
+using System.Threading.Tasks;
+using System.Net.Sockets;
 
 namespace CRA.ClientLibrary
 {
     public static class NetworkUtils
     {
+        internal static async Task ConnectAsync(this TcpClient tcpClient, string host, int port, int timeoutMs)
+        {
+            var cancelTask = Task.Delay(timeoutMs);
+            var connectTask = tcpClient.ConnectAsync(host, port);
+            await await Task.WhenAny(connectTask, cancelTask);
+            if (cancelTask.IsCompleted)
+            {
+                throw new Exception("Timed out");
+            }
+        }
+
         /* Copyright 2018 mniak (https://gist.github.com/jrusbatch/4211535)*/
         public static int GetAvailablePort(int startingPort = 5000)
         {

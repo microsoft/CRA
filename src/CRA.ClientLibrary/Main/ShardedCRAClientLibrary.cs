@@ -42,7 +42,7 @@ namespace CRA.ClientLibrary
                 isActive: true,
                 isSharded: false);
 
-             _vertexManager.VertexInfoProvider.InsertOrReplace(newRow).Wait();
+             await _vertexManager.VertexInfoProvider.InsertOrReplace(newRow);
              //await _vertexManager.VertexInfoProvider.InsertOrReplace(newRow);
 
             return CRAErrorCode.Success;

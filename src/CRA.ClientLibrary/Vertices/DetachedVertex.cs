@@ -111,9 +111,9 @@ namespace CRA.ClientLibrary
         /// Add input endpoint
         /// </summary>
         /// <param name="endpointName">Endpoint name</param>
-        public void AddInputEndpoint(string endpointName)
+        public async Task AddInputEndpointAsync(string endpointName)
         {
-            _clientLibrary.AddEndpointAsync(_vertexName, endpointName, true, false).Wait();
+            await _clientLibrary.AddEndpointAsync(_vertexName, endpointName, true, false);
             EndpointData.InputEndpoints.TryAdd(endpointName, true);
         }
 
@@ -121,9 +121,9 @@ namespace CRA.ClientLibrary
         /// Add output endpoint
         /// </summary>
         /// <param name="endpointName">Endpoint name</param>
-        public void AddOutputEndpoint(string endpointName)
+        public async Task AddOutputEndpointAsync(string endpointName)
         {
-            _clientLibrary.AddEndpointAsync(_vertexName, endpointName, false, false).Wait();
+            await _clientLibrary.AddEndpointAsync(_vertexName, endpointName, false, false);
             EndpointData.OutputEndpoints.TryAdd(endpointName, true);
         }
 
@@ -136,7 +136,7 @@ namespace CRA.ClientLibrary
         /// <returns></returns>
         public async Task<Stream> FromRemoteOutputEndpointStreamAsync(string localInputEndpointName, string remoteVertex, string remoteOutputEndpoint)
         {
-            AddInputEndpoint(localInputEndpointName);
+            await AddInputEndpointAsync(localInputEndpointName);
 
             await _clientLibrary.AddConnectionInfoAsync(remoteVertex, remoteOutputEndpoint, _vertexName, localInputEndpointName);
             var stream = await Connect_InitiatorSide(remoteVertex, remoteOutputEndpoint, _vertexName, localInputEndpointName, true);
@@ -155,7 +155,7 @@ namespace CRA.ClientLibrary
         /// <returns></returns>
         public async Task<Stream> ToRemoteInputEndpointStreamAsync(string localOutputEndpointName, string remoteVertex, string remoteInputEndpoint)
         {
-            AddOutputEndpoint(localOutputEndpointName);
+            await AddOutputEndpointAsync(localOutputEndpointName);
 
             await _clientLibrary.AddConnectionInfoAsync(_vertexName, localOutputEndpointName, remoteVertex, remoteInputEndpoint);
             var stream = await Connect_InitiatorSide(_vertexName, localOutputEndpointName, remoteVertex, remoteInputEndpoint, false);
@@ -258,9 +258,8 @@ namespace CRA.ClientLibrary
         /// </summary>
         public void Dispose()
         {
-            CloseAsync().Wait();
+            Task.Run(async () => await CloseAsync()).Wait();
             GC.SuppressFinalize(this);
-
         }
 
         protected async Task CloseAsync()
@@ -341,10 +340,7 @@ namespace CRA.ClientLibrary
                 {
                     var client = new TcpClient();
                     client.NoDelay = true;
-                    if (!client.ConnectAsync(vertexRow.Address, vertexRow.Port).Wait(_clientLibrary.GetTcpConnectionTimeout()))
-                    {
-                        throw new Exception("Failed to connect.");
-                    }
+                    await client.ConnectAsync(vertexRow.Address, vertexRow.Port, _clientLibrary.GetTcpConnectionTimeout());
 
                     ns = _clientLibrary.SecureStreamConnectionDescriptor
                           .CreateSecureClient(client.GetStream(), vertexConnectionRow.InstanceName);

@@ -5,6 +5,7 @@
     using Microsoft.WindowsAzure.Storage;
     using Microsoft.WindowsAzure.Storage.Table;
     using CRA.ClientLibrary;
+    using System.Threading.Tasks;
 
     /// <summary>
     /// Definition for AzureDataProvider
@@ -58,7 +59,7 @@
             CloudTable table = _tableClient.GetTableReference(tableName);
             try
             {
-                table.CreateIfNotExistsAsync().Wait();
+                Task.Run(async () => await table.CreateIfNotExistsAsync()).Wait();
             }
             catch { }
 
