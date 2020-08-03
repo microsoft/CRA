@@ -785,7 +785,7 @@ namespace CRA.ClientLibrary
 
                     if (fromVertex != null && toVertex != null && fromVertex.CanFuseWith(toVertex, toVertexName, toVertexInput))
                     {
-                        await fromVertex.ToInputAsync(toVertex, fromVertexName, fromVertexOutput, source.Token);
+                        await fromVertex.ToInputAsync(toVertex, toVertexName, toVertexInput, source.Token);
                     }
                     else
                     {
