@@ -220,8 +220,11 @@ namespace CRA.ClientLibrary
             // Update metadata table with sideload information
             _craClient.DisableArtifactUploading();
             var taskList = new List<Task>();
-            taskList.Add(_craClient.DefineVertexAsync(vertexDefinition, null));
-            taskList.Add(_craClient.InstantiateVertexAsync(_workerinstanceName, vertexName, vertexDefinition, param, false, true, true, true));
+            taskList.Add(
+                _craClient.DefineVertexAsync(vertexDefinition, null)
+                .ContinueWith
+                (t => _craClient.InstantiateVertexAsync(_workerinstanceName, vertexName, vertexDefinition, 
+                param, false, true, true, true)));
 
             if (!loadConnectionsFromMetadata)
             {
@@ -265,8 +268,10 @@ namespace CRA.ClientLibrary
         /// </summary>
         public async Task StartAsync()
         {
+            Console.WriteLine($"Registering CRA instance {_workerinstanceName}");
             // Update vertex table
             _craClient.RegisterInstance(_workerinstanceName, _address, _port);
+            Console.WriteLine("Finished registering CRA instance");
             // Then start server. This ensures that others can establish 
             // connections to local vertices at this point.
             await StartServerAsync();
