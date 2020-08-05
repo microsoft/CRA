@@ -220,6 +220,7 @@ namespace CRA.ClientLibrary
             // Update metadata table with sideload information
             _craClient.DisableArtifactUploading();
             var taskList = new List<Task>();
+
             taskList.Add(_craClient.DefineVertexAsync(vertexDefinition, null));
             taskList.Add(_craClient.InstantiateVertexAsync(_workerinstanceName, vertexName, vertexDefinition, param, false, true, true, true));
 
@@ -265,8 +266,10 @@ namespace CRA.ClientLibrary
         /// </summary>
         public async Task StartAsync()
         {
+            Console.WriteLine($"Registering CRA instance {_workerinstanceName}");
             // Update vertex table
             _craClient.RegisterInstance(_workerinstanceName, _address, _port);
+            Console.WriteLine("Finished registering CRA instance");
             // Then start server. This ensures that others can establish 
             // connections to local vertices at this point.
             await StartServerAsync();
@@ -334,11 +337,12 @@ namespace CRA.ClientLibrary
 
             // Send request to CRA instance
             Stream ns = null;
-            var _row = (await _vertexInfoProvider.GetRowForInstanceVertex(row.InstanceName, ""))
-                .Value;
+            VertexInfo _row = default;
 
             try
             {
+                _row = (await _vertexInfoProvider.GetRowForInstanceVertex(row.InstanceName, "")).Value;
+
                 // Get a stream connection from the pool if available
                 if (!_craClient.TryGetSenderStreamFromPool(_row.Address, _row.Port.ToString(), out ns))
                 {
