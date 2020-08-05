@@ -220,11 +220,9 @@ namespace CRA.ClientLibrary
             // Update metadata table with sideload information
             _craClient.DisableArtifactUploading();
             var taskList = new List<Task>();
-            taskList.Add(
-                _craClient.DefineVertexAsync(vertexDefinition, null)
-                .ContinueWith
-                (t => _craClient.InstantiateVertexAsync(_workerinstanceName, vertexName, vertexDefinition, 
-                param, false, true, true, true)));
+
+            taskList.Add(_craClient.DefineVertexAsync(vertexDefinition, null));
+            taskList.Add(_craClient.InstantiateVertexAsync(_workerinstanceName, vertexName, vertexDefinition, param, false, true, true, true));
 
             if (!loadConnectionsFromMetadata)
             {

@@ -222,13 +222,13 @@ namespace CRA.ClientLibrary
             string vertexDefinition,
             object vertexParameter,
             bool sharded = false, bool logicalOnly = false, bool sideLoad = false, bool activate = false)
-        { 
-            var procDefRow = await _vertexManager.VertexInfoProvider.GetRowForVertexDefinition(vertexDefinition);
-
+        {
+            string vertexCreateAction = null;
             string blobName = vertexName + "-" + instanceName;
 
             if (!sideLoad)
             {
+                vertexCreateAction = (await _vertexManager.VertexInfoProvider.GetRowForVertexDefinition(vertexDefinition)).Value.VertexCreateAction;
                 using (var blobStream = await _blobStorage.GetWriteStream(vertexDefinition + "/" + blobName))
                 {
                     byte[] parameterBytes = Encoding.UTF8.GetBytes(
@@ -243,7 +243,7 @@ namespace CRA.ClientLibrary
                 port: 0,
                 vertexName: vertexName,
                 vertexDefinition: vertexDefinition,
-                vertexCreateAction: procDefRow.Value.VertexCreateAction,
+                vertexCreateAction: vertexCreateAction,
                 vertexParameter: blobName,
                 isActive: activate,
                 isSharded:  sharded);
