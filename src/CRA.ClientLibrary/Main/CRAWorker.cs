@@ -339,11 +339,12 @@ namespace CRA.ClientLibrary
 
             // Send request to CRA instance
             Stream ns = null;
-            var _row = (await _vertexInfoProvider.GetRowForInstanceVertex(row.InstanceName, ""))
-                .Value;
+            VertexInfo _row = default;
 
             try
             {
+                _row = (await _vertexInfoProvider.GetRowForInstanceVertex(row.InstanceName, "")).Value;
+
                 // Get a stream connection from the pool if available
                 if (!_craClient.TryGetSenderStreamFromPool(_row.Address, _row.Port.ToString(), out ns))
                 {
