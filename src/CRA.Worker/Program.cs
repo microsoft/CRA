@@ -7,6 +7,7 @@ using System.Reflection;
 using CRA.DataProvider;
 using CRA.DataProvider.Azure;
 using CRA.DataProvider.File;
+using System.Diagnostics;
 
 namespace CRA.Worker
 {
@@ -14,6 +15,9 @@ namespace CRA.Worker
     {
         static void Main(string[] args)
         {
+            TextWriterTraceListener myWriter = new TextWriterTraceListener(System.Console.Out);
+            Trace.Listeners.Add(myWriter);
+
             if (args.Length < 2)
             {
                 Console.WriteLine("Worker for Common Runtime for Applications (CRA) [http://github.com/Microsoft/CRA]");

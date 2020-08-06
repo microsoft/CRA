@@ -1060,7 +1060,7 @@ namespace CRA.ClientLibrary
         {
             if (!_localVertexTable.ContainsKey(_row.VertexName))
             {
-                await _craClient.LoadVertexAsync(_row.VertexName, _row.VertexDefinition, _workerinstanceName, _localVertexTable, _row.IsActive);
+                await _craClient.LoadVertexAsync(_row.VertexName, _row.VertexDefinition, _workerinstanceName, _localVertexTable, true);
                 await RestoreConnections(_row);
             }
         }
