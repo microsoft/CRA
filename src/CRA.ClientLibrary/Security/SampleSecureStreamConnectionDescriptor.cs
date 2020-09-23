@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.IO;
 using System.Net.Security;
 using System.Security.Authentication;
@@ -24,7 +25,7 @@ namespace CRA.ClientLibrary
             if (sslPolicyErrors == SslPolicyErrors.None)
                 return true;
 
-            Console.WriteLine("Certificate error: {0}", sslPolicyErrors);
+            Trace.TraceError("Certificate error: {0}", sslPolicyErrors);
 
             // Do not allow this client to communicate with unauthenticated servers.
             return false;
@@ -41,12 +42,12 @@ namespace CRA.ClientLibrary
             }
             catch (AuthenticationException e)
             {
-                Console.WriteLine("Exception: {0}", e.Message);
+                Trace.TraceError("Exception: {0}", e.Message);
                 if (e.InnerException != null)
                 {
-                    Console.WriteLine("Inner exception: {0}", e.InnerException.Message);
+                    Trace.TraceError("Inner exception: {0}", e.InnerException.Message);
                 }
-                Console.WriteLine("Authentication failed - closing the connection.");
+                Trace.TraceError("Authentication failed - closing the connection.");
                 sslStream.Close();
                 return null;
             }
@@ -66,12 +67,12 @@ namespace CRA.ClientLibrary
             }
             catch (AuthenticationException e)
             {
-                Console.WriteLine("Exception: {0}", e.Message);
+                Trace.TraceError("Exception: {0}", e.Message);
                 if (e.InnerException != null)
                 {
-                    Console.WriteLine("Inner exception: {0}", e.InnerException.Message);
+                    Trace.TraceError("Inner exception: {0}", e.InnerException.Message);
                 }
-                Console.WriteLine("Authentication failed - closing the connection.");
+                Trace.TraceError("Authentication failed - closing the connection.");
                 sslStream.Close();
                 return null;
             }

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Reflection;
 using System.Text;
@@ -48,7 +49,7 @@ namespace CRA.ClientLibrary.DataProcessing
         {
             if (disposing)
             {
-                Console.WriteLine("Disposing " + GetType().Name);
+                Trace.TraceInformation("Disposing " + GetType().Name);
             }
         }
 

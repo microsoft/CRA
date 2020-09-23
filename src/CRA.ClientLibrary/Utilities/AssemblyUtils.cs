@@ -11,6 +11,7 @@ using System.Threading.Tasks;
 using Microsoft.WindowsAzure.Storage.Table;
 using System.Threading;
 using System.Collections.Concurrent;
+using System.Diagnostics;
 
 namespace CRA.ClientLibrary
 {
@@ -630,7 +631,7 @@ namespace CRA.ClientLibrary
             }
             catch (Exception e)
             {
-                Console.WriteLine(e.ToString());
+                Trace.TraceError(e.ToString());
             }
         }
 
@@ -722,7 +723,7 @@ namespace CRA.ClientLibrary
                     }
                     catch (Exception)
                     {
-                        Console.WriteLine("INFO: Unable to update " + assemblyFullName.Name + ".dll (perhaps another CRA worker holds the file lock?)");
+                        Trace.TraceInformation("INFO: Unable to update " + assemblyFullName.Name + ".dll (perhaps another CRA worker holds the file lock?)");
                     }
 
                     if (managedAssembly)
@@ -742,13 +743,13 @@ namespace CRA.ClientLibrary
                 var assemblyPath = Path.Combine(AssemblyDirectory, assemblyFullName.Name + ".dll");
                 try
                 {
-                    Console.WriteLine("INFO: Updated " + assemblyFullName.Name + ".dll");
+                    Trace.TraceInformation("INFO: Updated " + assemblyFullName.Name + ".dll");
 
                     File.WriteAllBytes(assemblyPath, AssemblyResolver.GetAssemblyBytes(assemblyKey));
                 }
                 catch (Exception e)
                 {
-                    Console.WriteLine("INFO: Unable to update " + assemblyFullName.Name + ".dll -- " + e.ToString());
+                    Trace.TraceInformation("INFO: Unable to update " + assemblyFullName.Name + ".dll -- " + e.ToString());
                 }
             }
         }

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.IO;
 using System.Linq.Expressions;
 using System.Reflection;
@@ -59,7 +60,7 @@ namespace CRA.ClientLibrary.DataProcessing
                 }
                 catch (Exception e)
                 {
-                    Console.WriteLine("Error: CRA failed to apply the subscribe() in the client side. " + e.ToString());
+                    Trace.TraceError("Error: CRA failed to apply the subscribe() in the client side. " + e.ToString());
                 }
             }
         }

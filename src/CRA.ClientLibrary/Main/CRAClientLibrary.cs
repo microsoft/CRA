@@ -80,7 +80,7 @@ namespace CRA.ClientLibrary
         /// <param name="tcpConnectTimeoutMs"></param>
         public void SetTcpConnectionTimeout(int tcpConnectTimeoutMs)
         {
-            Console.WriteLine("Setting TCP connection timeout (ms) to {0}", tcpConnectTimeoutMs);
+            Trace.TraceInformation("Setting TCP connection timeout (ms) to {0}", tcpConnectTimeoutMs);
             _tcpConnectTimeoutMs = tcpConnectTimeoutMs;
         }
 
@@ -281,7 +281,7 @@ namespace CRA.ClientLibrary
                 result = (CRAErrorCode)stream.ReadInt32();
                 if (result != 0)
                 {
-                    Console.WriteLine("Vertex was logically loaded. However, we received an error code from the hosting CRA instance: " + result);
+                    Trace.TraceInformation("Vertex was logically loaded. However, we received an error code from the hosting CRA instance: " + result);
                 }
 
                 // Add/Return stream connection to the pool
@@ -289,7 +289,7 @@ namespace CRA.ClientLibrary
             }
             catch
             {
-                Console.WriteLine("The CRA instance appears to be down. Restart it and this vertex will be instantiated automatically");
+                Trace.TraceInformation("The CRA instance appears to be down. Restart it and this vertex will be instantiated automatically");
             }
             return result;
         }
@@ -415,7 +415,7 @@ namespace CRA.ClientLibrary
             object param = null;
             if (_verticesToSideload.ContainsKey(vertexName))
             {
-                Debug.WriteLine("Sideloading vertex " + vertexName);
+                Trace.TraceInformation("Sideloading vertex " + vertexName);
                 (vertex, paramProvided, param) = _verticesToSideload[vertexName];
             }
             else
@@ -438,7 +438,7 @@ namespace CRA.ClientLibrary
             }
             catch (Exception e)
             {
-                Console.WriteLine("INFO: Unable to initialize vertex " + vertexName + ". Check if runtime is compatible (uploaded vertex and worker should be same .NET runtime). Exception:\n" + e.ToString());
+                Trace.TraceInformation("INFO: Unable to initialize vertex " + vertexName + ". Check if runtime is compatible (uploaded vertex and worker should be same .NET runtime). Exception:\n" + e.ToString());
             }
 
             return vertex;
@@ -456,14 +456,14 @@ namespace CRA.ClientLibrary
                     }
                     catch (FileLoadException e)
                     {
-                        Debug.WriteLine("Ignoring exception from assembly loading: " + e.Message);
-                        Debug.WriteLine("If vertex creation fails, the caller will need to sideload the vertex.");
+                        Trace.TraceInformation("Ignoring exception from assembly loading: " + e.Message);
+                        Trace.TraceInformation("If vertex creation fails, the caller will need to sideload the vertex.");
                     }
                 }
             }
             else
             {
-                Debug.WriteLine("Dynamic assembly loading is disabled. The caller will need to sideload the vertex.");
+                Trace.TraceInformation("Dynamic assembly loading is disabled. The caller will need to sideload the vertex.");
             }
 
             var row = await _vertexManager.VertexInfoProvider.GetRowForVertexDefinition(vertexDefinition);
@@ -476,8 +476,8 @@ namespace CRA.ClientLibrary
             }
             catch (Exception e)
             {
-                Debug.WriteLine("Vertex creation failed: " + e.Message);
-                Debug.WriteLine("The caller will need to sideload the vertex.");
+                Trace.TraceInformation("Vertex creation failed: " + e.Message);
+                Trace.TraceInformation("The caller will need to sideload the vertex.");
             }
             return vertex;
         }
@@ -530,7 +530,7 @@ namespace CRA.ClientLibrary
                     IVertex old;
                     if (!table.TryRemove(vertexName, out old))
                     {
-                        Console.WriteLine("Unable to remove vertex on disposal");
+                        Trace.TraceError("Unable to remove vertex on disposal");
                     }
 
                     Task.Run(() =>
@@ -692,7 +692,7 @@ namespace CRA.ClientLibrary
             }
             catch
             {
-                Console.WriteLine("Unable to find active instance with vertex. On vertex activation, the connection should be completed automatically.");
+                Trace.TraceInformation("Unable to find active instance with vertex. On vertex activation, the connection should be completed automatically.");
                 return result;
             }
 
@@ -747,13 +747,13 @@ namespace CRA.ClientLibrary
                 result = (CRAErrorCode)stream.ReadInt32();
 
                 if (result != 0)
-                { Console.WriteLine("Connection was logically established. However, the client received an error code from the connection-initiating CRA instance: " + result); }
+                { Trace.TraceInformation("Connection was logically established. However, the client received an error code from the connection-initiating CRA instance: " + result); }
                 else
                 { TryAddSenderStreamToPool(row.Address, row.Port.ToString(), stream); }
             }
             catch (Exception e)
             {
-                Console.WriteLine("Exception: " + e.ToString() + "\nPossible reason: The connection-initiating CRA instance appears to be down or could not be found. Restart it and this connection will be completed automatically");
+                Trace.TraceInformation("Exception: " + e.ToString() + "\nPossible reason: The connection-initiating CRA instance appears to be down or could not be found. Restart it and this connection will be completed automatically");
             }
 
             return result;

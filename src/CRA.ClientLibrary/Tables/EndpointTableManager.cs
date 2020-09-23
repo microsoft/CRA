@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using CRA.DataProvider;
 using System.Threading.Tasks;
+using System.Diagnostics;
 
 namespace CRA.ClientLibrary
 {
@@ -42,7 +43,7 @@ namespace CRA.ClientLibrary
             if (endpointInfo != null)
             { await _endpointDataProvider.DeleteEndpoint(vertexName, endpointName, endpointInfo.Value.VersionId); }
             else
-            { Console.WriteLine("Could not retrieve the entity."); }
+            { Trace.TraceError("RemoveEndpoint: Could not retrieve the entity."); }
         }
 
         internal async Task RemoveShardedEndpoints(string vertexName, string endpointName)

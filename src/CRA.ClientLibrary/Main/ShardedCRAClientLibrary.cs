@@ -4,6 +4,7 @@ using Microsoft.WindowsAzure.Storage.Table;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Threading.Tasks;
@@ -85,7 +86,7 @@ namespace CRA.ClientLibrary
 
             if (vertices.allShards.Contains(shardID))
             {
-                Console.WriteLine("Shard ID {0} already exists", shardID);
+                Trace.TraceError("Shard ID {0} already exists", shardID);
                 return CRAErrorCode.VertexAlreadyExists;
             }
 
@@ -153,7 +154,7 @@ namespace CRA.ClientLibrary
             {
                 if (results[i] != CRAErrorCode.Success)
                 {
-                    Console.WriteLine("We received an error code " + results[i] + " from one CRA instance while instantiating the vertex " + vertexName + "$" + i + " in the sharded vertex");
+                    Trace.TraceInformation("We received an error code " + results[i] + " from one CRA instance while instantiating the vertex " + vertexName + "$" + i + " in the sharded vertex");
                     result = results[i];
                 }
                 else
@@ -161,7 +162,7 @@ namespace CRA.ClientLibrary
             }
 
             if (result != CRAErrorCode.Success)
-                Console.WriteLine("All CRA instances appear to be down. Restart them and this sharded vertex will be automatically instantiated");
+                Trace.TraceInformation("All CRA instances appear to be down. Restart them and this sharded vertex will be automatically instantiated");
 
             return result;
         }
@@ -199,7 +200,7 @@ namespace CRA.ClientLibrary
             {
                 if (results[i] != CRAErrorCode.Success)
                 {
-                    Console.WriteLine("We received an error code " + results[i] + " from one CRA instance while instantiating the vertex " + vertexName + "$" + i + " in the sharded vertex");
+                    Trace.TraceInformation("We received an error code " + results[i] + " from one CRA instance while instantiating the vertex " + vertexName + "$" + i + " in the sharded vertex");
                     result = results[i];
                 }
                 else
@@ -208,7 +209,7 @@ namespace CRA.ClientLibrary
 
             if (result != CRAErrorCode.Success)
             {
-                Console.WriteLine("All CRA instances appear to be down. Restart them and this sharded vertex will be automatically instantiated");
+                Trace.TraceInformation("All CRA instances appear to be down. Restart them and this sharded vertex will be automatically instantiated");
             }
 
             return result;
@@ -402,7 +403,7 @@ namespace CRA.ClientLibrary
             {
                 if (results[i] != CRAErrorCode.Success)
                 {
-                    Console.WriteLine("We received an error code " + results[i] + " while vertexing the connection pair with number (" + i + ")");
+                    Trace.TraceInformation("We received an error code " + results[i] + " while vertexing the connection pair with number (" + i + ")");
                     result = results[i];
                 }
                 else
@@ -410,7 +411,7 @@ namespace CRA.ClientLibrary
             }
 
             if (result != CRAErrorCode.Success)
-                Console.WriteLine("All CRA instances appear to be down. Restart them and connect these two sharded vertices again!");
+                Trace.TraceInformation("All CRA instances appear to be down. Restart them and connect these two sharded vertices again!");
 
             return result;
         }
@@ -508,7 +509,7 @@ namespace CRA.ClientLibrary
             {
                 if (results[i] != CRAErrorCode.Success)
                 {
-                    Console.WriteLine("We received an error code " + results[i] + " while vertexing the connection pair with number (" + i + ")");
+                    Trace.TraceInformation("We received an error code " + results[i] + " while vertexing the connection pair with number (" + i + ")");
                     result = results[i];
                 }
                 else
@@ -516,7 +517,7 @@ namespace CRA.ClientLibrary
             }
 
             if (result != CRAErrorCode.Success)
-                Console.WriteLine("All CRA instances appear to be down. Restart them and connect these two sharded vertices again!");
+                Trace.TraceInformation("All CRA instances appear to be down. Restart them and connect these two sharded vertices again!");
 
             return result;
         }

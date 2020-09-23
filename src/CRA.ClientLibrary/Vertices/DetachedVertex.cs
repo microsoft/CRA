@@ -365,7 +365,7 @@ namespace CRA.ClientLibrary
 
             if (result != 0)
             {
-                Debug.WriteLine("Client received error code: " + result);
+                Trace.TraceInformation("Client received error code: " + result);
                 ns.Dispose();
                 return null;
             }

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Linq.Expressions;
 using System.Runtime.Serialization;
 
@@ -68,7 +69,7 @@ namespace CRA.ClientLibrary.DataProcessing
             }
             catch (Exception e)
             {
-                Console.WriteLine("Error: the CRA vertex failed to apply a splitter transform for an error of type " + e.GetType() + ": " + e.ToString());
+                Trace.TraceError("Error: the CRA vertex failed to apply a splitter transform for an error of type " + e.GetType() + ": " + e.ToString());
             }
 
             return null;
@@ -95,7 +96,7 @@ namespace CRA.ClientLibrary.DataProcessing
             }
             catch (Exception e)
             {
-                Console.WriteLine("Error: The CRA vertex failed to apply a mergere transform for an error of type " + e.GetType() + " : " + e.ToString());
+                Trace.TraceError("Error: The CRA vertex failed to apply a mergere transform for an error of type " + e.GetType() + " : " + e.ToString());
             }
 
             return null;

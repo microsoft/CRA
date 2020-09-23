@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq.Expressions;
 using System.Reflection;
 
@@ -80,7 +81,7 @@ namespace CRA.ClientLibrary.DataProcessing
             }
             catch (Exception e)
             {
-                Console.WriteLine("Error: The CRA vertex failed to apply an unary transformer for an error of type " + e.GetType() + ": " + e.ToString());
+                Trace.TraceError("Error: The CRA vertex failed to apply an unary transformer for an error of type " + e.GetType() + ": " + e.ToString());
             }
 
             return null;
@@ -104,7 +105,7 @@ namespace CRA.ClientLibrary.DataProcessing
             }
             catch (Exception e)
             {
-                Console.WriteLine("Error: The CRA vertex failed to apply a binary transformer for an error of type " + e.GetType() + ": " + e.ToString());
+                Trace.TraceError("Error: The CRA vertex failed to apply a binary transformer for an error of type " + e.GetType() + ": " + e.ToString());
             }
 
             return null;

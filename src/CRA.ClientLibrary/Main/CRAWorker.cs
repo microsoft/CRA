@@ -91,15 +91,15 @@ namespace CRA.ClientLibrary
             ISecureStreamConnectionDescriptor descriptor = null,
             int streamsPoolSize = 0)
         {
-            Console.WriteLine("Starting CRA Worker instance [http://github.com/Microsoft/CRA]");
-            Console.WriteLine("   Instance Name: " + workerInstanceName);
-            Console.WriteLine("   IP address: " + address);
-            Console.WriteLine("   Port: " + port);
+            Trace.TraceInformation("Starting CRA Worker instance [http://github.com/Microsoft/CRA]");
+            Trace.TraceInformation("   Instance Name: " + workerInstanceName);
+            Trace.TraceInformation("   IP address: " + address);
+            Trace.TraceInformation("   Port: " + port);
 
             if (descriptor != null)
-            { Console.WriteLine("   Secure network connections: Enabled using assembly " + descriptor.GetType().FullName); }
+            { Trace.TraceInformation("   Secure network connections: Enabled using assembly " + descriptor.GetType().FullName); }
             else
-            { Console.WriteLine("   Secure network connections: Disabled"); }
+            { Trace.TraceInformation("   Secure network connections: Disabled"); }
 
             _craClient = clientLibrary;
             _craClient.SetWorker(this);
@@ -128,7 +128,7 @@ namespace CRA.ClientLibrary
 
         public void DisableDynamicLoading()
         {
-            Console.WriteLine("Disabling dynamic assembly loading");
+            Trace.TraceInformation("Disabling dynamic assembly loading");
             _craClient.DisableDynamicLoading();
         }
 
@@ -138,7 +138,7 @@ namespace CRA.ClientLibrary
         /// <param name="retryDelayMs"></param>
         public void SetConnectionRetryDelay(int retryDelayMs)
         {
-            Console.WriteLine("Setting connection retry delay (ms) to {0}", retryDelayMs);
+            Trace.TraceInformation("Setting connection retry delay (ms) to {0}", retryDelayMs);
             _retryDelayMs = retryDelayMs;
         }
 
@@ -148,7 +148,7 @@ namespace CRA.ClientLibrary
         /// <param name="tcpConnectTimeoutMs"></param>
         public void SetTcpConnectionTimeout(int tcpConnectTimeoutMs)
         {
-            Console.WriteLine("Setting TCP connection timeout (ms) to {0}", tcpConnectTimeoutMs);
+            Trace.TraceInformation("Setting TCP connection timeout (ms) to {0}", tcpConnectTimeoutMs);
             _tcpConnectTimeoutMs = tcpConnectTimeoutMs;
         }
 
@@ -158,7 +158,7 @@ namespace CRA.ClientLibrary
         /// </summary>
         public void EnableParallelConnections()
         {
-            Console.WriteLine("Enabling parallel connection establishment");
+            Trace.TraceInformation("Enabling parallel connection establishment");
             _parallelConnect = true;
         }
 
@@ -182,19 +182,19 @@ namespace CRA.ClientLibrary
         /// <param name="killMessage">Kill message</param>
         public void Kill(string killMessage)
         {
-            Console.WriteLine("KILLING WORKER: " + killMessage);
+            Trace.TraceInformation("KILLING WORKER: " + killMessage);
             Process.GetCurrentProcess().Kill();
         }
 
         public void SideloadVertex(IVertex vertex, string vertexName)
         {
-            Console.WriteLine("Enabling sideload for vertex: " + vertexName + " (" + vertex.GetType().FullName + ")");
+            Trace.TraceInformation("Enabling sideload for vertex: " + vertexName + " (" + vertex.GetType().FullName + ")");
             _craClient.SideloadVertex(vertex, vertexName);
         }
 
         public async Task InstantSideloadVertexAsync(IVertex vertex, string vertexDefinition, string vertexName, bool loadParamFromMetadata = true, object param = null, bool loadConnectionsFromMetadata = true, IEnumerable<VertexConnectionInfo> outRows = null, IEnumerable<VertexConnectionInfo> inRows = null, bool waitForMetadata = false)
         {
-            Console.WriteLine("Enabling sideload for vertex: " + vertexName + " (" + vertex.GetType().FullName + ")");
+            Trace.TraceInformation("Enabling sideload for vertex: " + vertexName + " (" + vertex.GetType().FullName + ")");
             
             if (loadParamFromMetadata)
                 _craClient.SideloadVertex(vertex, vertexName);
@@ -266,10 +266,10 @@ namespace CRA.ClientLibrary
         /// </summary>
         public async Task StartAsync()
         {
-            Console.WriteLine($"Registering CRA instance {_workerinstanceName}");
+            Trace.TraceInformation($"Registering CRA instance {_workerinstanceName}");
             // Update vertex table
             _craClient.RegisterInstance(_workerinstanceName, _address, _port);
-            Console.WriteLine("Finished registering CRA instance");
+            Trace.TraceInformation("Finished registering CRA instance");
             // Then start server. This ensures that others can establish 
             // connections to local vertices at this point.
             await StartServerAsync();
@@ -311,7 +311,7 @@ namespace CRA.ClientLibrary
             {
                 if (killIfExists)
                 {
-                    Debug.WriteLine("Deleting prior connection - it will automatically reconnect");
+                    Trace.TraceInformation("Deleting prior connection - it will automatically reconnect");
                     oldSource.Cancel();
                 }
                 return CRAErrorCode.Success;
@@ -329,7 +329,7 @@ namespace CRA.ClientLibrary
             {
                 if (killIfExists)
                 {
-                    Debug.WriteLine("Deleting prior connection - it will automatically reconnect");
+                    Trace.TraceInformation("Deleting prior connection - it will automatically reconnect");
                     oldSource.Cancel();
                 }
                 return CRAErrorCode.Success;
@@ -371,7 +371,7 @@ namespace CRA.ClientLibrary
 
             if (result != 0)
             {
-                Debug.WriteLine("Error occurs while establishing the connection!!");
+                Trace.TraceError("Error occurred while establishing the connection!!");
                 return result;
             }
             else
@@ -400,7 +400,7 @@ namespace CRA.ClientLibrary
                     {
                         source.Dispose();
                         ns.Close();
-                        Console.WriteLine("Race adding connection - deleting outgoing stream");
+                        Trace.TraceInformation("Race adding connection - deleting outgoing stream");
                         return CRAErrorCode.ConnectionAdditionRace;
                     }
                 }
@@ -426,7 +426,7 @@ namespace CRA.ClientLibrary
                     {
                         source.Dispose();
                         ns.Close();
-                        Debug.WriteLine("Race adding connection - deleting outgoing stream");
+                        Trace.TraceInformation("Race adding connection - deleting outgoing stream");
                         return CRAErrorCode.ConnectionAdditionRace;
                     }
                 }
@@ -448,12 +448,12 @@ namespace CRA.ClientLibrary
             {
                 if (killIfExists)
                 {
-                    Debug.WriteLine("Deleting prior connection - it will automatically reconnect");
+                    Trace.TraceInformation("Deleting prior connection - it will automatically reconnect");
                     oldSource.Cancel();
                 }
                 else
                 {
-                    Debug.WriteLine("There exists prior connection - not killing");
+                    Trace.TraceInformation("There exists prior connection - not killing");
                 }
                 stream.WriteInt32((int)CRAErrorCode.ServerRecovering);
                 return (int)CRAErrorCode.ServerRecovering;
@@ -485,7 +485,7 @@ namespace CRA.ClientLibrary
                 {
                     source.Dispose();
                     stream.Close();
-                    Debug.WriteLine("Race adding connection - deleting incoming stream");
+                    Trace.TraceInformation("Race adding connection - deleting incoming stream");
                     return (int)CRAErrorCode.ConnectionAdditionRace;
                 }
             }
@@ -509,7 +509,7 @@ namespace CRA.ClientLibrary
                 {
                     source.Dispose();
                     stream.Close();
-                    Debug.WriteLine("Race adding connection - deleting incoming stream");
+                    Trace.TraceInformation("Race adding connection - deleting incoming stream");
                     return (int)CRAErrorCode.ConnectionAdditionRace;
                 }
             }
@@ -525,7 +525,7 @@ namespace CRA.ClientLibrary
             string toVertexName = Encoding.UTF8.GetString(stream.ReadByteArray());
             string toVertexInput = Encoding.UTF8.GetString(stream.ReadByteArray());
 
-            Debug.WriteLine("Processing request to initiate connection");
+            Trace.TraceInformation("Processing request to initiate connection");
 
             if (!reverse)
             {
@@ -715,7 +715,7 @@ namespace CRA.ClientLibrary
                 }
                 else
                 {
-                    Debug.WriteLine("Unable to find output endpoint (on from side)");
+                    Trace.TraceInformation("Unable to find output endpoint (on from side)");
                     return;
                 }
 
@@ -745,7 +745,7 @@ namespace CRA.ClientLibrary
             }
             catch (Exception e)
             {
-                Debug.WriteLine("Exception (" + e.ToString() + ") in outgoing stream - reconnecting");
+                Trace.TraceInformation("Exception (" + e.ToString() + ") in outgoing stream - reconnecting");
                 CancellationTokenSource oldSource;
                 if (outConnections.TryRemove(fromVertexName + ":" + fromVertexOutput + ":" + toVertexName + ":" + toVertexInput, out oldSource))
                 {
@@ -753,7 +753,7 @@ namespace CRA.ClientLibrary
                 }
                 else
                 {
-                    Debug.WriteLine("Unexpected: caught exception in ToStream but entry absent in outConnections");
+                    Trace.TraceError("Unexpected: caught exception in ToStream but entry absent in outConnections");
                 }
 
                 // Retry following while connection not in list
@@ -778,7 +778,7 @@ namespace CRA.ClientLibrary
                     }
                     else
                     {
-                        Debug.WriteLine("Unable to create fused connection");
+                        Trace.TraceError("Unable to create fused connection");
                         return;
                     }
                 }
@@ -793,13 +793,13 @@ namespace CRA.ClientLibrary
                     }
                     else
                     {
-                        Debug.WriteLine("Unable to create fused connection");
+                        Trace.TraceError("Unable to create fused connection");
                         return;
                     }
                 }
                 else
                 {
-                    Debug.WriteLine("Unable to create fused connection");
+                    Trace.TraceError("Unable to create fused connection");
                     return;
                 }
 
@@ -812,7 +812,7 @@ namespace CRA.ClientLibrary
             }
             catch (Exception e)
             {
-                Debug.WriteLine("Exception (" + e.ToString() + ") in outgoing stream - reconnecting");
+                Trace.TraceInformation("Exception (" + e.ToString() + ") in outgoing stream - reconnecting");
                 CancellationTokenSource oldSource;
                 if (outConnections.TryRemove(fromVertexName + ":" + fromVertexOutput + ":" + toVertexName + ":" + toVertexInput, out oldSource))
                 {
@@ -820,7 +820,7 @@ namespace CRA.ClientLibrary
                 }
                 else
                 {
-                    Debug.WriteLine("Unexpected: caught exception in ToStream but entry absent in outConnections");
+                    Trace.TraceError("Unexpected: caught exception in ToStream but entry absent in outConnections");
                 }
 
                 // Retry following while connection not in list
@@ -867,7 +867,7 @@ namespace CRA.ClientLibrary
                     break;
 
                 default:
-                    Console.WriteLine("Unknown message type: " + message);
+                    Trace.TraceError("Unknown message type: " + message);
                     break;
             }
         }
@@ -944,7 +944,7 @@ namespace CRA.ClientLibrary
                 }
                 else
                 {
-                    Debug.WriteLine("Unable to find input endpoint (on to side)");
+                    Trace.TraceError("Unable to find input endpoint (on to side)");
                     return;
                 }
 
@@ -973,7 +973,7 @@ namespace CRA.ClientLibrary
             }
             catch (Exception e)
             {
-                Debug.WriteLine("Exception (" + e.ToString() + ") in incoming stream - reconnecting");
+                Trace.TraceInformation("Exception (" + e.ToString() + ") in incoming stream - reconnecting");
                 CancellationTokenSource tokenSource;
                 if (inConnections.TryRemove(fromVertexName + ":" + fromVertexOutput + ":" + toVertexName + ":" + toVertexInput, out tokenSource))
                 {
@@ -981,7 +981,7 @@ namespace CRA.ClientLibrary
                 }
                 else
                 {
-                    Debug.WriteLine("Unexpected: caught exception in FromStream but entry absent in inConnections");
+                    Trace.TraceError("Unexpected: caught exception in FromStream but entry absent in inConnections");
                 }
 
                 await RetryRestoreConnection(fromVertexName, fromVertexOutput, toVertexName, toVertexInput, true);
@@ -1103,8 +1103,8 @@ namespace CRA.ClientLibrary
                 }
                 first = false;
 
-                Debug.WriteLine("Connecting " + fromVertexName + ":" + fromVertexOutput + ":" + toVertexName + ":" + toVertexInput);
-                Debug.WriteLine("Connecting with killRemote set to " + (killRemote ? "true" : "false"));
+                Trace.TraceInformation("Connecting " + fromVertexName + ":" + fromVertexOutput + ":" + toVertexName + ":" + toVertexInput);
+                Trace.TraceInformation("Connecting with killRemote set to " + (killRemote ? "true" : "false"));
 
                 var result = await Connect_InitiatorSide(
                     fromVertexName,
@@ -1150,11 +1150,11 @@ namespace CRA.ClientLibrary
            
             while (true)
             {
-                Debug.WriteLine("Waiting for a connection... ");
+                Trace.TraceInformation("Waiting for a connection... ");
                 TcpClient client = await server.AcceptTcpClientAsync();
                 client.NoDelay = true;
 
-                Debug.WriteLine("Connected!");
+                Trace.TraceInformation("Connected!");
 
                 // Get a stream object for reading and writing
                 Stream stream = _craClient.SecureStreamConnectionDescriptor.CreateSecureServer(client.GetStream());

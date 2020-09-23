@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq.Expressions;
 using System.Text;
@@ -44,7 +45,7 @@ namespace CRA.ClientLibrary.DataProcessing
         {
             if (disposing)
             {
-                Console.WriteLine("Disposing " + _endpointName);
+                Trace.TraceInformation("Disposing " + _endpointName);
             }
         }
 

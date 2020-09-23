@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Runtime.Serialization;
 using System.Threading;
@@ -220,7 +221,7 @@ namespace CRA.ClientLibrary.DataProcessing
             }
             catch (Exception e)
             {
-                Console.WriteLine("Error in deploying a sharded CRA produce task. Please, double check your task configurations: " + e.ToString());
+                Trace.TraceError("Error in deploying a sharded CRA produce task. Please, double check your task configurations: " + e.ToString());
                 return false;
             }
         }
@@ -250,7 +251,7 @@ namespace CRA.ClientLibrary.DataProcessing
             }
             catch (Exception e)
             {
-                Console.WriteLine("Error in deploying a sharded CRA Subscribe task. Please, double check your task configurations: " + e.ToString());
+                Trace.TraceError("Error in deploying a sharded CRA Subscribe task. Please, double check your task configurations: " + e.ToString());
                 return false;
             }
         }
@@ -289,7 +290,7 @@ namespace CRA.ClientLibrary.DataProcessing
             }
             catch (Exception e)
             {
-                Console.WriteLine("Error in deploying a sharded CRA shuffle mapper task. Please, double check your task configurations: " + e.ToString());
+                Trace.TraceError("Error in deploying a sharded CRA shuffle mapper task. Please, double check your task configurations: " + e.ToString());
                 return false;
             }
         }
@@ -335,7 +336,7 @@ namespace CRA.ClientLibrary.DataProcessing
             }
             catch (Exception e)
             {
-                Console.WriteLine("Error in deploying a CRA client terminal vertex. Please, double check your task configurations: " + e.ToString());
+                Trace.TraceError("Error in deploying a CRA client terminal vertex. Please, double check your task configurations: " + e.ToString());
                 return false;
             }
         }

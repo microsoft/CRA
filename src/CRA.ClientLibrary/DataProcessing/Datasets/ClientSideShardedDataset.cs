@@ -1,5 +1,6 @@
 ﻿using CRA.DataProvider;
 using System;
+using System.Diagnostics;
 using System.Linq.Expressions;
 using System.Threading;
 using System.Threading.Tasks;
@@ -24,7 +25,7 @@ namespace CRA.ClientLibrary.DataProcessing
             if (producer != null)
                 _producer = new ClosureEliminator().Visit(producer) as Expression<Func<int, TDataset>>;
             else
-                Console.WriteLine("The producer expression of the ShardedDataset should be provided !!");
+                Trace.TraceError("The producer expression of the ShardedDataset should be provided !!");
             _dataProvider = dataProvider;
 
             _craClient = new CRAClientLibrary(_dataProvider);
