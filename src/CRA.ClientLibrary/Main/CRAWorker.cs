@@ -1159,9 +1159,16 @@ namespace CRA.ClientLibrary
                 // Get a stream object for reading and writing
                 Stream stream = _craClient.SecureStreamConnectionDescriptor.CreateSecureServer(client.GetStream());
 
-                // Handle a task message sent to the CRA instance
-                CRATaskMessageType message = (CRATaskMessageType)stream.ReadInt32();
-                HandleCRATaskMessage(message, stream);
+                try
+                {
+                    // Handle a task message sent to the CRA instance
+                    CRATaskMessageType message = (CRATaskMessageType)stream.ReadInt32();
+                    HandleCRATaskMessage(message, stream);
+                }
+                catch
+                {
+                    client.Dispose();
+                }
             }
         }
 
