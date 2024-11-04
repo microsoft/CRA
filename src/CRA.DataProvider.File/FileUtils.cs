@@ -23,7 +23,7 @@
             return path;
         }
 
-        public static Stream  GetReadWriteStream(string fileName)
+        public static Stream GetReadWriteStream(string fileName)
         {
             if (!Directory.Exists(Path.GetDirectoryName(fileName)))
             {
@@ -40,17 +40,23 @@
 
         public static Stream GetReadStream(string fileName)
         {
-            if (!Directory.Exists(Path.GetDirectoryName(fileName)))
+            if (string.IsNullOrWhiteSpace(fileName))
             {
-                Directory.CreateDirectory(
-                    Path.GetDirectoryName(fileName));
+                throw new ArgumentException("File name cannot be null or empty", nameof(fileName));
             }
 
-            return File.Open(
-                fileName,
-                FileMode.OpenOrCreate,
-                FileAccess.Read,
-                FileShare.Read);
+            string directoryName = Path.GetDirectoryName(fileName);
+            if (directoryName == null || !Directory.Exists(directoryName))
+            {
+                throw new DirectoryNotFoundException($"Directory does not exist: {directoryName}");
+            }
+
+            if (fileName.Contains("..") || fileName.Contains("/") || fileName.Contains("\\"))
+            {
+                throw new ArgumentException("Invalid file name", nameof(fileName));
+            }
+
+            return File.Open(fileName, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
         }
 
         public static void WriteList<T>(
@@ -120,7 +126,7 @@
 
                 for (int idx = 0; idx < list.Count && !found; idx++)
                 {
-                    if(match(list[idx]))
+                    if (match(list[idx]))
                     { return Task.FromResult<T?>(list[idx]); }
                 }
             }
@@ -179,7 +185,7 @@
                     (found, shouldUpdate) = matcher(item, itemToUpdate);
 
                     if (shouldUpdate)
-                    { list[idx] =cloneWithUpdateVersion(itemToUpdate); }
+                    { list[idx] = cloneWithUpdateVersion(itemToUpdate); }
                 }
 
                 if (!found)
