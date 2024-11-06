@@ -25,17 +25,23 @@
 
         public static Stream GetReadWriteStream(string fileName)
         {
-            if (!Directory.Exists(Path.GetDirectoryName(fileName)))
+            if (string.IsNullOrWhiteSpace(fileName))
             {
-                Directory.CreateDirectory(
-                    Path.GetDirectoryName(fileName));
+                throw new ArgumentException("File name cannot be null or empty", nameof(fileName));
             }
 
-            return File.Open(
-                fileName,
-                FileMode.OpenOrCreate,
-                FileAccess.ReadWrite,
-                FileShare.None);
+            string directoryName = Path.GetDirectoryName(fileName);
+            if (directoryName == null || !Directory.Exists(directoryName))
+            {
+                throw new DirectoryNotFoundException($"Directory does not exist: {directoryName}");
+            }
+
+            if (fileName.Contains("..") || fileName.Contains("/") || fileName.Contains("\\"))
+            {
+                throw new ArgumentException("Invalid file name", nameof(fileName));
+            }
+
+            return File.Open(fileName, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
         }
 
         public static Stream GetReadStream(string fileName)
